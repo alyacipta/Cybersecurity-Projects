@@ -61,7 +61,7 @@ cd PROJECTS/advanced/api-rate-limiter
 pip install -e . --break-system-packages
 
 # Optional: Start Redis for production-like testing
-docker-compose -f examples/docker-compose.yml up -d
+docker compose -f examples/docker-compose.yml up -d
 
 # Run the example app
 python examples/app.py
