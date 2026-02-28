@@ -1,6 +1,18 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Public landing page describing the SIEM dashboard's four main capabilities
+//
+// Renders a static marketing page with feature sections for real-time
+// monitoring, attack scenarios, the correlation engine, and alert triage.
+// Links to the login and register routes. No authentication required.
+//
+// Key components:
+//   Component - lazy-loaded landing page; displayName "Landing"
+//
+// Connects to:
+//   config.ts - ROUTES.LOGIN, ROUTES.REGISTER for navigation links
 // ===================
 
 import { GiDualityMask, GiHumanTarget } from 'react-icons/gi'

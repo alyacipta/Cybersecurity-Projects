@@ -1,6 +1,17 @@
 """
 AngelaMos | 2026
 config.py
+
+Application settings loaded from environment variables and a .env file
+
+Defines the Settings class using pydantic-settings, covering server
+host/port, database path, XOR encryption key, CORS origins, and log
+level. The module-level settings singleton is shared across the app.
+
+Connects to:
+  database.py - reads DATABASE_PATH
+  beacon/router.py - reads XOR_KEY
+  __main__.py - reads HOST, PORT, APP_NAME, LOG_LEVEL
 """
 
 from functools import lru_cache

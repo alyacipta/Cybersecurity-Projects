@@ -1,5 +1,24 @@
-// ©AngelaMos | 2026
-// builtin.go
+/*
+©AngelaMos | 2026
+builtin.go
+
+Built-in detection rules for 70+ secret types
+
+Defines builtinRules, a catalog of compiled Rule structs covering AWS,
+GitHub, GitLab, GCP, Azure, Slack, Stripe, Twilio, SendGrid, Shopify, npm,
+PyPI, JWT, SSH private keys, database connection strings, and more. Each rule
+carries keywords for fast pre-filtering, a regex, an optional entropy minimum,
+and a SecretGroup index to extract the actual secret value from a match.
+
+Key exports:
+  RegisterBuiltins - loads all built-in rules into a Registry
+
+Connects to:
+  rules/registry.go - receives each Rule via Register()
+  cli/scan.go - calls RegisterBuiltins before running a directory scan
+  cli/git.go - calls RegisterBuiltins before scanning git history
+  cli/config.go - calls RegisterBuiltins to list available rules
+*/
 
 package rules
 

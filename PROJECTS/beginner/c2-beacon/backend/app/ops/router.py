@@ -1,6 +1,25 @@
 """
 AngelaMos | 2026
 router.py
+
+Operator interface combining a WebSocket dashboard channel and REST beacon routes
+
+The /ws/operator WebSocket sends the current beacon list on connect
+and accepts submit_task messages from the operator. Three REST routes
+cover beacon listing, single-beacon lookup, and task history. All
+handlers share the registry, task manager, and ops manager from
+app.state.
+
+Key exports:
+  ws_router - WebSocket router mounted at /ws/operator
+  rest_router - REST routes for /beacons and /beacons/{id}
+
+Connects to:
+  beacon/registry.py - reads beacon list and active status
+  beacon/tasking.py - submits tasks and fetches history
+  core/models.py - uses CommandType, TaskRecord
+  database.py - calls get_db()
+  ops/manager.py - manages operator connections
 """
 
 import json

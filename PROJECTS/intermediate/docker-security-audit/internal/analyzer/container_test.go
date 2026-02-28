@@ -1,6 +1,30 @@
 /*
 © AngelaMos | 2026
 container_test.go
+
+Tests: ContainerAnalyzer detection logic against JSON container inspect
+fixtures
+
+Verifies that analyzeContainer correctly flags privileged mode, critical
+and high-severity capabilities, Docker socket mounts, sensitive path
+mounts, host namespace modes, missing resource limits, and writable
+root filesystem. Also confirms that a secure fixture produces minimal
+findings with no CRITICAL severity.
+
+Tests:
+  TestContainerAnalyzer_PrivilegedContainer - all dangerous flags detected
+  TestContainerAnalyzer_SecureContainer - clean container produces few
+findings
+  TestContainerAnalyzer_TargetInfo - finding target type, name, and ID
+correct
+  TestContainerAnalyzer_CategoryAndRemediation - CIS links and remediation
+present
+  TestContainerAnalyzer_Comparison - privileged vs secure severity
+distribution
+
+Connects to:
+  container.go - tests analyzeContainer() directly
+  finding.go - asserts on Severity constants and RuleID values
 */
 
 package analyzer

@@ -1,6 +1,9 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 constants.go
+
+Scanner configuration constants for concurrency, rate limiting, and
+timeouts
 */
 
 package config

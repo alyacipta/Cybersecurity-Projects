@@ -1,6 +1,29 @@
 """
 ©AngelaMos | 2026
 encoders.py
+
+Encode and decode functions for all five supported formats
+
+Provides individual encode/decode functions for base64, base64url,
+base32, hex, and URL percent-encoding, plus a dispatch registry
+(ENCODER_REGISTRY) that maps each EncodingFormat to its function pair.
+The top-level encode(), decode(), and try_decode() functions route
+calls through the registry and handle all common decoding exceptions.
+
+Key exports:
+  encode() - Encode bytes to string for a given format
+  decode() - Decode string to bytes for a given format
+  try_decode() - Like decode() but returns None on failure instead of raising
+  ENCODER_REGISTRY - Dict mapping EncodingFormat to (encoder, decoder) function pairs
+  EncoderFn, DecoderFn - Type aliases for encoder and decoder callables
+
+Connects to:
+  constants.py - imports EncodingFormat
+  detector.py - imports try_decode
+  cli.py - imports encode, decode, encode_url, decode_url
+  test_encoders.py - tests all functions directly
+  test_properties.py - property-based roundtrip tests
+  test_peeler.py - imports encode to build test inputs
 """
 
 import base64 as b64

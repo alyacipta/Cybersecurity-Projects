@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // auth.store.ts
+//
+// Zustand store for authentication state with localStorage persistence
+//
+// Holds the authenticated user, JWT access token, and isAuthenticated flag.
+// Persisted to localStorage under the siem-auth key so sessions survive page
+// reloads. Also exports three fine-grained selector hooks for components that
+// only need a single slice of state.
+//
+// Key exports:
+//   useAuthStore - main Zustand store hook with login, logout, updateUser actions
+//   useUser, useIsAuthenticated, useAccessToken - selector hooks
+//   AuthUser - interface for the stored user object
+//
+// Connects to:
+//   api.ts - reads accessToken and calls logout()
+//   useAuth.ts - calls login, logout, setAccessToken, updateUser
+//   protected-route.tsx, admin-route.tsx, shell.tsx - read auth state
 // ===================
 
 import { create } from 'zustand'

@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // theme.ts
+//
+// Chart theme and color maps for @visx visualizations
+//
+// Builds the chartTheme using the app's dark palette for use with visx
+// XYChart. Also exports SEVERITY_COLORS and STATUS_COLORS maps that map
+// domain string values to HSL color strings for consistent color coding
+// across charts and badge components.
+//
+// Key exports:
+//   chartTheme - visx XYChart theme object
+//   SEVERITY_COLORS - severity-to-HSL color map
+//   STATUS_COLORS - alert status-to-HSL color map
+//
+// Connects to:
+//   event-timeline.tsx - uses chartTheme
+//   severity-chart.tsx - uses SEVERITY_COLORS
 // ===================
 
 import { buildChartTheme } from '@visx/xychart'

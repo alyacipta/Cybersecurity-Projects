@@ -3,6 +3,21 @@
 test_models.py
 
 Basic happy path tests for data models
+
+Covers Protocol enum values, PacketInfo field storage and optional field
+defaults, CaptureConfig defaults and custom values, EndpointStats computed
+totals, and CaptureStatistics computed properties including duration,
+average bandwidth, protocol percentages, and top talkers sorting.
+
+Tests:
+  TestProtocol - all Protocol enum string values
+  TestPacketInfo - field storage and optional field defaults
+  TestCaptureConfig - default and custom configuration values
+  TestEndpointStats - total_packets and total_bytes computed properties
+  TestCaptureStatistics - empty state, duration, bandwidth, percentages, top talkers
+
+Connects to:
+  models.py - all symbols imported and tested here
 """
 
 

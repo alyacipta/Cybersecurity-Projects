@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Scenario runner page showing available playbooks and active scenario controls
+//
+// The running section only renders when there are active runs. Each running
+// scenario renders as a RunningCard with pause/resume, stop, and speed
+// selector controls. The playbook grid shows static metadata (event count,
+// MITRE tactics and techniques) and a start button for each playbook.
+// RunningCard is an internal helper component.
+//
+// Key components:
+//   Component - lazy-loaded scenarios page; displayName "Scenarios"
+//
+// Connects to:
+//   useScenarios.ts - playbook list, running scenarios, and control mutations
+//   scenario.types.ts - ScenarioRun, PlaybookInfo types
+//   config.ts - SCENARIO_STATUS_LABELS for display strings
 // ===================
 
 import { LuPause, LuPlay, LuSquare } from 'react-icons/lu'

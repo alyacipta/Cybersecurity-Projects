@@ -1,6 +1,24 @@
 """
 ©AngelaMos | 2026
 CorrelationRule.py
+
+MongoEngine model for correlation detection rules
+
+Stores rule definitions including type, conditions dict, severity,
+MITRE mappings, and enabled flag. get_enabled_rules is called by
+the correlation engine on a TTL-cached basis to avoid per-event
+database queries.
+
+Key exports:
+  CorrelationRule - rule document with get_enabled_rules class method
+  RuleType - StrEnum of supported evaluation strategies
+
+Connects to:
+  models/Base.py - extends BaseDocument
+  models/LogEvent.py - imports Severity for field choices
+  engine/correlation.py - calls get_enabled_rules, uses RuleType
+  controllers/rule_ctrl.py - CRUD and test operations
+  schemas/rule.py - imports RuleType
 """
 
 from typing import Any

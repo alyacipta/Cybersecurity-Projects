@@ -5,8 +5,10 @@ orchestrator.py
 
 import json
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -133,13 +135,24 @@ class TrainingOrchestrator:
                     "ensemble_roc_auc": ensemble.roc_auc,
                 })
                 passed = ensemble.passed_gates
-            except Exception:
+            except Exception as exc:
                 logger.exception("Ensemble validation failed")
+                print(
+                    f"  WARNING: validation raised"
+                    f" {type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
                 ensemble = None
                 passed = False
 
-            for artifact in self._output_dir.iterdir():
-                experiment.log_artifact(artifact)
+            for name in (
+                AE_FILENAME,
+                RF_FILENAME,
+                IF_FILENAME,
+                SCALER_FILENAME,
+                THRESHOLD_FILENAME,
+            ):
+                experiment.log_artifact(self._output_dir / name)
 
             run_id = experiment.run_id
 
@@ -159,7 +172,7 @@ class TrainingOrchestrator:
             mlflow_run_id=run_id,
         )
 
-    def _train_ae(self, X_normal: np.ndarray) -> dict:
+    def _train_ae(self, X_normal: np.ndarray) -> dict[str, Any]:
         """
         Train the autoencoder on normal-only data
         """
@@ -174,7 +187,7 @@ class TrainingOrchestrator:
             batch_size=self._batch_size,
         )
 
-    def _train_rf(self, X: np.ndarray, y: np.ndarray) -> dict:
+    def _train_rf(self, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """
         Train the random forest classifier
         """
@@ -184,7 +197,7 @@ class TrainingOrchestrator:
         )
         return train_random_forest(X, y)
 
-    def _train_if(self, X_normal: np.ndarray) -> dict:
+    def _train_if(self, X_normal: np.ndarray) -> dict[str, Any]:
         """
         Train the isolation forest on normal-only data
         """
@@ -196,9 +209,9 @@ class TrainingOrchestrator:
 
     def _export_models(
         self,
-        ae_result: dict,
-        rf_result: dict,
-        if_result: dict,
+        ae_result: dict[str, Any],
+        rf_result: dict[str, Any],
+        if_result: dict[str, Any],
     ) -> None:
         """
         Export all 3 models to ONNX and save scaler/threshold

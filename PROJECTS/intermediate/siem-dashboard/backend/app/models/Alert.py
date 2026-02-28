@@ -1,6 +1,25 @@
 """
 ©AngelaMos | 2026
 Alert.py
+
+MongoEngine model for correlation rule-triggered alerts
+
+Stores alerts with lifecycle status, severity, MITRE mappings, and
+references to the log events that matched. create_from_rule also
+publishes to the alert Redis Stream so the SSE endpoint picks it
+up in real time.
+
+Key exports:
+  Alert - alert document with create_from_rule, update_status, get_with_events
+  AlertStatus - StrEnum for alert lifecycle states
+
+Connects to:
+  models/Base.py - extends BaseDocument
+  models/LogEvent.py - loads matched events in get_with_events
+  core/streaming.py - calls publish_event on alert creation
+  config.py - reads ALERT_STREAM_KEY
+  engine/correlation.py - calls Alert.create_from_rule on rule fire
+  controllers/alert_ctrl.py, controllers/dashboard_ctrl.py - query methods
 """
 
 from typing import Any

@@ -1,6 +1,20 @@
 // ===================
 // ©AngelaMos | 2026
 // event-timeline.tsx
+//
+// Animated area chart displaying event counts over time using @visx/xychart
+//
+// Renders an AnimatedAreaSeries on a time/linear scale with a monotone curve.
+// The chart resizes responsively via ParentSize. A custom Tooltip shows the
+// bucket timestamp and event count on hover.
+//
+// Key components:
+//   EventTimeline - full-width area chart panel, accepts TimelineBucket[] and isLoading
+//
+// Connects to:
+//   dashboard/index.tsx - receives timeline data and loading state
+//   theme.ts - chartTheme for @visx styling
+//   dashboard.types.ts - TimelineBucket type
 // ===================
 
 import { curveMonotoneX } from '@visx/curve'

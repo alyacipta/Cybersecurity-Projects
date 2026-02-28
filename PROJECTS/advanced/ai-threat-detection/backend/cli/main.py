@@ -3,6 +3,8 @@
 main.py
 """
 
+import asyncio
+import dataclasses
 from pathlib import Path
 
 import typer
@@ -20,6 +22,44 @@ DEFAULT_SYNTHETIC_NORMAL = 1000
 DEFAULT_SYNTHETIC_ATTACK = 500
 DEFAULT_EXPERIMENT_NAME = "angelusvigil-training"
 DEFAULT_SERVER_URL = "http://localhost:8000"
+
+
+async def _write_metadata(
+    model_dir: Path,
+    training_samples: int,
+    metrics: dict[str, object],
+    mlflow_run_id: str | None,
+    threshold: float | None,
+) -> None:
+    """
+    Persist training metadata to the database
+    """
+    from app.config import settings
+    from ml.metadata import save_model_metadata
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
+
+    engine = create_async_engine(settings.database_url)
+    try:
+        factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        async with factory() as session:
+            await save_model_metadata(
+                session,
+                model_dir=model_dir,
+                training_samples=training_samples,
+                metrics=metrics,
+                mlflow_run_id=mlflow_run_id,
+                threshold=threshold,
+            )
+    finally:
+        await engine.dispose()
 
 
 @app.command()
@@ -92,9 +132,10 @@ def train(
             )
             raise typer.Exit(code=1)
 
-        from ml.data_loader import load_csic_dataset
+        from ml.data_loader import load_csic_dataset, load_csic_normal
 
         normal_path = csic_dir / "normalTrafficTraining.txt"
+        normal_test_path = csic_dir / "normalTrafficTest.txt"
         attack_path = csic_dir / "anomalousTrafficTest.txt"
         typer.echo(f"Loading CSIC data from {csic_dir}")
         X_csic, y_csic = load_csic_dataset(
@@ -105,6 +146,14 @@ def train(
         typer.echo(
             f"  CSIC: {len(X_csic)} samples"
         )
+
+        if normal_test_path.exists():
+            X_extra, y_extra = load_csic_normal(normal_test_path)
+            X_parts.append(X_extra)
+            y_parts.append(y_extra)
+            typer.echo(
+                f"  CSIC normal test: {len(X_extra)} samples"
+            )
 
     if synthetic_normal > 0 or synthetic_attack > 0:
         from ml.synthetic import generate_mixed_dataset
@@ -142,6 +191,25 @@ def train(
         batch_size=batch_size,
     )
     result = orch.run(X, y)
+
+    try:
+        metrics: dict[str, object] = (
+            dataclasses.asdict(result.ensemble_metrics)
+            if result.ensemble_metrics else {}
+        )
+        asyncio.run(_write_metadata(
+            Path(output_dir),
+            int(len(X)),
+            metrics,
+            result.mlflow_run_id,
+            result.ae_metrics.get("ae_threshold"),
+        ))
+        typer.echo("  Model metadata saved to database")
+    except Exception as exc:
+        typer.echo(
+            f"  Warning: could not save metadata to DB: {exc}",
+            err=True,
+        )
 
     typer.echo(f"Models exported to {output_dir}")
     if result.ensemble_metrics is not None:

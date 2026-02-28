@@ -1,6 +1,18 @@
 """
 ⒸAngelaMos | 2025
 auth.py
+
+Authentication identifier extraction from requests
+
+Pulls client identity from auth mechanisms in priority order:
+JWT Bearer tokens (with optional signature verification), API
+keys (from header or query param), and session cookies. When a
+token is found, it can be SHA256-hashed for privacy so the
+rate limiter tracks identity without storing raw credentials.
+
+Key exports:
+  AuthExtractor - extracts auth identifiers with extract()
+    and checks authentication status via is_authenticated()
 """
 
 from __future__ import annotations

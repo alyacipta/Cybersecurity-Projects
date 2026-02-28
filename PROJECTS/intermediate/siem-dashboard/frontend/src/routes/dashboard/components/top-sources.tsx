@@ -1,6 +1,18 @@
 // ===================
 // ©AngelaMos | 2026
 // top-sources.tsx
+//
+// Horizontal bar list ranking the top source IPs by event count
+//
+// Bar width is calculated as a percentage of the highest count in the dataset.
+// Empty and loading states are handled before rendering the bar list.
+//
+// Key components:
+//   TopSources - ranked bar list panel, accepts TopSource[] and isLoading
+//
+// Connects to:
+//   dashboard/index.tsx - receives top sources data and loading state
+//   dashboard.types.ts - TopSource type
 // ===================
 
 import type { TopSource } from '@/api/types'

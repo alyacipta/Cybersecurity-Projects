@@ -1,6 +1,18 @@
 // ===================
 // ©AngelaMos | 2026
 // stat-cards.tsx
+//
+// Four KPI metric cards showing total events, alerts, open alerts, and critical count
+//
+// Extracts the critical severity count from the overview's severity_breakdown
+// array. Renders skeleton placeholder cards while data is loading.
+//
+// Key components:
+//   StatCards - grid of four metric cards, accepts DashboardOverview and isLoading
+//
+// Connects to:
+//   dashboard/index.tsx - receives overview data and loading state
+//   dashboard.types.ts - DashboardOverview type
 // ===================
 
 import type { DashboardOverview } from '@/api/types'

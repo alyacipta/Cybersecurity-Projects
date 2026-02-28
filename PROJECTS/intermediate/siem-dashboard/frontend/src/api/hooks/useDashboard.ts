@@ -1,6 +1,24 @@
 // ===================
 // ©AngelaMos | 2026
 // useDashboard.ts
+//
+// React Query hooks for the four dashboard data endpoints
+//
+// All four hooks use the dashboard query strategy (30s stale, 30s polling)
+// so every panel refreshes together at the same cadence. useDashboardOverview
+// fetches aggregate counts. useTimeline defaults to a 24h window with 15-minute
+// buckets. useSeverityBreakdown returns per-severity alert counts.
+// useTopSources returns the highest-volume source IPs by event count.
+//
+// Key exports:
+//   useDashboardOverview - total events, alerts, open alerts, severity counts
+//   useTimeline - time-bucketed event counts for the area chart
+//   useSeverityBreakdown - per-severity counts for the donut chart
+//   useTopSources - ranked source IPs for the bar list
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   dashboard.types.ts - DashboardOverview, TimelineBucket, TopSource
 // ===================
 
 import type { UseQueryResult } from '@tanstack/react-query'

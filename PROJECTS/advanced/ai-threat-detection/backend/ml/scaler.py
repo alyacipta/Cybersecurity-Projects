@@ -46,7 +46,7 @@ class FeatureScaler:
         """
         if not self._fitted or self._scaler is None:
             raise RuntimeError("Scaler has not been fitted")
-        return self._scaler.transform(X).astype(np.float32)
+        return self._scaler.transform(X).astype(np.float32)  # type: ignore[no-any-return]
 
     def inverse_transform(self, X: np.ndarray) -> np.ndarray:
         """
@@ -54,7 +54,7 @@ class FeatureScaler:
         """
         if not self._fitted or self._scaler is None:
             raise RuntimeError("Scaler has not been fitted")
-        return self._scaler.inverse_transform(X).astype(np.float32)
+        return self._scaler.inverse_transform(X).astype(np.float32)  # type: ignore[no-any-return]
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """
@@ -74,14 +74,14 @@ class FeatureScaler:
             "scale": self._scaler.scale_.tolist(),
             "n_features": int(self._scaler.n_features_in_),
         }
-        Path(path).write_text(json.dumps(data, indent=2))
+        Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     @classmethod
     def load_json(cls, path: Path | str) -> FeatureScaler:
         """
         Reconstruct a fitted scaler from a JSON file.
         """
-        data = json.loads(Path(path).read_text())
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
         scaler = cls()
         scaler._scaler = RobustScaler()
         scaler._scaler.center_ = np.array(data["center"], dtype=np.float64)

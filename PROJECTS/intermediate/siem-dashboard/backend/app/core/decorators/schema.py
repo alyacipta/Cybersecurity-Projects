@@ -1,6 +1,20 @@
 """
 ©AngelaMos | 2026
 schema.py
+
+S() decorator for Pydantic request validation
+
+Validates incoming request data against a Pydantic model and stores
+the result on flask.g.validated for the controller to read. Supports
+auto (method-driven), query, and body source selection. Raises
+ValidationError with structured field-level detail on failure.
+
+Key exports:
+  S - factory returning a decorator; takes a schema class and source param
+
+Connects to:
+  core/errors.py - raises ValidationError on Pydantic failure
+  routes/ - applied to routes that accept request parameters
 """
 
 import functools

@@ -1,6 +1,16 @@
 """
 ©AngelaMos | 2026
 alerts.py
+
+Route handlers for the alerts API (/v1/alerts)
+
+Mounts GET /, GET /stream (SSE), GET /<alert_id>, and
+PATCH /<alert_id>/status.
+
+Connects to:
+  controllers/alert_ctrl.py - business logic
+  schemas/alert.py - AlertStatusUpdate, AlertQueryParams
+  routes/__init__.py - alerts_bp registered here
 """
 
 from typing import Any

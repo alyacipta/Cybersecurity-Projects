@@ -13,6 +13,7 @@ import numpy as np
 
 from app.core.features.encoder import encode_for_inference
 from app.core.features.extractor import extract_request_features
+from app.core.features.mappings import WINDOWED_FEATURE_NAMES
 from app.core.ingestion.parsers import ParsedLogEntry
 
 logger = logging.getLogger(__name__)
@@ -25,21 +26,6 @@ _DEFAULT_IP = "192.168.1.100"
 
 _DEFAULT_UA = ("Mozilla/5.0 (compatible; Konqueror/3.5; Linux)"
                " KHTML/3.5.8 (like Gecko)")
-
-_WINDOWED_FEATURE_NAMES: list[str] = [
-    "req_count_1m",
-    "req_count_5m",
-    "req_count_10m",
-    "error_rate_5m",
-    "unique_paths_5m",
-    "unique_uas_10m",
-    "method_entropy_5m",
-    "avg_response_size_5m",
-    "status_diversity_5m",
-    "path_depth_variance_5m",
-    "inter_request_time_mean",
-    "inter_request_time_std",
-]
 
 
 @dataclass
@@ -192,7 +178,7 @@ def load_csic_dataset(
         entry = csic_to_parsed_entry(req)
         features = extract_request_features(entry)
 
-        for name in _WINDOWED_FEATURE_NAMES:
+        for name in WINDOWED_FEATURE_NAMES:
             features[name] = 0.0
 
         vector = encode_for_inference(features)
@@ -208,6 +194,35 @@ def load_csic_dataset(
         y.shape,
         np.sum(y == 0),
         np.sum(y == 1),
+    )
+
+    return X, y
+
+
+def load_csic_normal(
+    path: Path,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Load a CSIC 2010 normal traffic file and return (X, y) arrays
+    with all labels set to 0
+    """
+    reqs = parse_csic_file(path, label=0)
+
+    vectors: list[list[float]] = []
+    for req in reqs:
+        entry = csic_to_parsed_entry(req)
+        features = extract_request_features(entry)
+        for name in WINDOWED_FEATURE_NAMES:
+            features[name] = 0.0
+        vectors.append(encode_for_inference(features))
+
+    X = np.array(vectors, dtype=np.float32)
+    y = np.zeros(len(vectors), dtype=np.int32)
+
+    logger.info(
+        "Loaded %d normal samples from %s",
+        len(vectors),
+        path.name,
     )
 
     return X, y

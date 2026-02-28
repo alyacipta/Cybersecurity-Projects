@@ -9,6 +9,7 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -23,6 +24,9 @@ from app.core.ingestion.tailer import LogTailer
 from app.core.redis_manager import redis_manager
 from app.models import model_metadata as _model_metadata_reg  # noqa: F401
 from app.models import threat_event as _threat_event_reg  # noqa: F401
+
+if TYPE_CHECKING:
+    from app.core.detection.inference import InferenceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +114,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("AngelusVigil shut down cleanly")
 
 
-def _load_inference_engine() -> object | None:
+def _load_inference_engine() -> InferenceEngine | None:
     """
     Attempt to load the ONNX inference engine from the
     configured model directory, returning None if ML

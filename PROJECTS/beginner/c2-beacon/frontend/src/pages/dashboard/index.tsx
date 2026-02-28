@@ -1,6 +1,21 @@
 // ===========================
 // © AngelaMos | 2026
 // pages/dashboard/index.tsx
+//
+// Operator dashboard listing all known beacons with live status
+//
+// Renders a table of every beacon the C2 server has seen. Active status
+// and last-seen timestamps update in real time via the operator
+// WebSocket. Clicking a row navigates to the session page for that
+// beacon. An empty state is shown when no beacons are registered.
+//
+// Key components:
+//   Component (Dashboard) - lazy-loaded route component for /
+//
+// Connects to:
+//   config.ts - reads ROUTES.SESSION for row navigation
+//   core/types.ts - imports BeaconRecord
+//   core/ws.ts - calls useBeacons, useIsConnected, useOperatorSocket
 // ===========================
 
 import { useEffect, useState } from 'react'

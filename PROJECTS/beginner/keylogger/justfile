@@ -1,5 +1,5 @@
-# CarterPerez-dev | 2025
-# Keylogger Development Commands
+# ©AngelaMos | 2026
+# justfile
 
 set dotenv-load
 set export
@@ -54,7 +54,7 @@ install-dev:
 test:
     @echo "Running tests..."
     @echo ""
-    uv run python test_keylogger.py
+    uv run pytest test_keylogger.py -v
 
 # Run all linting checks (ruff, pylint, mypy)
 [group('test')]

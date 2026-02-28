@@ -1,6 +1,17 @@
 """
 ©AngelaMos | 2026
 config.py
+
+Pydantic Settings configuration for the SIEM backend
+
+All runtime configuration is loaded from environment variables or
+a .env file. Covers MongoDB, Redis, JWT, CORS, rate limiting, Redis
+Streams, scenario playback, and dashboard aggregation settings.
+The module-level settings singleton is imported across the entire app.
+
+Key exports:
+  Settings - pydantic-settings class with all config fields
+  settings - singleton instance used by all other modules
 """
 
 from pathlib import Path

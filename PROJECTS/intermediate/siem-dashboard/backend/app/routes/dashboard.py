@@ -1,6 +1,16 @@
 """
 ©AngelaMos | 2026
 dashboard.py
+
+Route handlers for the dashboard API (/v1/dashboard)
+
+Mounts GET / (overview stats), GET /timeline, GET /severity-breakdown,
+and GET /top-sources.
+
+Connects to:
+  controllers/dashboard_ctrl.py - business logic
+  schemas/dashboard.py - TimelineParams, TopSourcesParams
+  routes/__init__.py - dashboard_bp registered here
 """
 
 from typing import Any

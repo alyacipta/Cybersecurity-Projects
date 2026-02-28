@@ -7,6 +7,7 @@ import numpy as np
 
 from app.core.features.encoder import encode_for_inference
 from app.core.features.extractor import extract_request_features
+from app.core.features.mappings import WINDOWED_FEATURE_NAMES
 from app.core.ingestion.parsers import ParsedLogEntry
 from ml.synthetic import (
     generate_log4shell_requests,
@@ -18,22 +19,6 @@ from ml.synthetic import (
     generate_traversal_requests,
     generate_xss_requests,
 )
-
-_WINDOWED_FEATURE_NAMES: list[str] = [
-    "req_count_1m",
-    "req_count_5m",
-    "req_count_10m",
-    "error_rate_5m",
-    "unique_paths_5m",
-    "unique_uas_10m",
-    "method_entropy_5m",
-    "avg_response_size_5m",
-    "status_diversity_5m",
-    "path_depth_variance_5m",
-    "inter_request_time_mean",
-    "inter_request_time_std",
-]
-
 
 class TestGenerators:
     """
@@ -152,7 +137,7 @@ class TestGenerators:
         for gen in generators:
             for entry in gen(5):
                 features = extract_request_features(entry)
-                for name in _WINDOWED_FEATURE_NAMES:
+                for name in WINDOWED_FEATURE_NAMES:
                     features[name] = 0.0
                 vector = encode_for_inference(features)
                 assert len(vector) == 35

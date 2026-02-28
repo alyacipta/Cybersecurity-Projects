@@ -1,6 +1,19 @@
 """
 ⒸAngelaMos | 2025
 fixed_window.py
+
+Fixed window counter rate limiting algorithm
+
+The simplest algorithm. Divides time into fixed-size windows and
+counts requests in each. Has the well-known boundary burst problem
+where a client can make 2x the limit by timing requests at the
+edge of two adjacent windows. Includes a special codepath for
+Redis that uses the atomic increment_fixed_window() Lua script
+instead of the generic sliding window storage methods.
+
+Connects to:
+  base.py - extends BaseAlgorithm
+  redis_backend.py - checks isinstance for Redis-specific path
 """
 
 from __future__ import annotations

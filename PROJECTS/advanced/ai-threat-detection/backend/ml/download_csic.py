@@ -7,7 +7,8 @@ import hashlib
 import logging
 import sys
 from pathlib import Path
-from urllib.request import urlretrieve
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -24,24 +25,6 @@ FILES = [
 ]
 
 MIN_FILE_BYTES = 1_000_000
-
-
-def _progress_hook(
-    block_num: int,
-    block_size: int,
-    total_size: int,
-) -> None:
-    """
-    Print download progress to stdout
-    """
-    downloaded = block_num * block_size
-    if total_size > 0:
-        pct = min(downloaded * 100 / total_size, 100)
-        sys.stdout.write(f"\r  {pct:.0f}%")
-    else:
-        mb = downloaded / 1_048_576
-        sys.stdout.write(f"\r  {mb:.1f} MB")
-    sys.stdout.flush()
 
 
 def _compute_sha256(path: Path) -> str:
@@ -73,7 +56,31 @@ def download_csic(output_dir: Path = DATASET_DIR, ) -> None:
         print(f"Downloading {filename}...")
 
         try:
-            urlretrieve(url, dest, reporthook=_progress_hook)
+            with httpx.stream(
+                "GET",
+                url,
+                follow_redirects=True,
+            ) as response:
+                response.raise_for_status()
+                total = int(
+                    response.headers.get("content-length", 0)
+                )
+                downloaded = 0
+                with open(dest, "wb") as f:
+                    for chunk in response.iter_bytes(
+                        chunk_size=65536
+                    ):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total > 0:
+                            pct = min(
+                                downloaded * 100 / total, 100
+                            )
+                            sys.stdout.write(f"\r  {pct:.0f}%")
+                        else:
+                            mb = downloaded / 1_048_576
+                            sys.stdout.write(f"\r  {mb:.1f} MB")
+                        sys.stdout.flush()
             print()
         except Exception as exc:
             logger.error(

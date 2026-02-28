@@ -34,7 +34,7 @@ def export_autoencoder(
 
     torch.onnx.export(
         model,
-        dummy,
+        dummy,  # type: ignore[arg-type]
         str(path),
         opset_version=opset,
         export_params=True,

@@ -1,6 +1,23 @@
 """
 AngelaMos | 2026
 router.py
+
+WebSocket endpoint that manages the full beacon connection lifecycle
+
+The /ws/beacon handler validates the REGISTER handshake, then runs
+two concurrent coroutines: one pushing queued tasks to the beacon and
+one processing incoming RESULT and HEARTBEAT messages. On disconnect,
+it cleans up the registry and queue and broadcasts the event to
+operators.
+
+Connects to:
+  beacon/registry.py - registers, unregisters, updates heartbeat
+  beacon/tasking.py - dequeues tasks, stores results
+  config.py - reads XOR_KEY
+  core/models.py - uses BeaconMeta, TaskResult
+  core/protocol.py - calls pack, unpack
+  database.py - calls get_db()
+  ops/manager.py - broadcasts beacon events
 """
 
 import asyncio

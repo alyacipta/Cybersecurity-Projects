@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // useAlerts.ts
+//
+// React Query hooks for the alerts API: list, detail, and status update
+//
+// useAlerts fetches a paginated, filterable list of alerts polled every 10
+// seconds. useAlertDetail fetches a single alert with its matched log events.
+// useUpdateAlertStatus patches the alert status and invalidates the full
+// alerts cache on success.
+//
+// Key exports:
+//   useAlerts - paginated alert list with status/severity filtering
+//   useAlertDetail - single alert with matched events
+//   useUpdateAlertStatus - mutation to transition alert lifecycle state
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   alert.types.ts - Alert, AlertDetail, AlertStatusUpdateRequest types
 // ===================
 
 import {

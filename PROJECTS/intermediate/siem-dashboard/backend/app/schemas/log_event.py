@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 log_event.py
+
+Pydantic schemas for log event endpoints
+
+Covers raw log ingestion (LogIngestRequest with extra-field passthrough),
+paginated listing (LogQueryParams), full-text search (LogSearchParams),
+and forensic pivot lookups (PivotParams).
+
+Key exports:
+  LogIngestRequest - raw event ingestion allowing extra metadata fields
+  LogQueryParams - listing filters with pagination
+  LogSearchParams - search query with pagination
+  PivotParams - pivot lookup by IP, username, or hostname
+
+Connects to:
+  config.py - reads DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+  routes/logs.py - passed to S()
 """
 
 from typing import Any

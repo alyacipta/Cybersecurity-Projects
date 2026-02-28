@@ -1,6 +1,29 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 secrets.go
+
+Secret detection patterns, sensitive env names, and Shannon entropy
+analysis
+
+SecretPatterns covers 80+ regex patterns for cloud providers (AWS,
+GCP, Azure), CI/CD platforms, payment processors, AI APIs, databases,
+and generic credentials. SensitiveEnvNames is a lookup set for
+variable names that should never hold hardcoded values. Entropy
+functions catch secrets that don't match any known pattern.
+
+Key exports:
+  SecretPatterns - slice of compiled regex patterns with type and
+description
+  SensitiveEnvNames - set of environment variable names to flag
+  DetectSecrets - scans a string against all patterns
+  IsSensitiveEnvName - checks against known sensitive names with substring
+fallback
+  CalculateEntropy, IsHighEntropyString - Shannon entropy detection
+
+Connects to:
+  analyzer/dockerfile.go - scans ENV, ARG, RUN, and LABEL instructions
+  analyzer/compose.go - scans service environment variable values
+  config/constants.go - reads MinSecretLength and MinEntropyForSecret
 */
 
 package rules

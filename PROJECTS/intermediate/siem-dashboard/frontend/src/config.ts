@@ -1,6 +1,20 @@
 // ===================
 // ©AngelaMos | 2026
 // constants.ts
+//
+// Application-wide constants for the SIEM dashboard frontend
+//
+// Centralizes all API endpoint paths, React Query cache keys, client-side
+// route paths, localStorage keys, cache timing config, HTTP status codes,
+// pagination defaults, and display label maps. Every hook and page imports
+// from here instead of defining URLs inline.
+//
+// Key exports:
+//   API_ENDPOINTS - all backend route paths, static and parameterized
+//   QUERY_KEYS - structured cache key factories for React Query
+//   ROUTES - client-side navigation path constants
+//   QUERY_CONFIG - stale time, GC time, and retry settings
+//   STORAGE_KEYS - localStorage key names for persisted stores
 // ===================
 
 const API_VERSION = 'v1'

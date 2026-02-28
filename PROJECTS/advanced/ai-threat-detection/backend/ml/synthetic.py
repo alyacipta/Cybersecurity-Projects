@@ -11,6 +11,7 @@ import numpy as np
 
 from app.core.features.encoder import encode_for_inference
 from app.core.features.extractor import extract_request_features
+from app.core.features.mappings import WINDOWED_FEATURE_NAMES
 from app.core.ingestion.parsers import ParsedLogEntry
 
 logger = logging.getLogger(__name__)
@@ -189,34 +190,12 @@ ATTACK_PATHS: list[str] = [
     "/debug",
 ]
 
-_WINDOWED_FEATURE_NAMES: list[str] = [
-    "req_count_1m",
-    "req_count_5m",
-    "req_count_10m",
-    "error_rate_5m",
-    "unique_paths_5m",
-    "unique_uas_10m",
-    "method_entropy_5m",
-    "avg_response_size_5m",
-    "status_diversity_5m",
-    "path_depth_variance_5m",
-    "inter_request_time_mean",
-    "inter_request_time_std",
-]
-
 
 def _random_ip() -> str:
     """
     Generate a random public-looking IP address
     """
     return f"{random.randint(1, 223)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-
-
-def _random_private_ip() -> str:
-    """
-    Generate a random private IP address
-    """
-    return f"10.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
 
 
 def _random_timestamp() -> datetime:
@@ -270,7 +249,6 @@ def generate_sqli_requests(n: int, ) -> list[ParsedLogEntry]:
                     status_code=random.choice([200, 500]),
                     response_size=random.randint(0, 5000),
                     user_agent=random.choice(NORMAL_UAS),
-                    ip=_random_private_ip(),
                 ))
         else:
             entries.append(
@@ -281,7 +259,6 @@ def generate_sqli_requests(n: int, ) -> list[ParsedLogEntry]:
                     status_code=random.choice([200, 403]),
                     response_size=random.randint(0, 2000),
                     user_agent=random.choice(NORMAL_UAS),
-                    ip=_random_private_ip(),
                 ))
     return entries
 
@@ -302,7 +279,6 @@ def generate_xss_requests(n: int, ) -> list[ParsedLogEntry]:
                 status_code=200,
                 response_size=random.randint(500, 5000),
                 user_agent=random.choice(NORMAL_UAS),
-                ip=_random_private_ip(),
             ))
     return entries
 
@@ -322,7 +298,6 @@ def generate_traversal_requests(n: int, ) -> list[ParsedLogEntry]:
                 status_code=random.choice([200, 403, 404]),
                 response_size=random.randint(0, 1000),
                 user_agent=random.choice(NORMAL_UAS),
-                ip=_random_private_ip(),
             ))
     return entries
 
@@ -343,7 +318,6 @@ def generate_log4shell_requests(n: int, ) -> list[ParsedLogEntry]:
                 status_code=200,
                 response_size=random.randint(0, 2000),
                 user_agent=payload,
-                ip=_random_private_ip(),
             ))
     return entries
 
@@ -364,7 +338,6 @@ def generate_ssrf_requests(n: int, ) -> list[ParsedLogEntry]:
                 status_code=random.choice([200, 302]),
                 response_size=random.randint(0, 3000),
                 user_agent=random.choice(NORMAL_UAS),
-                ip=_random_private_ip(),
             ))
     return entries
 
@@ -384,7 +357,6 @@ def generate_scanner_requests(n: int, ) -> list[ParsedLogEntry]:
                 status_code=random.choice([200, 301, 403, 404]),
                 response_size=random.randint(0, 500),
                 user_agent=random.choice(SCANNER_UAS),
-                ip=_random_private_ip(),
             ))
     return entries
 
@@ -417,7 +389,7 @@ def _entries_to_vectors(entries: list[ParsedLogEntry], ) -> list[list[float]]:
     vectors: list[list[float]] = []
     for entry in entries:
         features = extract_request_features(entry)
-        for name in _WINDOWED_FEATURE_NAMES:
+        for name in WINDOWED_FEATURE_NAMES:
             features[name] = 0.0
         vectors.append(encode_for_inference(features))
     return vectors

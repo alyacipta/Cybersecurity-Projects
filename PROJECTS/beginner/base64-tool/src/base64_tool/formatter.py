@@ -1,6 +1,30 @@
 """
 ©AngelaMos | 2026
 formatter.py
+
+Rich terminal output for all CLI commands
+
+Handles all display logic for encoded strings, decoded bytes,
+detection tables, peel layer summaries, and chain step results.
+Detects whether stdout is a TTY or a pipe and switches between
+Rich-formatted panels and raw text output. All Rich output goes
+to stderr so piped stdout stays machine-readable.
+
+Key exports:
+  print_encoded() - Displays an encoded string in a Rich panel or raw to stdout
+  print_decoded() - Displays decoded bytes as text or hex fallback
+  print_detection() - Renders a confidence table for detect results
+  print_peel_result() - Renders each peel layer and a final output panel
+  print_chain_result() - Renders each encoding step and the final chain result
+  print_score_breakdown() - Renders per-format score table for verbose mode
+  is_piped() - Returns True when stdout is not a TTY
+
+Connects to:
+  constants.py - imports CONFIDENCE_THRESHOLD, PREVIEW_LENGTH, EncodingFormat
+  detector.py - imports DetectionResult
+  peeler.py - imports PeelResult
+  utils.py - imports safe_bytes_preview
+  cli.py - imports all print_* functions
 """
 
 import sys

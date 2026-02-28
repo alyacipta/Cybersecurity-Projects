@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // useEventStream.ts
+//
+// SSE hooks that connect to the live log and alert streams
+//
+// useLogStream and useAlertStream each open an EventSource connection to the
+// backend. Because EventSource doesn't support custom headers, the JWT is
+// passed as a URL query parameter. On error the connection closes and
+// reconnects after 3 seconds. Events are pushed into the stream store's
+// ring buffers. Both hooks clean up their connection on unmount.
+//
+// Key exports:
+//   useLogStream - connects to /logs/stream and pushes events into streamStore
+//   useAlertStream - connects to /alerts/stream and pushes events into streamStore
+//
+// Connects to:
+//   stream.store.ts - pushLogEvent, pushAlertEvent, setLogConnected, setAlertConnected
+//   auth.store.ts - reads accessToken for the URL query param
+//   api.ts - getBaseURL() for SSE URL construction
 // ===================
 
 import { useCallback, useEffect, useRef } from 'react'

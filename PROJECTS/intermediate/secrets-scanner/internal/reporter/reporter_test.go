@@ -1,5 +1,21 @@
-// ©AngelaMos | 2026
-// reporter_test.go
+/*
+©AngelaMos | 2026
+reporter_test.go
+
+Tests for reporter/reporter.go, terminal.go, json.go, and sarif.go
+
+Tests:
+  New() factory returns correct types for terminal, json, sarif, and empty format
+  Terminal output contains findings count, rule IDs, file paths, HIBP status, entropy
+  Terminal no-findings path shows "No secrets detected"
+  JSON output parses to jsonOutput with masked secrets and correct summary counts
+  JSON no-findings path produces an empty findings array
+  SARIF output validates version, driver name, rule IDs, locations, and severity level
+  SARIF no-findings path produces an empty results array
+  maskSecret truncation for short, medium, and long secrets
+  truncateSHA produces an 8-character prefix
+  severityToSARIF maps Critical/High to error, Medium to warning, Low to note
+*/
 
 package reporter
 

@@ -1,6 +1,19 @@
 // ===================
 // ©AngelaMos | 2026
 // stream.store.ts
+//
+// Zustand store for real-time SSE event buffers
+//
+// Maintains in-memory ring buffers (max 500 entries each) for log and alert
+// events arriving over Server-Sent Events. Tracks connection status for both
+// streams separately. Not persisted to localStorage since the data is
+// transient. Events are prepended so the newest entry is always first.
+//
+// Key exports:
+//   useStreamStore - Zustand store hook with push, clear, and status actions
+//
+// Connects to:
+//   useEventStream.ts - calls pushLogEvent, pushAlertEvent, setLogConnected, setAlertConnected
 // ===================
 
 import { create } from 'zustand'

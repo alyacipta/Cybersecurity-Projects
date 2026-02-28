@@ -1,6 +1,18 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 main.go
+
+CLI entry point for docksec with scan, version, and benchmark subcommands
+
+Builds a cobra command tree with three subcommands: scan (the primary
+path), version, and benchmark (list/show CIS controls). Signal handling
+via signal.NotifyContext ensures graceful shutdown on SIGINT/SIGTERM.
+Scan flags map directly to config.Config fields.
+
+Connects to:
+  config/config.go - Config struct populated from cobra flags
+  scanner/scanner.go - Scanner constructed and Run() called from runScan
+  benchmark/controls.go - All() and Get() used by benchmark subcommands
 */
 
 package main

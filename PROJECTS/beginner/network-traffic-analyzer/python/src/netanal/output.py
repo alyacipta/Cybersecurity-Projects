@@ -3,6 +3,28 @@
 output.py
 
 Rich console output formatting for network traffic analysis
+
+Handles all terminal display for capture sessions and analysis results.
+The console instance is created once with environment-aware settings for
+CI, NO_COLOR, and non-TTY environments. Display functions cover streaming
+packet output, session summary panels, protocol tables, top talkers, and
+bandwidth statistics.
+
+Key exports:
+  console - Shared Rich Console instance created by get_console()
+  create_capture_progress() - Returns a Rich Progress bar for live capture display
+  print_packet() - Streams a single packet line with protocol color coding
+  print_protocol_table() - Renders protocol distribution as a Rich table
+  print_top_talkers() - Renders the busiest endpoints ranked by bytes
+  print_capture_summary() - Renders session totals in a bordered panel
+  print_bandwidth_stats() - Renders min/max/avg bandwidth as a table
+  format_bytes() - Converts raw byte counts to human-readable strings
+  format_duration() - Converts seconds to an hours/minutes/seconds string
+
+Connects to:
+  models.py - imports CaptureStatistics, PacketInfo, Protocol
+  constants.py - imports ByteUnits, ProtocolColors, TimeConstants
+  main.py - imports console and all print_* functions
 """
 
 import os

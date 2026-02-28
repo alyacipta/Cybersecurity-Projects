@@ -1,6 +1,24 @@
 // ===================
 // ©AngelaMos | 2026
 // auth.types.ts
+//
+// Zod schemas, types, validation helpers, and error classes for the auth API
+//
+// Covers login, registration, and profile update flows. Includes both request
+// and response schemas with field-level validation rules, runtime type guards,
+// user-facing message constants, and AuthResponseError for signaling malformed
+// server responses in hooks.
+//
+// Key exports:
+//   userResponseSchema, tokenResponseSchema - response validators
+//   loginRequestSchema, registerRequestSchema - form validation schemas
+//   updateProfileRequestSchema - cross-field validation for profile form
+//   AuthResponseError - typed error class for auth hook failures
+//   AUTH_ERROR_MESSAGES, AUTH_SUCCESS_MESSAGES - toast message constants
+//
+// Connects to:
+//   useAuth.ts - consumes schemas and error class
+//   admin.types.ts - imports userResponseSchema
 // ===================
 
 import { z } from 'zod'

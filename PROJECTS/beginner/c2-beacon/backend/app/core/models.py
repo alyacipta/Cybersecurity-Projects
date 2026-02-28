@@ -1,6 +1,24 @@
 """
 AngelaMos | 2026
 models.py
+
+Pydantic models and command types shared across the C2 server
+
+Defines the data types used throughout the server: CommandType (the
+supported C2 commands mapped to MITRE ATT&CK techniques), beacon
+registration and storage models, and the full task lifecycle from
+request to result.
+
+Key exports:
+  CommandType - enum of supported beacon commands
+  BeaconMeta, BeaconRecord - beacon registration and database types
+  TaskRequest, TaskRecord, TaskResult - task lifecycle types
+
+Connects to:
+  beacon/registry.py - uses BeaconMeta, BeaconRecord
+  beacon/tasking.py - uses TaskRecord, TaskResult
+  beacon/router.py - uses BeaconMeta, TaskResult
+  ops/router.py - uses CommandType, TaskRecord
 """
 
 from datetime import UTC, datetime

@@ -52,7 +52,7 @@ async def _get_active_models(
     Query all active model metadata records
     """
     query = select(ModelMetadata).where(
-        ModelMetadata.is_active == True  # noqa: E712
+        ModelMetadata.is_active == True  # type: ignore[arg-type]  # noqa: E712
     )
     rows = (await session.execute(query)).scalars().all()
     return [{

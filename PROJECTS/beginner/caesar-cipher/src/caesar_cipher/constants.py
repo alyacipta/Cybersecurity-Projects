@@ -1,6 +1,17 @@
 """
-ⒸAngelaMos | 2026
+©AngelaMos | 2026
 constants.py
+
+Shared constants for the Caesar cipher: alphabet definitions and English letter frequency data
+
+Defines the letter sets used by the cipher for case-aware shifting,
+the expected frequency percentages for each English letter (used by
+frequency analysis to score decryption candidates), and the chi-squared
+threshold for filtering results.
+
+Connects to:
+  cipher.py - imports UPPERCASE_LETTERS, LOWERCASE_LETTERS, ALPHABET_SIZE
+  analyzer.py - imports ENGLISH_LETTER_FREQUENCIES
 """
 
 import string

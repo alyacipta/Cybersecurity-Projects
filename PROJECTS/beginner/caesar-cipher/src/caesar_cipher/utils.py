@@ -1,6 +1,15 @@
 """
-ⒸAngelaMos | 2026
+©AngelaMos | 2026
 utils.py
+
+Input/output helpers and key validation shared across CLI commands
+
+Handles the three sources of input (positional argument, file, or stdin)
+and routes output to either stdout or a file. Also validates that the
+shift key is in the acceptable range before the cipher is constructed.
+
+Connects to:
+  main.py - imports read_input, write_output, validate_key
 """
 
 import sys

@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // rule.types.ts
+//
+// Zod schemas and types for correlation rules and rule test results
+//
+// Defines the full correlationRuleSchema for list and detail views, and the
+// ruleTestResultSchema describing a dry-run evaluation. Also exports plain
+// TypeScript interfaces for create, update, and test request payloads.
+//
+// Key exports:
+//   correlationRuleSchema, CorrelationRule - full rule document type
+//   ruleTestResultSchema, RuleTestResult - dry-run evaluation result type
+//   RuleCreateRequest, RuleUpdateRequest, RuleTestRequest - mutation payloads
+//
+// Connects to:
+//   useRules.ts - consumes all rule types
+//   rules/index.tsx - uses CorrelationRule and RuleTestResult for display
 // ===================
 
 import { z } from 'zod'

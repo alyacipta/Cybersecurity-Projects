@@ -1,6 +1,25 @@
 """
 ©AngelaMos | 2026
 LogEvent.py
+
+MongoEngine model for ingested log events
+
+Stores normalized log events from all source types with fields for
+network context, severity, MITRE mappings, and scenario linkage.
+Provides class methods for search, pivot queries, and MongoDB
+aggregation pipelines used by dashboard endpoints.
+
+Key exports:
+  LogEvent - main log event document with query and aggregation methods
+  Severity - StrEnum of severity levels (critical through info)
+  SourceType - StrEnum of supported log source categories
+
+Connects to:
+  models/Base.py - extends BaseDocument
+  config.py - reads DEFAULT_PAGE_SIZE, TIMELINE_*, TOP_SOURCES_LIMIT
+  controllers/log_ctrl.py, controllers/dashboard_ctrl.py - query methods
+  controllers/rule_ctrl.py - reads events for rule testing
+  engine/correlation.py - event data passed to evaluate_rule
 """
 
 from typing import Any

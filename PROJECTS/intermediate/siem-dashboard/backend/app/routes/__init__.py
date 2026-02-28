@@ -1,6 +1,14 @@
 """
 ©AngelaMos | 2026
 __init__.py
+
+Blueprint registration for the Flask application
+
+register_blueprints mounts all seven route blueprints under the /v1
+API prefix. Called by the application factory during startup.
+
+Key exports:
+  register_blueprints - registers all route blueprints on the Flask app
 """
 
 from flask import Flask

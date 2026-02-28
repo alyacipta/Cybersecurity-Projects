@@ -1,6 +1,19 @@
 """
 ⒸAngelaMos | 2025
 conftest.py
+
+Shared pytest fixtures and test factories for the test suite
+
+Defines constants for test data (IPs, tokens, endpoints, window
+sizes), nine factory classes for building mock objects
+(RequestFactory, FingerprintFactory, RuleFactory, ResultFactory,
+and others), pytest fixtures for every major component, and helper
+functions for common assertions like checking rate limit headers
+and exhausting a client's limit budget.
+
+Tests:
+  Provides fixtures for all source modules including storage,
+  algorithms, fingerprinting, defense, limiter, and middleware
 """
 from __future__ import annotations
 

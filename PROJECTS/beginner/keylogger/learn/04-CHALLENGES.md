@@ -21,7 +21,7 @@ Many users never type their passwords, they paste them. Keyloggers miss these cr
 
 **Hints:**
 - Install pyperclip: `pip install pyperclip`
-- Create a `ClipboardMonitor` class similar to `WindowTracker` (`keylogger.py:121`)
+- Create a `ClipboardMonitor` class similar to `WindowTracker` (`keylogger.py:155`)
 - Poll clipboard every 0.5 seconds in a separate thread
 - Compare current clipboard to previous, log if different
 - Store in LogManager like keyboard events
@@ -43,8 +43,8 @@ Password managers show random strings when users unlock them. Logging these wast
 - Trade-offs between logging everything vs targeted capture
 
 **Hints:**
-- Add `excluded_apps` list to `KeyloggerConfig` (`keylogger.py:64`)
-- In `_on_press`, check if `self._current_window` contains any excluded app name (`keylogger.py:367`)
+- Add `excluded_apps` list to `KeyloggerConfig` (`keylogger.py:108`)
+- In `_on_press`, check if `self._current_window` contains any excluded app name (`keylogger.py:428`)
 - Use case-insensitive matching: `window_title.lower()` contains `"1password"`
 - Test with config: `KeyloggerConfig(excluded_apps=["1password", "keepass"])`
 
@@ -66,9 +66,9 @@ Statistics help attackers prioritize which logs to review first. If 90% of keyst
 
 **Hints:**
 - Add a `Statistics` class with counters: `total_keys`, `keys_per_app`, `special_key_count`
-- Increment counters in `_on_press` before writing to LogManager (`keylogger.py:383`)
+- Increment counters in `_on_press` before writing to LogManager (`keylogger.py:457`)
 - Use `collections.Counter` for `keys_per_app` tracking
-- Print stats in `stop()` method (`keylogger.py:415-424`)
+- Print stats in `stop()` method (`keylogger.py:516-533`)
 - Calculate uptime: `datetime.now() - start_time`
 
 **Test it works:**
@@ -100,7 +100,7 @@ Modern EDR systems scan disk for IOCs (Indicators of Compromise) like common pas
 
 **Implementation approach:**
 
-1. **Add encryption to LogManager** (modify `keylogger.py:168-218`)
+1. **Add encryption to LogManager** (modify `keylogger.py:222-296`)
    - Install cryptography: `pip install cryptography`
    - Import `from cryptography.fernet import Fernet`
    - Generate key in `__init__`: `self.key = Fernet.generate_key()`
@@ -164,14 +164,14 @@ def _check_keywords(self, key_str: str) -> None:
     self._recent_keys.append(key_str)
     if len(self._recent_keys) > 20:
         self._recent_keys.pop(0)
-    
+
     recent_text = ''.join(self._recent_keys).lower()
     for keyword in self.config.trigger_keywords:
         if keyword in recent_text:
             self.screenshot_capture.capture(keyword)
 ```
 
-- Look at LogManager's file creation pattern (`keylogger.py:180-182`)
+- Look at LogManager's file creation pattern (`keylogger.py:240-246`)
 - Call from `_on_press` after logging keystroke
 - Throttle screenshots: Don't capture more than 1 per 5 seconds even if keyword repeated
 

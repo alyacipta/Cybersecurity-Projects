@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // severity-chart.tsx
+//
+// Donut chart with legend showing alert counts per severity level
+//
+// Uses @visx/shape Pie inside an SVG scaled with ParentSize. Arc colors map
+// to SEVERITY_COLORS from the chart theme. The center of the donut shows the
+// total alert count. A legend list to the right labels each severity with its
+// color dot and count.
+//
+// Key components:
+//   SeverityChart - donut + legend panel, accepts SeverityCount[] and isLoading
+//
+// Connects to:
+//   dashboard/index.tsx - receives severity data and loading state
+//   theme.ts - SEVERITY_COLORS
+//   config.ts - SEVERITY_LABELS for display strings
 // ===================
 
 import { Group } from '@visx/group'

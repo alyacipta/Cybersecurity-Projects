@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Correlation rules page with rule list, create form, test run, and delete actions
+//
+// The toolbar shows a rule count and a button to open the RuleForm overlay.
+// RuleCard expands on click to show the raw conditions JSON and buttons to
+// test or delete the rule. Test results show events evaluated and alert count.
+// RuleForm pre-fills the conditions textarea from CONDITION_TEMPLATES when the
+// rule type changes. RuleForm is an internal helper component.
+//
+// Key components:
+//   Component - lazy-loaded rules page; displayName "Rules"
+//
+// Connects to:
+//   useRules.ts - rule list, create, delete, and test mutations
+//   rule.types.ts - CorrelationRule type
 // ===================
 
 import { useCallback, useState } from 'react'

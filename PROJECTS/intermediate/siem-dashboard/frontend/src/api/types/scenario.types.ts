@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // scenario.types.ts
+//
+// Zod schemas and types for scenario runs and playbook metadata
+//
+// Exports the full ScenarioRun document type and the PlaybookInfo type that
+// describes available YAML playbooks. Also exports plain interfaces for
+// start and speed mutation payloads.
+//
+// Key exports:
+//   scenarioRunSchema, ScenarioRun - active or completed scenario run
+//   playbookInfoSchema, PlaybookInfo - available playbook metadata
+//   ScenarioStartRequest, SpeedRequest - mutation payloads
+//
+// Connects to:
+//   useScenarios.ts - consumes all scenario types
+//   scenarios/index.tsx - renders ScenarioRun and PlaybookInfo data
 // ===================
 
 import { z } from 'zod'

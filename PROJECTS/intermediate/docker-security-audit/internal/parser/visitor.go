@@ -1,6 +1,25 @@
 /*
 CarterPerez-dev | 2026
 visitor.go
+
+Rule visitor infrastructure for applying security rules against parsed
+ASTs
+
+RuleVisitor accumulates findings by running a list of Rule
+implementations against a Dockerfile or Compose AST. BaseRule,
+DockerfileRule, ComposeRule, and MultiRule are composable building
+blocks for implementing the Rule interface without boilerplate.
+
+Key exports:
+  RuleVisitor - runs rules and accumulates findings
+  Rule - interface with ID() and Check(ctx *RuleContext)
+  BaseRule, DockerfileRule, ComposeRule, MultiRule - embeddable rule types
+  RuleContext - holds the parsed AST and target passed to each check
+
+Connects to:
+  dockerfile.go - visits DockerfileAST via VisitDockerfile
+  compose.go - visits ComposeFile via VisitCompose
+  finding.go - produces finding.Collection
 */
 
 package parser

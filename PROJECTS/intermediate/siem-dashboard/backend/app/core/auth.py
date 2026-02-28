@@ -1,6 +1,27 @@
 """
 ©AngelaMos | 2026
 auth.py
+
+JWT and password utilities
+
+Handles Argon2id password hashing and verification, JWT creation
+and decoding, and Bearer token extraction from requests. The
+timing-safe verify function runs a dummy hash on unknown usernames
+to prevent user enumeration through response timing differences.
+
+Key exports:
+  hash_password - Argon2id hash of a plaintext password
+  verify_password - verify and optionally rehash if Argon2 params are stale
+  verify_password_timing_safe - constant-time wrapper used at login
+  create_access_token - sign a JWT with user_id as subject
+  decode_access_token - verify and decode a JWT
+  extract_bearer_token - pull token from Authorization header or query param
+
+Connects to:
+  config.py - reads SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
+  core/decorators/endpoint.py - calls decode_access_token, extract_bearer_token
+  controllers/auth_ctrl.py - calls hash_password, verify_password, create_access_token
+  cli.py - calls hash_password
 """
 
 from typing import Any

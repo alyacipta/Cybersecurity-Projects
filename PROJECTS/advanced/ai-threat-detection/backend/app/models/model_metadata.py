@@ -18,7 +18,6 @@ class ModelMetadata(TimestampedModel, table=True):
     __table_args__ = (Index(
         "idx_model_metadata_active",
         "model_type",
-        unique=True,
         postgresql_where=text("is_active = TRUE"),
     ), )
 

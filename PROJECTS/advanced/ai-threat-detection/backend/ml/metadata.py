@@ -50,11 +50,11 @@ async def save_model_metadata(
 
         result = await session.execute(
             select(ModelMetadata).where(
-                ModelMetadata.model_type == model_type,
-                ModelMetadata.is_active == True,  # noqa: E712
+                ModelMetadata.model_type == model_type,  # type: ignore[arg-type]
+                ModelMetadata.is_active == True,  # type: ignore[arg-type]  # noqa: E712
             ))
         for old in result.scalars().all():
-            await session.delete(old)
+            old.is_active = False
         await session.flush()
 
         row = ModelMetadata(

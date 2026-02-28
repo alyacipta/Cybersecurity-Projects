@@ -4,6 +4,7 @@ test_cli.py
 """
 
 import re
+from unittest import mock
 
 from typer.testing import CliRunner
 
@@ -105,3 +106,38 @@ class TestCLICommands:
             ],
         )
         assert result.exit_code != 0
+
+
+class TestCLITrainMetadata:
+    """
+    Test metadata persistence wiring in the train command
+    """
+
+    def test_train_warns_when_db_unavailable(self) -> None:
+        """
+        train exits 0 and emits a warning when DB write fails
+        """
+        mock_result = mock.MagicMock()
+        mock_result.ensemble_metrics = None
+        mock_result.passed_gates = True
+        mock_result.mlflow_run_id = None
+        mock_result.ae_metrics = {}
+
+        with mock.patch(
+            "ml.orchestrator.TrainingOrchestrator"
+        ) as mock_class:
+            mock_class.return_value.run.return_value = mock_result
+            result = runner.invoke(
+                app,
+                [
+                    "train",
+                    "--synthetic-normal",
+                    "5",
+                    "--synthetic-attack",
+                    "3",
+                ],
+            )
+
+        assert result.exit_code == 0
+        output = _clean(result.output)
+        assert "warning" in output or "metadata" in output

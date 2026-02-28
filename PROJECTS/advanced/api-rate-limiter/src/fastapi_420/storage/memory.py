@@ -1,6 +1,22 @@
 """
 ⒸAngelaMos | 2025
 memory.py
+
+In-memory storage backend using OrderedDict for LRU eviction
+
+Stores rate limit state in process memory, protected by an
+asyncio.Lock for concurrency safety. Implements sliding window
+tracking with dual-window weighted interpolation, and token
+bucket with refill-on-access. Runs a background cleanup task
+that periodically sweeps expired entries. When max keys is
+reached, the least recently used entries get evicted first.
+
+Key exports:
+  MemoryStorage - full storage backend with from_settings(),
+    increment(), consume_token(), close(), health_check()
+
+Connects to:
+  types.py - imports WindowState, TokenBucketState, StorageType
 """
 from __future__ import annotations
 

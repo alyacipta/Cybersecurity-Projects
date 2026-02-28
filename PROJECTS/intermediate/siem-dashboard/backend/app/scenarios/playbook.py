@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 playbook.py
+
+YAML playbook loading for attack scenarios
+
+Parses scenario playbook files into typed Playbook and PlaybookEvent
+dataclasses. Playbook.load reads a single file for starting a run;
+Playbook.list_available scans the playbooks directory and returns
+lightweight metadata without loading full event lists.
+
+Key exports:
+  Playbook - dataclass with load() and list_available() class methods
+  PlaybookEvent - dataclass for a single timed event in a playbook
+
+Connects to:
+  config.py - reads SCENARIO_PLAYBOOK_DIR
+  scenarios/runner.py - calls Playbook.load to start a run
+  controllers/scenario_ctrl.py - calls Playbook.list_available
 """
 
 from typing import Any

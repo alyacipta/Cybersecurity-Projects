@@ -1,6 +1,34 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 compose_test.go
+
+Integration tests for ComposeAnalyzer against all testdata compose
+fixtures
+
+Each function targets a specific bad-*.yml or good-*.yml fixture and
+asserts expected findings at correct severities. Covers Docker socket
+mounts, privileged mode, dangerous capabilities, sensitive filesystem
+mounts, hardcoded secrets, missing resource limits, and a clean
+production-grade configuration.
+
+Tests:
+  TestComposeAnalyzer_BadDockerSocket - socket, caps, secrets, host
+network
+  TestComposeAnalyzer_BadPrivileged - privileged mode, pid/ipc host,
+sensitive mounts
+  TestComposeAnalyzer_BadCaps - critical and high capabilities all
+detected
+  TestComposeAnalyzer_BadMounts - runtime sockets, /etc, /proc, /sys, /dev
+  TestComposeAnalyzer_BadSecrets - AWS, database, and API keys in
+environment
+  TestComposeAnalyzer_BadNoLimits - missing memory, CPU, and PIDs limits
+  TestComposeAnalyzer_GoodProduction - clean file produces no CRITICAL
+findings
+  TestComposeAnalyzer_AllFiles - table-driven coverage across all fixtures
+
+Connects to:
+  analyzer/compose.go - ComposeAnalyzer under test
+  finding.go - asserts on Severity, RuleID, and Collection filtering
 */
 
 package integration_test

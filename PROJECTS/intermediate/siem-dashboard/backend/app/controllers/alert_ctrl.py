@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 alert_ctrl.py
+
+Business logic for alert operations
+
+Handles paginated listing with status and severity filters, single
+alert retrieval with matched log events, status lifecycle transitions
+with optional acknowledgment metadata, and the SSE alert stream.
+
+Key exports:
+  list_alerts, get_alert_detail, update_alert_status, stream_alerts
+
+Connects to:
+  models/Alert.py - query and status update methods
+  core/streaming.py - calls sse_generator for the alert stream
+  config.py - reads ALERT_STREAM_KEY
+  routes/alerts.py - called from route handlers
 """
 
 from typing import Any

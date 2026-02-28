@@ -93,6 +93,8 @@ CATEGORICAL_ENCODERS: dict[str, dict[str, int]] = {
     "file_extension": EXTENSION_MAP,
 }
 
+WINDOWED_FEATURE_NAMES: list[str] = FEATURE_ORDER[23:]
+
 BOOLEAN_FEATURES: frozenset[str] = frozenset({
     "has_encoded_chars",
     "has_double_encoding",

@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Alert list page with status filtering, detail panel, and lifecycle actions
+//
+// STATUS_TABS drives a tab bar that filters alerts by lifecycle state.
+// Clicking an alert row toggles an inline detail panel showing matched log
+// events and status transition buttons. AlertDetailPanel uses useAlertDetail
+// to fetch the full alert with matched events, and useUpdateAlertStatus to
+// patch the status. AlertCard and InfoField are internal helper components.
+//
+// Key components:
+//   Component - lazy-loaded alerts page; displayName "Alerts"
+//
+// Connects to:
+//   useAlerts.ts - paginated alert list with status filtering
+//   alert.types.ts - Alert, AlertDetail types
+//   config.ts - ALERT_STATUS_LABELS, SEVERITY_LABELS
 // ===================
 
 import { useState } from 'react'

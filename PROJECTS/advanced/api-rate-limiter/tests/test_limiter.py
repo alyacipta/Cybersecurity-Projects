@@ -1,6 +1,16 @@
 """
 ⒸAngelaMos | 2025
 test_limiter.py
+
+Tests for the RateLimiter class
+
+Tests:
+  Initialization (default, custom settings, provided storage)
+  check() method (first request, multiple rules, raise behavior,
+    endpoint/user independence, custom key_func, auto-init)
+  limit() decorator (basic, enforcement, multiple rules)
+  Fail-open behavior when storage is unavailable
+  Settings access and idempotent init/close
 """
 from __future__ import annotations
 

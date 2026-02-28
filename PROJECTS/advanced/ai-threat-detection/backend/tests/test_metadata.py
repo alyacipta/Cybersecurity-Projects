@@ -192,3 +192,35 @@ class TestSaveModelMetadata:
 
         assert len(active_rows) == 3
         assert all(r.training_samples == 600 for r in active_rows)
+
+    @pytest.mark.asyncio
+    async def test_previous_inactive_rows_preserved(
+        self,
+        db_session: AsyncSession,
+        model_artifacts: Path,
+    ) -> None:
+        """
+        Old model rows are deactivated, not deleted, after a new save
+        """
+        await save_model_metadata(
+            db_session,
+            model_dir=model_artifacts,
+            training_samples=500,
+            metrics={"f1": 0.9},
+        )
+
+        (model_artifacts / "ae.onnx").write_bytes(b"new-ae-data")
+        await save_model_metadata(
+            db_session,
+            model_dir=model_artifacts,
+            training_samples=600,
+            metrics={"f1": 0.95},
+        )
+
+        result = await db_session.execute(select(ModelMetadata))
+        all_rows = result.scalars().all()
+        inactive = [r for r in all_rows if not r.is_active]
+
+        assert len(all_rows) == 6
+        assert len(inactive) == 3
+        assert all(r.training_samples == 500 for r in inactive)

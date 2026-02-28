@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // query.ts
+//
+// React Query client setup with caching strategies, retry logic, and global error handling
+//
+// Exports the queryClient singleton and QUERY_STRATEGIES presets for
+// standard, frequent, dashboard, static, and auth data. The query cache
+// shows toast errors only for background refetch failures when stale data
+// already exists. The mutation cache shows toast errors only for mutations
+// without their own onError handler.
+//
+// Key exports:
+//   queryClient - configured QueryClient instance mounted in App.tsx
+//   QUERY_STRATEGIES - named cache config presets used by all hooks
+//
+// Connects to:
+//   errors.ts - ApiError and ApiErrorCode used for retry decisions
+//   config.ts - QUERY_CONFIG timing constants
 // ===================
 
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'

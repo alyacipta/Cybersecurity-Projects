@@ -71,7 +71,7 @@ def train_autoencoder(
             reconstructed = model(batch)
             loss = torch.nn.functional.mse_loss(reconstructed, batch)
             optimizer.zero_grad()
-            loss.backward()
+            loss.backward()  # type: ignore[no-untyped-call]
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             epoch_loss += loss.item()

@@ -1,6 +1,21 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 sarif.go
+
+SARIF 2.1.0 reporter for GitHub Advanced Security and IDE integration
+
+Builds a SARIF run with deduplicated rule entries and individual result
+records. Severity maps to SARIF levels (error/warning/note) and numeric
+security-severity scores. Container targets use docker:// URIs; file
+targets use their path directly. Output is capped at SARIFMaxResults.
+
+Key exports:
+  SARIFReporter - implements Reporter for SARIF output
+
+Connects to:
+  reporter.go - implements Reporter interface, returned by NewReporter
+  config/constants.go - reads SARIFMaxResults
+  finding.go - converts Finding and Collection to SARIF structures
 */
 
 package report

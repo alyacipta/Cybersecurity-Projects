@@ -1,5 +1,20 @@
-// ©AngelaMos | 2026
-// color.go
+/*
+©AngelaMos | 2026
+color.go
+
+Terminal color and text style functions wrapping fatih/color
+
+Provides package-level sprint functions for every color, bold, italic,
+underline, and combined style used across the CLI output. All functions
+wrap color.New(...).SprintFunc() so they work as drop-in string formatters.
+color.NoColor disables everything when --no-color is passed.
+
+Connects to:
+  reporter/terminal.go - uses most color functions for finding display
+  ui/banner.go - uses Red, Blue, White, WhiteItalic for banner rendering
+  ui/spinner.go - uses CyanBold, HiMagenta for spinner animation
+  cli/root.go, cli/scan.go, cli/git.go, cli/config.go - use Red, Cyan, etc.
+*/
 
 package ui
 

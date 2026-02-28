@@ -1,5 +1,24 @@
-// ©AngelaMos | 2026
-// pipeline.go
+/*
+©AngelaMos | 2026
+pipeline.go
+
+Concurrent scan pipeline coordinating source ingestion and detection workers
+
+Runs the source in one goroutine and fans chunks out to N worker goroutines
+(capped at CPU count, max 16) that each call Detector.Detect. Findings are
+collected into a single slice, deduplicated by rule+file+secret+commit key,
+and returned as a ScanResult. Uses errgroup for structured concurrency and
+propagates context cancellation.
+
+Key exports:
+  Pipeline - orchestrates source ingestion and parallel detection
+  NewPipeline - creates a Pipeline with CPU-scaled worker count
+
+Connects to:
+  source/source.go - calls src.Chunks() to begin content ingestion
+  engine/detector.go - creates and calls a Detector for each chunk
+  cli/scan.go - calls Pipeline.Run() for both directory and git scans
+*/
 
 package engine
 

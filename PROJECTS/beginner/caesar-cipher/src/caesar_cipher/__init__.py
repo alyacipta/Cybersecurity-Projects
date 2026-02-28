@@ -21,6 +21,15 @@
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣴⣦⣤⣴⣿⣷⣦⡔⣿⡄⡘⠂⠠⠈⠛⠿⣿⣿⣮⠻⣿⣿⠟⢡⣿⢏⣼⣿⣿⢡⡸⣿⣧⡀⡻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠲⠶⠶⠮⠭⠭⠍⠛⠋⠀⢈⣋⠀⠀⣠⣎⠺⣿⣶⣄⡉⠛⠶⣶⡶⠟⣡⣾⣿⣿⣿⣾⢡⣍⢹⣷⠀⠐⠈⠻⠿⠿⠿⠿⠿⠿⠻⠻⠟⠟
 ------------------
+
+Public surface of the caesar_cipher package
+
+Re-exports CaesarCipher and FrequencyAnalyzer so callers can import
+directly from the package root. Sets the package version string.
+
+Connects to:
+  cipher.py - imports CaesarCipher
+  analyzer.py - imports FrequencyAnalyzer
 """
 
 from caesar_cipher.cipher import CaesarCipher

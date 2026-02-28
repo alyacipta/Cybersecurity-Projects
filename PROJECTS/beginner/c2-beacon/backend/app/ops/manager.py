@@ -1,6 +1,18 @@
 """
 AngelaMos | 2026
 manager.py
+
+Fan-out broadcaster for operator WebSocket connections
+
+OpsManager keeps a set of active operator WebSocket connections.
+connect accepts a new connection; broadcast serializes an event dict
+as JSON and sends it to all connected operators, silently dropping
+any connections that fail to send.
+
+Connects to:
+  beacon/router.py - broadcast called for beacon connect/disconnect/result
+  ops/router.py - connect, disconnect, and broadcast called per operator
+  __main__.py - creates singleton on startup
 """
 
 import json

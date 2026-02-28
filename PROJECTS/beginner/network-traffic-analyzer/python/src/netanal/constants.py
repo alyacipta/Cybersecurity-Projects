@@ -2,8 +2,31 @@
 ⒸAngelaMos | 2026
 constants.py
 
-Centralized constants and
-configuration values for network traffic analyzer
+Centralized constants and configuration values for network traffic analyzer
+
+Groups all magic numbers and strings into named classes to avoid hardcoded
+values scattered throughout the codebase. Covers ports, byte units, chart
+sizing, protocol colors, and platform-specific paths. All values use Final
+annotations.
+
+Key exports:
+  Ports - Standard port numbers (HTTP=80, HTTPS=443, DNS=53)
+  TimeConstants - Seconds per minute and hour for duration formatting
+  ByteUnits - Byte conversion factor and size unit labels
+  CaptureDefaults - Queue size, timeouts, and bandwidth sample interval
+  ChartDefaults - DPI, font sizes, figure dimensions, and line style values
+  ProtocolColors - Rich console colors and matplotlib hex colors per protocol
+  DefaultIPs - Fallback IP for unknown packet endpoints
+  PortRange - Valid port range boundaries (0-65535)
+  NpcapPaths - Windows DLL paths for Npcap installation checks
+
+Connects to:
+  filters.py - imports PortRange, Ports
+  analyzer.py - imports DefaultIPs, Ports
+  capture.py - imports CaptureDefaults, NpcapPaths
+  statistics.py - imports CaptureDefaults
+  output.py - imports ByteUnits, ProtocolColors, TimeConstants
+  visualization.py - imports ByteUnits, ChartDefaults, ProtocolColors
 """
 
 from enum import IntEnum

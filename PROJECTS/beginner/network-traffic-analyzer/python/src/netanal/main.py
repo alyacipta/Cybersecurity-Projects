@@ -3,6 +3,25 @@
 main.py
 
 Typer CLI commands for network traffic analyzer
+
+Defines the netanal CLI with six commands: capture, analyze, stats, export,
+chart, and interfaces. Capture performs live sniffing via CaptureEngine with
+optional verbose packet streaming and JSON output. The analyze, stats, export,
+and chart commands load from a pcap file through _analyze_pcap_to_stats,
+which replays packets through StatisticsCollector.
+
+Key exports:
+  app - The Typer application instance, used as the entry point in __main__.py
+
+Connects to:
+  analyzer.py - calls analyze_pcap_file() for all pcap-based commands
+  capture.py - imports CaptureConfig, CaptureEngine, GracefulCapture, check_capture_permissions, get_available_interfaces
+  export.py - calls export_to_json(), export_to_csv(), statistics_to_dict()
+  filters.py - calls validate_bpf_filter() before starting a live capture
+  output.py - imports console and all print_* functions
+  statistics.py - creates StatisticsCollector to process replayed pcap packets
+  visualization.py - calls chart creation functions for the chart command
+  __init__.py - imports __version__ for the --version flag
 """
 
 import json

@@ -1,6 +1,28 @@
 """
 ©AngelaMos | 2026
 constants.py
+
+Encoding format definitions, scoring weights, and shared constants
+
+Defines the EncodingFormat and ExitCode enums, numeric thresholds
+used by the detector (confidence, printable ratio, min input length),
+character set frozensets for charset membership tests, and the
+ScoreWeight class that holds every per-format confidence score
+contribution. All values shared across the package live here.
+
+Key exports:
+  EncodingFormat - StrEnum of supported formats (base64, base64url, base32, hex, url)
+  ExitCode - CLI exit codes for success, error, and invalid input
+  ScoreWeight - Per-format scoring weights used by detector.py
+  BASE64_CHARSET, BASE64URL_CHARSET, BASE32_CHARSET, HEX_CHARSET - Valid character sets
+  CONFIDENCE_THRESHOLD, PEEL_MAX_DEPTH, PREVIEW_LENGTH - Shared thresholds
+
+Connects to:
+  encoders.py - imports EncodingFormat
+  detector.py - imports EncodingFormat, ScoreWeight, charsets, thresholds
+  peeler.py - imports EncodingFormat, PEEL_MAX_DEPTH, CONFIDENCE_THRESHOLD
+  formatter.py - imports EncodingFormat, CONFIDENCE_THRESHOLD, PREVIEW_LENGTH
+  cli.py - imports EncodingFormat, ExitCode, PEEL_MAX_DEPTH
 """
 
 from enum import StrEnum

@@ -1,6 +1,15 @@
 """
 AngelaMos | 2026
 test_app.py
+
+Integration tests for the FastAPI HTTP endpoints
+
+Spins up the full application using ASGITransport and verifies the
+health check, root info endpoint, empty beacon list, and 404 handling
+for unknown beacon IDs.
+
+Tests:
+  __main__.py - create_app, /health, /, /beacons, /beacons/{id}
 """
 
 from pathlib import Path

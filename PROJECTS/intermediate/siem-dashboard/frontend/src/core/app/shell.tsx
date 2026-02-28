@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // shell.tsx
+//
+// Authenticated application shell with sidebar navigation and page layout
+//
+// Renders the collapsible sidebar with nav links, an admin-conditional users
+// link, and a logout button. Wraps the main content in an ErrorBoundary and
+// Suspense so lazy-loaded routes load cleanly. Sidebar open state is managed
+// via UIStore; collapse preference persists across reloads.
+//
+// Key components:
+//   Shell - the outer layout component used inside ProtectedRoute
+//
+// Connects to:
+//   router.tsx - Shell is mounted as a layout route element
+//   auth.store.ts - reads user and role for admin nav and avatar letter
+//   ui.store.ts - manages sidebar open/collapsed state
+//   useAuth.ts - calls useLogout for the logout button
 // ===================
 
 import { Suspense } from 'react'

@@ -2,6 +2,23 @@
 ⒸAngelaMos | 2025
 __init__.py
 
+Public API surface for fastapi-420
+
+Re-exports all user-facing classes, functions, and types into
+a single top-level namespace so consumers can write
+"from fastapi_420 import RateLimiter" instead of reaching into
+submodules. The __all__ list defines the 28 public names that
+make up the library's API.
+
+Connects to:
+  config.py - re-exports settings classes and get_settings()
+  defense/__init__.py - re-exports CircuitBreaker, LayeredDefense
+  dependencies.py - re-exports all DI integration
+  exceptions.py - re-exports all exception classes
+  limiter.py - re-exports RateLimiter
+  middleware.py - re-exports both middleware classes
+  types.py - re-exports all enums and data types
+
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣟⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀

@@ -1,5 +1,19 @@
-// ©AngelaMos | 2026
-// config.go
+/*
+©AngelaMos | 2026
+config.go
+
+"config" subcommand with rules and show sub-subcommands
+
+Implements "portia config rules" to list all registered detection rules with
+severity coloring, and "portia config show" to print the active flag and config
+values. Both commands are read-only introspection tools with no side effects.
+
+Connects to:
+  cli/root.go - registered as configCmd via rootCmd.AddCommand
+  rules/registry.go - calls NewRegistry() and RegisterBuiltins()
+  ui/color.go - uses RedBold, Red, Yellow, Cyan, White, Diamond for display
+  ui/symbol.go - uses Shield, Arrow, Diamond constants
+*/
 
 package cli
 

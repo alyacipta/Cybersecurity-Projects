@@ -6,13 +6,14 @@ inference.py
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 try:
     import onnxruntime as ort
 except ImportError:
-    ort = None  # type: ignore[assignment]
+    ort = None
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,9 @@ class InferenceEngine:
     """
 
     def __init__(self, model_dir: str) -> None:
-        self._ae_session: ort.InferenceSession | None = None  # type: ignore[union-attr]
-        self._rf_session: ort.InferenceSession | None = None  # type: ignore[union-attr]
-        self._if_session: ort.InferenceSession | None = None  # type: ignore[union-attr]
+        self._ae_session: ort.InferenceSession | None = None
+        self._rf_session: ort.InferenceSession | None = None
+        self._if_session: ort.InferenceSession | None = None
         self._scaler_center: np.ndarray | None = None
         self._scaler_scale: np.ndarray | None = None
         self._threshold: float = 0.0
@@ -127,12 +128,12 @@ class InferenceEngine:
         """
         if self._scaler_center is None or self._scaler_scale is None:
             return batch
-        return (batch - self._scaler_center) / self._scaler_scale
+        return (batch - self._scaler_center) / self._scaler_scale  # type: ignore[no-any-return]
 
     @staticmethod
     def _extract_rf_proba(
-            ort_output: list | np.ndarray
-    ) -> np.ndarray:  # type: ignore[type-arg]
+            ort_output: list[Any] | np.ndarray
+    ) -> np.ndarray:
         """
         Extract attack probability from skl2onnx RF output format.
 

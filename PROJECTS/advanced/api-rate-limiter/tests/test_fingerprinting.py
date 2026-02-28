@@ -1,6 +1,15 @@
 """
 ⒸAngelaMos | 2025
 test_fingerprinting.py
+
+Tests for all fingerprinting components
+
+Tests:
+  IPExtractor - IPv4, IPv6 /64 normalization, mapped addresses,
+    X-Forwarded-For parsing, X-Real-IP, private detection
+  HeadersExtractor - individual headers, composite hash, ordering
+  AuthExtractor - JWT, API key, session cookie, priority chain
+  CompositeFingerprinter - all levels, composite key generation
 """
 from __future__ import annotations
 

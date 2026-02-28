@@ -1,6 +1,22 @@
 """
 AngelaMos | 2026
 encoding.py
+
+XOR cipher and Base64 encoding pipeline for obfuscating C2 traffic
+
+Provides the low-level encoding primitives used on both the server and
+implant sides. encode applies a repeating XOR with the shared key then
+Base64-encodes the result; decode reverses the operation. This is
+traffic obfuscation, not encryption.
+
+Key exports:
+  xor_bytes - byte-level XOR with repeating key
+  encode - plaintext string to XOR+Base64 string
+  decode - XOR+Base64 string back to plaintext
+
+Connects to:
+  protocol.py - calls encode and decode
+  tests/test_encoding.py - tests all three functions
 """
 
 import base64

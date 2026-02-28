@@ -1,6 +1,25 @@
 /*
 CarterPerez-dev | 2026
 security.go
+
+SecurityProfile aggregates all security-relevant attributes of a running
+process
+
+Reads seccomp mode, AppArmor profile, SELinux context, no_new_privs
+flag, capabilities, namespaces, and root filesystem from /proc. All
+reads use graceful degradation. SecurityScore() produces a 0-100 score
+and GetIssues() returns human-readable problem descriptions for
+runtime auditing of container processes.
+
+Key exports:
+  SecurityProfile - complete security posture of a single process
+  GetSecurityProfile - builds SecurityProfile from /proc/<pid>
+  SecurityScore, GetIssues - scoring and issue enumeration
+  CheckHostNamespaceSharing, IsRunningAsRoot - standalone helpers
+  SeccompMode - typed enum (Disabled, Strict, Filter)
+
+Connects to:
+  proc/capabilities.go - CapabilitySet embedded and used for scoring
 */
 
 package proc

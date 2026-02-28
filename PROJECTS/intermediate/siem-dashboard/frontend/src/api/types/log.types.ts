@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // log.types.ts
+//
+// Zod schemas and types for log event list, detail, and SSE stream responses
+//
+// Exports the full logEventSchema for detail and paginated views, and the
+// slimmer streamLogEventSchema for the real-time SSE feed. Also exports
+// query param interfaces for list, search, and forensic pivot requests.
+//
+// Key exports:
+//   logEventSchema, LogEvent - complete log event document type
+//   streamLogEventSchema, StreamLogEvent - compact SSE feed payload type
+//   LogQueryParams, LogSearchParams, PivotParams - API request param types
+//
+// Connects to:
+//   alert.types.ts - logEventSchema imported for alertDetailSchema
+//   useLogs.ts, useEventStream.ts - consume these types
 // ===================
 
 import { z } from 'zod'

@@ -1,6 +1,25 @@
 """
 ⒸAngelaMos | 2025
 composite.py
+
+Combines IP, header, and auth extractors into one fingerprint
+
+The CompositeFingerprinter runs whichever extractors are enabled
+for the configured fingerprint level (STRICT uses all three,
+NORMAL skips headers, RELAXED uses IP only, CUSTOM lets you pick).
+Also pulls TLS/JA3 fingerprint and geo ASN data from proxy headers
+when available. The output FingerprintData produces a composite
+key used as the rate limit bucket identifier.
+
+Key exports:
+  CompositeFingerprinter - orchestrates all extractors, built
+    from settings via from_settings() classmethod
+
+Connects to:
+  ip.py - uses IPExtractor for IP extraction
+  headers.py - uses HeadersExtractor for header fingerprinting
+  auth.py - uses AuthExtractor for auth identity
+  config.py - reads FingerprintSettings (TYPE_CHECKING)
 """
 
 from __future__ import annotations

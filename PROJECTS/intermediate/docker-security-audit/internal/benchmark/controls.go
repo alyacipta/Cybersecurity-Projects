@@ -1,6 +1,28 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 controls.go
+
+CIS Docker Benchmark control registry with all Section 1-7 controls
+
+Defines the Control struct and a global map populated at init time
+across seven section registration functions. Controls are looked up
+by ID from all analyzer packages and converted to finding.CISControl
+via ToCISControl() for embedding in findings.
+
+Key exports:
+  Control - CIS control with ID, section, severity, remediation, and
+references
+  Register, Get, All, BySection - registry access
+  Control.ToCISControl - converts to finding.CISControl
+
+Connects to:
+  finding.go - ToCISControl produces finding.CISControl embedded in
+findings
+  analyzer/container.go - fetches Section 5 controls by ID
+  analyzer/daemon.go - fetches Section 2 controls by ID
+  analyzer/dockerfile.go - fetches Section 4 controls by ID
+  analyzer/image.go - fetches Section 4 controls by ID
+  main.go - listBenchmarkControls and showBenchmarkControl CLI commands
 */
 
 package benchmark

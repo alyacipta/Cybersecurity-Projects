@@ -1,6 +1,26 @@
 """
 ©AngelaMos | 2026
 User.py
+
+MongoEngine model for SIEM user accounts
+
+Stores credentials, role, and active status. Provides class methods
+for lookups, existence checks, creation, and listing. Instance methods
+handle role changes, soft-delete via deactivate/activate, and hard
+delete. USERNAME_MIN and USERNAME_MAX are shared with the auth schema.
+
+Key exports:
+  User - user document with auth and admin query methods
+  UserRole - StrEnum for analyst and admin roles
+  USERNAME_MIN, USERNAME_MAX - length constraints shared with schemas
+
+Connects to:
+  models/Base.py - extends BaseDocument
+  config.py - reads DEFAULT_PAGE_SIZE
+  core/decorators/endpoint.py - User loaded from JWT sub claim
+  controllers/auth_ctrl.py, controllers/admin_ctrl.py - CRUD operations
+  schemas/auth.py - imports USERNAME_MIN, USERNAME_MAX
+  cli.py - calls create_user, find_by_username, set_role
 """
 
 from typing import Any

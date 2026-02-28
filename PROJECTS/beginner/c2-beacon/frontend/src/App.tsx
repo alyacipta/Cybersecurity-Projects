@@ -1,6 +1,15 @@
 // ===========================
 // © AngelaMos | 2026
 // App.tsx
+//
+// Root application component wrapping the router and toast notifications
+//
+// Renders RouterProvider with the configured browser router and a
+// Sonner Toaster styled to the dark C2 theme. This is the single
+// component mounted by main.tsx.
+//
+// Connects to:
+//   routers.tsx - provides the router instance
 // ===========================
 
 import { RouterProvider } from 'react-router-dom'

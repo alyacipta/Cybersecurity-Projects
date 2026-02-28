@@ -1,6 +1,23 @@
 /*
 © AngelaMos | 2026
 image.go
+
+ImageAnalyzer inspects local Docker images for CIS Section 4 violations
+
+Lists all local images via the Docker API, inspects each one, and
+checks for root user configuration, missing or explicitly disabled
+HEALTHCHECK, and privileged port exposure. Findings reference CIS
+Section 4 controls.
+
+Key exports:
+  ImageAnalyzer - implements Analyzer for local Docker images
+  NewImageAnalyzer - constructor taking a docker.Client
+
+Connects to:
+  analyzer.go - implements Analyzer interface, uses CategoryImage
+  docker/client.go - lists and inspects images
+  benchmark/controls.go - fetches CIS Section 4 controls by ID
+  finding.go - creates findings with CISControl references
 */
 
 package analyzer

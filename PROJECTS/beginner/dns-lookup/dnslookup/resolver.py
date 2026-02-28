@@ -3,6 +3,28 @@
 resolver.py
 
 Async DNS resolution with record type support
+
+Core DNS engine for the tool. Provides async functions for forward lookup,
+reverse lookup, and trace using dnspython. Forward lookups fire all
+record type queries concurrently via asyncio.gather. The trace function
+walks the DNS hierarchy starting from root servers, following NS referrals
+until it reaches an authoritative server with the final answer.
+
+Key exports:
+  RecordType - StrEnum of supported record types (A, AAAA, MX, NS, TXT, CNAME, SOA, PTR)
+  ALL_RECORD_TYPES - Default list used by forward lookups (excludes PTR)
+  DNSRecord - Single record with type, value, TTL, and optional priority
+  DNSResult - Full lookup result with records, errors, timing, and nameserver
+  TraceHop - One server queried during a trace with zone, IP, and response summary
+  TraceResult - Full trace path including all hops and the final resolved answer
+  lookup() - Async forward lookup for one domain across multiple record types
+  reverse_lookup() - Async PTR record lookup for an IP address
+  trace_dns() - Synchronous DNS trace from root servers to authoritative servers
+  batch_lookup() - Async concurrent lookup for a list of domains
+
+Connects to:
+  cli.py - all public functions and constants imported here
+  output.py - DNSResult, TraceResult, RecordType imported for display formatting
 """
 
 from __future__ import annotations

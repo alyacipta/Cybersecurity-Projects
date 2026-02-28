@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 scenario_ctrl.py
+
+Business logic for scenario management
+
+Thin coordinator between the scenarios API and the runner/playbook
+layer. Delegates to ScenarioRunner for start, stop, pause, resume,
+and speed changes, and to Playbook.list_available for the catalog.
+
+Key exports:
+  list_available, list_running, start_scenario, stop_scenario,
+  pause_scenario, resume_scenario, set_speed
+
+Connects to:
+  models/ScenarioRun.py - get_active_runs, get_by_id
+  scenarios/playbook.py - calls list_available
+  scenarios/runner.py - calls ScenarioRunner methods
+  routes/scenarios.py - called from route handlers
 """
 
 from typing import Any

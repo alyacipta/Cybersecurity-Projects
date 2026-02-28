@@ -1,6 +1,19 @@
 """
 ⒸAngelaMos | 2025
 headers.py
+
+HTTP header fingerprinting for client identification
+
+Extracts browser-identifying headers (user-agent, accept-language,
+accept-encoding) and computes a SHA256 hash across a set of
+fingerprint-relevant headers. Optionally includes header ordering
+in the hash, which is browser-specific and difficult to spoof
+since different HTTP implementations send headers in different
+orders.
+
+Key exports:
+  HeadersExtractor - extracts individual headers and computes
+    a composite fingerprint hash via extract_all()
 """
 from __future__ import annotations
 

@@ -1,6 +1,26 @@
 /*
 CarterPerez-dev | 2026
 compose.go
+
+Docker Compose YAML parser that extracts services, volumes, networks, and
+secrets
+
+Parses compose files using raw yaml.Node trees to preserve source
+line numbers for accurate finding locations. All service fields
+relevant to security (capabilities, mounts, environment, network_mode,
+pid, ipc, security_opt, resource limits, healthcheck) are extracted
+into strongly typed structs.
+
+Key exports:
+  ComposeFile - parsed compose structure with Services, Networks, Volumes,
+Secrets
+  Service - per-service fields relevant to security analysis
+  ParseComposeFile, ParseComposeBytes - parse from path or raw bytes
+  ComposeVisitor - interface for visitor pattern
+
+Connects to:
+  visitor.go - ComposeVisitor interface and RuleContext reference these
+types
 */
 
 package parser

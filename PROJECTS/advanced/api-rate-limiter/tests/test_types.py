@@ -1,6 +1,16 @@
 """
 ⒸAngelaMos | 2025
 test_types.py
+
+Tests for all type definitions in types.py
+
+Tests:
+  Enum values for Algorithm, FingerprintLevel, DefenseMode, others
+  RateLimitRule.parse() with all time units, whitespace, case
+  RateLimitResult header generation
+  FingerprintData composite key generation at all levels
+  WindowState weighted count math
+  TokenBucketState, CircuitState, DefenseContext, RateLimitKey
 """
 from __future__ import annotations
 

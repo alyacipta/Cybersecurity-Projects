@@ -1,6 +1,26 @@
 /*
 © AngelaMos | 2026
 container.go
+
+ContainerAnalyzer inspects live running containers via the Docker API
+
+Fetches the full inspect response for each container and checks CIS
+Section 5 controls: privileged mode, dangerous capabilities, Docker
+socket and sensitive path mounts, host network/PID/IPC/UTS namespace
+sharing, seccomp and AppArmor profiles, no-new-privileges flag, and
+memory/CPU/PIDs resource limits.
+
+Key exports:
+  ContainerAnalyzer - implements Analyzer for live containers
+  NewContainerAnalyzer - constructor taking a docker.Client
+
+Connects to:
+  analyzer.go - implements Analyzer interface, uses Category constants
+  docker/client.go - lists and inspects containers
+  rules/capabilities.go - classifies cap_add entries
+  rules/paths.go - identifies sensitive and socket mounts
+  benchmark/controls.go - fetches CIS control metadata for each finding
+  finding.go - creates findings with CISControl references
 */
 
 package analyzer

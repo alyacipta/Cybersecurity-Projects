@@ -1,5 +1,17 @@
-// ©AngelaMos | 2026
-// config_test.go
+/*
+©AngelaMos | 2026
+config_test.go
+
+Tests for config/config.go
+
+Tests:
+  Load() with explicit path, nonexistent path, and empty path (auto-discover)
+  Auto-discovery of .portia.toml from the current directory
+  Pyproject.toml [tool.portia] fallback parsing
+  Pyproject.toml without [tool.portia] falls back to defaults
+  DefaultTemplate and PyprojectTemplate produce expected section markers
+  Invalid TOML returns a parse error
+*/
 
 package config
 

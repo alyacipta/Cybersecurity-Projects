@@ -1,6 +1,23 @@
 """
 ©AngelaMos | 2026
 ScenarioRun.py
+
+MongoEngine model for tracking scenario playback runs
+
+Records each scenario execution with status, speed, event count,
+and timestamps. Provides lifecycle methods (mark_completed,
+mark_stopped, mark_paused, mark_resumed, mark_error) and an atomic
+increment_events counter updated from the playback thread.
+
+Key exports:
+  ScenarioRun - scenario run document with lifecycle methods
+  RunStatus - StrEnum of possible run states
+
+Connects to:
+  models/Base.py - extends BaseDocument
+  scenarios/runner.py - calls lifecycle methods during playback
+  controllers/scenario_ctrl.py - start, stop, pause, resume operations
+  __init__.py - marks orphaned runs as stopped at startup
 """
 
 from typing import Any

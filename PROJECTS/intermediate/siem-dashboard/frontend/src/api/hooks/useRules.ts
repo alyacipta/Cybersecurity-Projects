@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // useRules.ts
+//
+// React Query hooks for the correlation rules API: CRUD and dry-run testing
+//
+// useRules and useRuleDetail fetch rule data without a polling strategy since
+// rules change infrequently. useCreateRule, useUpdateRule, and useDeleteRule
+// all invalidate the full rules cache on success. useTestRule runs a dry-run
+// against the last 24 hours of logs without persisting any alerts.
+//
+// Key exports:
+//   useRules - full rule list
+//   useRuleDetail - single rule by ID
+//   useCreateRule, useUpdateRule, useDeleteRule - rule lifecycle mutations
+//   useTestRule - dry-run mutation returning events evaluated and alert count
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   rule.types.ts - CorrelationRule, RuleCreateRequest, RuleTestResult
 // ===================
 
 import {

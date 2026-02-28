@@ -1,6 +1,16 @@
 """
 AngelaMos | 2026
 test_registry.py
+
+Unit tests for BeaconRegistry connection tracking and persistence
+
+Verifies that registering a beacon adds it to both the in-memory
+store and SQLite, that unregistering removes it from memory while
+preserving the database record, and that query methods return correct
+results.
+
+Tests:
+  beacon/registry.py - BeaconRegistry
 """
 
 from pathlib import Path

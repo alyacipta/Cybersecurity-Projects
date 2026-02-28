@@ -1,6 +1,17 @@
 """
-ⒸAngelaMos | 2026
+©AngelaMos | 2026
 analyzer.py
+
+Statistical frequency analysis for ranking Caesar cipher brute-force results
+
+Provides the FrequencyAnalyzer class that scores decryption candidates
+by comparing their letter distributions against expected English frequency
+percentages using a chi-squared test. Lower scores indicate text that
+more closely matches natural English.
+
+Connects to:
+  constants.py - imports ENGLISH_LETTER_FREQUENCIES
+  main.py - crack command passes CaesarCipher.crack() output to rank_candidates()
 """
 
 from collections import Counter

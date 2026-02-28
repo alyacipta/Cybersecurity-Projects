@@ -1,6 +1,24 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 config.go
+
+Scan configuration struct and target-selection helpers
+
+Config holds all CLI options passed to docksec and exposes methods
+for interpreting them. Scan targets (containers, daemon, images,
+files) are resolved here so the rest of the pipeline doesn't parse
+strings. Severity filtering and fail-on threshold logic lives here
+as well.
+
+Key exports:
+  Config - scan options including targets, severity filters, and output
+  New - creates Config with sensible defaults
+
+Connects to:
+  finding.go - resolves severity strings to Severity values
+  constants.go - reads DefaultWorkerCount
+  main.go - fields populated from cobra flags
+  scanner.go - passed to Scanner on construction
 */
 
 package config

@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 admin_ctrl.py
+
+Business logic for admin user management
+
+Handles paginated user listing, single user lookup, role changes
+with last-admin guard, and soft and hard delete with self-action
+prevention. All operations are admin-only, enforced at the route
+layer via the endpoint() decorator.
+
+Key exports:
+  list_users, get_user, update_role, deactivate_user, activate_user, delete_user
+
+Connects to:
+  models/User.py - CRUD and role operations
+  core/errors.py - raises ForbiddenError, NotFoundError
+  schemas/auth.py - uses UserResponse for serialization
+  routes/admin.py - called from route handlers
 """
 
 from typing import Any

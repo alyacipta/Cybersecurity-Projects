@@ -1,6 +1,21 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 terminal.go
+
+Terminal reporter with ANSI color-coded severity output and grouped
+findings
+
+Groups findings by category, sorts each group from highest to lowest
+severity, and prints each finding with colored severity labels. ANSI
+codes are stripped when writing to a file. Prints a severity count
+summary after all findings.
+
+Key exports:
+  TerminalReporter - implements Reporter for terminal output
+
+Connects to:
+  reporter.go - implements Reporter interface, returned by NewReporter
+  finding.go - reads Severity, Category, Target, Location, and Remediation
 */
 
 package report

@@ -3,6 +3,21 @@
 cli.py
 
 Typer CLI application for DNS lookups
+
+Defines the dnslookup CLI using Typer with five commands: query, reverse,
+trace, batch, and whois. Each command shows a Rich spinner during the
+operation, then either renders formatted terminal output or JSON depending
+on the --json flag. The batch command also supports writing JSON to a file
+with --output.
+
+Key exports:
+  app - The Typer application instance, used as the entry point in __main__.py
+
+Connects to:
+  resolver.py - calls lookup(), reverse_lookup(), trace_dns(), batch_lookup()
+  output.py - calls all print_* functions and results_to_json(), trace_to_json()
+  whois_lookup.py - calls lookup_whois(), print_whois_result(), whois_to_json()
+  __init__.py - imports __version__ for the --version flag
 """
 
 from __future__ import annotations

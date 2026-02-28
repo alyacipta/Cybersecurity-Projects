@@ -1,6 +1,29 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 finding.go
+
+Core types for security findings produced by all analyzers
+
+Finding is the central data type flowing through the entire pipeline.
+Severity is an ordered enum (Info through Critical) with color
+support for terminal output. Collection provides filtering and
+aggregation over a slice of findings and is the return type of
+every Analyze() call.
+
+Key exports:
+  Finding - single security issue with rule ID, severity, target, and
+location
+  Collection - slice of findings with BySeverity, AtOrAbove,
+CountBySeverity
+  Severity - ordered enum Info < Low < Medium < High < Critical
+  Target, Location, CISControl - embedded context types
+
+Connects to:
+  config.go - severity parsing and filter logic
+  rules/*.go - severity constants for capability/path classification
+  analyzer/*.go - findings created and returned as Collection
+  report/*.go - findings consumed by all four reporters
+  benchmark/controls.go - CISControl linked to findings via WithCISControl
 */
 
 package finding

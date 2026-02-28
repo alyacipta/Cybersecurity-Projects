@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 rule_ctrl.py
+
+Business logic for correlation rule management
+
+CRUD operations plus a test function that replays historical log
+events through a rule using an isolated CorrelationState, returning
+what alerts would have fired without touching production state or
+publishing real alerts.
+
+Key exports:
+  list_rules, get_rule, create_rule, update_rule, delete_rule, test_rule
+
+Connects to:
+  models/CorrelationRule.py - CRUD operations
+  models/LogEvent.py - reads historical events for test_rule
+  engine/correlation.py - imports CorrelationState, evaluate_rule
+  routes/rules.py - called from route handlers
 """
 
 from typing import Any

@@ -1,6 +1,25 @@
 // ===================
 // © AngelaMos | 2026
 // ws.ts
+//
+// Zustand store and WebSocket hook for the live operator C2 connection
+//
+// useC2Store holds all live beacon state: beacon map, task results, and
+// local-to-server task ID mapping. useOperatorSocket manages the
+// /ws/operator WebSocket, dispatches incoming server messages into the
+// store, and reconnects with exponential backoff on disconnect.
+// sendTask sends a submit_task message to the server.
+//
+// Key exports:
+//   useC2Store - Zustand store for all C2 state and actions
+//   useOperatorSocket - hook that owns the WebSocket lifecycle
+//   useBeacons, useBeacon, useTaskResults, useTaskIdMap, useIsConnected - selectors
+//
+// Connects to:
+//   config.ts - reads WS_ENDPOINTS.OPERATOR
+//   core/types.ts - imports BeaconRecord, TaskResult, parseServerMessage
+//   pages/dashboard/index.tsx - calls useBeacons, useIsConnected, useOperatorSocket
+//   pages/session/index.tsx - calls useBeacon, useOperatorSocket, useTaskResults, useTaskIdMap
 // ===================
 
 import { useEffect, useRef } from 'react'

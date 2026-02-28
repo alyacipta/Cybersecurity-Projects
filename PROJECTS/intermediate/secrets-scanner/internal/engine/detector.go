@@ -1,5 +1,25 @@
-// ©AngelaMos | 2026
-// detector.go
+/*
+©AngelaMos | 2026
+detector.go
+
+Per-chunk secret detection combining regex rules and entropy analysis
+
+Runs each text chunk through two phases: rule-based detection against rules
+whose keywords appear in the chunk content, then a fallback entropy scan that
+catches high-entropy strings not covered by any specific rule. Both phases
+call FilterFinding to drop false positives. Already-caught findings on the
+same line are checked to avoid double-reporting.
+
+Key exports:
+  Detector - wraps a Registry and applies detection to a single Chunk
+  NewDetector - constructs a Detector
+
+Connects to:
+  engine/filter.go - calls FilterFinding and HasAssignmentOperator
+  rules/registry.go - calls MatchKeywords; reads charset constants
+  rules/entropy.go - calls ShannonEntropy, DetectCharset, ExtractHighEntropyTokens
+  engine/pipeline.go - calls Detector.Detect() per chunk
+*/
 
 package engine
 

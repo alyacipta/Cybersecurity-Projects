@@ -1,6 +1,30 @@
 """
 ©AngelaMos | 2026
 detector.py
+
+Format detection via per-format confidence scoring
+
+Runs each input string through five scoring functions (one per
+supported format) that check charset membership, structural constraints
+like padding alignment, and whether the decoded result is printable
+text. Scores are clamped to [0.0, 1.0]. Results above
+CONFIDENCE_THRESHOLD are returned as DetectionResult instances,
+sorted by confidence descending.
+
+Key exports:
+  DetectionResult - Frozen dataclass with format, confidence, and decoded bytes
+  detect_encoding() - Returns all formats that exceed the confidence threshold
+  detect_best() - Returns the single highest-confidence result, or None
+  score_all_formats() - Returns raw confidence scores for every format
+
+Connects to:
+  constants.py - imports charsets, thresholds, ScoreWeight, EncodingFormat
+  encoders.py - imports try_decode
+  utils.py - imports is_printable_text
+  peeler.py - imports detect_best, score_all_formats
+  formatter.py - imports DetectionResult
+  cli.py - imports detect_encoding, score_all_formats
+  test_detector.py - tests detection accuracy per format
 """
 
 import re

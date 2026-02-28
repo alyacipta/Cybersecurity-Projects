@@ -1,6 +1,25 @@
 // ===================
 // ©AngelaMos | 2026
 // useScenarios.ts
+//
+// React Query hooks for scenario playbooks and running scenario lifecycle
+//
+// useAvailablePlaybooks fetches the static list of YAML playbooks from disk.
+// useRunningScenarios polls every 10 seconds for active scenario runs.
+// The five mutation hooks (start, stop, pause, resume, setSpeed) all
+// invalidate the running scenarios query on success so the UI reflects
+// the latest state immediately after each action.
+//
+// Key exports:
+//   useAvailablePlaybooks - list of playbooks available to launch
+//   useRunningScenarios - active scenario runs with status and progress
+//   useStartScenario, useStopScenario - run lifecycle mutations
+//   usePauseScenario, useResumeScenario - pause control mutations
+//   useSetScenarioSpeed - playback speed mutation
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   scenario.types.ts - ScenarioRun, PlaybookInfo, ScenarioStartRequest
 // ===================
 
 import {

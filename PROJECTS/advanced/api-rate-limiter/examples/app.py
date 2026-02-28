@@ -1,6 +1,19 @@
 """
 ⒸAngelaMos | 2025
 app.py
+
+Example FastAPI app demonstrating all three rate limiting patterns
+
+Shows how to wire up fastapi-420 in a real application. Uses
+ScopedRateLimiter for auth endpoints with strict brute-force
+protection, the @limiter.limit() decorator for public endpoints,
+and RateLimitDep dependency injection for one-off limits. Includes
+lifespan setup with init()/close() and Redis storage configuration.
+Defines 12 routes across auth, public, and user endpoint groups.
+
+Connects to:
+  __init__.py - imports RateLimiter, settings, ScopedRateLimiter
+  types.py - imports Algorithm, FingerprintLevel
 """
 
 from __future__ import annotations

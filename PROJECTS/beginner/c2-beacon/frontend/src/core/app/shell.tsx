@@ -1,6 +1,22 @@
 // ===========================
 // © AngelaMos | 2026
 // shell.tsx
+//
+// Application shell with collapsible sidebar, top header, and page outlet
+//
+// Renders the persistent layout used by every page: a sidebar with
+// navigation links, a header showing the current page title, and an
+// Outlet for child routes. Sidebar open/collapsed state comes from
+// useUIStore. An ErrorBoundary and Suspense wrap the Outlet to handle
+// lazy-loaded pages and runtime errors gracefully.
+//
+// Key components:
+//   Shell - layout wrapper rendered as the parent route for all pages
+//
+// Connects to:
+//   config.ts - reads ROUTES.DASHBOARD for the nav link
+//   core/lib/index.ts - imports useUIStore
+//   core/app/routers.tsx - Shell is the element for the root route
 // ===========================
 
 import { Suspense } from 'react'

@@ -1,5 +1,28 @@
-// ©AngelaMos | 2026
-// registry.go
+/*
+©AngelaMos | 2026
+registry.go
+
+Rule registry with keyword-based pre-filtering and global allowlists
+
+Stores detection rules by ID and provides MatchKeywords to narrow candidate
+rules before running regex patterns against each line. Also holds
+GlobalPathAllowlist and GlobalValueAllowlist: compile-time allowlists that
+skip known-safe paths (lock files, vendor dirs, binary extensions) and
+known placeholder values (template vars, null strings, repeated characters).
+
+Key exports:
+  Registry - rule store with Register, Get, All, Disable, MatchKeywords, Len methods
+  GlobalPathAllowlist - compiled regexps for auto-excluded directories and file types
+  GlobalValueAllowlist - compiled regexps for placeholder and template patterns
+
+Connects to:
+  rules/builtin.go - calls Register() to load all built-in rules
+  engine/detector.go - calls MatchKeywords() and reads entropy charset constants
+  engine/filter.go - reads GlobalPathAllowlist and GlobalValueAllowlist
+  cli/scan.go - constructs a Registry and calls RegisterBuiltins
+  cli/git.go - constructs a Registry and calls RegisterBuiltins
+  cli/config.go - constructs a Registry to list available rules
+*/
 
 package rules
 

@@ -1,6 +1,22 @@
 """
 ⒸAngelaMos | 2025
 __init__.py
+
+Algorithm subpackage with factory function
+
+Provides create_algorithm() which maps an Algorithm enum value
+to the corresponding implementation class. Re-exports all three
+algorithm classes for direct import.
+
+Key exports:
+  create_algorithm() - factory that builds algorithm instances
+  FixedWindowAlgorithm, SlidingWindowAlgorithm, TokenBucketAlgorithm
+
+Connects to:
+  base.py - re-exports BaseAlgorithm
+  fixed_window.py - re-exports FixedWindowAlgorithm
+  sliding_window.py - re-exports SlidingWindowAlgorithm
+  token_bucket.py - re-exports TokenBucketAlgorithm
 """
 
 from fastapi_420.algorithms.base import BaseAlgorithm

@@ -1,6 +1,12 @@
 """
 AngelaMos | 2026
 conftest.py
+
+Shared pytest fixtures for the backend test suite
+
+Provides two fixtures: tmp_db_path supplies a temp SQLite path for
+test isolation, and test_settings builds a Settings instance pointed
+at that path with a known XOR key.
 """
 
 from pathlib import Path
