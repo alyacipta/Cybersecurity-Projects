@@ -234,6 +234,10 @@ vigil-replay *ARGS:
     cd backend && uv run vigil replay {{ARGS}}
 
 [group('vigil')]
+vigil-download-csic:
+    cd backend && uv run python -m ml.download_csic
+
+[group('vigil')]
 vigil-status:
     curl -sf http://localhost:8000/models/status | python -m json.tool
 
