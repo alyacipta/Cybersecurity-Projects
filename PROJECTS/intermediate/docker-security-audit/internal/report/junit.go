@@ -1,6 +1,20 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 junit.go
+
+JUnit XML reporter for CI/CD pipeline integration
+
+Groups findings by category into test suites and maps each finding
+to a test case. Findings at or above INFO severity produce failure
+elements. Produces standard JUnit XML consumable by GitHub Actions,
+Jenkins, CircleCI, and most other CI platforms.
+
+Key exports:
+  JUnitReporter - implements Reporter for JUnit XML output
+
+Connects to:
+  reporter.go - implements Reporter interface, returned by NewReporter
+  finding.go - converts Finding and Collection to XML structures
 */
 
 package report

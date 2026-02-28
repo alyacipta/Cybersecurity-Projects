@@ -1,5 +1,23 @@
-// ©AngelaMos | 2026
-// git.go
+/*
+©AngelaMos | 2026
+git.go
+
+Git history and staged-index scanner
+
+Opens a git repository with go-git and streams 50-line chunks from either the
+full commit history or the staging area. History mode walks every commit on the
+target branch (or HEAD), respecting optional Since date and Depth limits. Staged
+mode reads blobs directly from the index, skipping unmodified files.
+
+Key exports:
+  Git - scanner with RepoPath, Branch, Since, Depth, StagedOnly fields
+  NewGit - constructs a Git source with defaults applied
+
+Connects to:
+  source/source.go - implements the Source interface
+  engine/pipeline.go - receives Chunk values with CommitSHA and Author populated
+  cli/git.go - creates a Git source and passes it to the pipeline
+*/
 
 package source
 

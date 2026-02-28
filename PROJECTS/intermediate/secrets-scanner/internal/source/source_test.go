@@ -1,5 +1,25 @@
-// ©AngelaMos | 2026
-// source_test.go
+/*
+©AngelaMos | 2026
+source_test.go
+
+Tests for source/directory.go and source/git.go
+
+Tests:
+  Directory source emits chunks for text files, skips binary extensions
+  Directory exclude patterns suppress matching files
+  Directory skips .git directory automatically
+  Max file size limit skips oversized files
+  Files longer than 50 lines split into multiple chunks with correct LineStart
+  Context cancellation propagates from Chunks() as context.Canceled
+  Directory String() returns "directory:<path>"
+  Git source emits chunks with CommitSHA and Author metadata from commit history
+  Git staged-only mode scans the index rather than commit history
+  Git depth limit restricts the number of commits scanned
+  Git exclude patterns skip matching files from history
+  Git String() returns "git:<path>"
+  splitIntoChunks produces 50-line windows with correct LineStart offsets
+  isBinaryExt correctly classifies binary and text extension types
+*/
 
 package source
 

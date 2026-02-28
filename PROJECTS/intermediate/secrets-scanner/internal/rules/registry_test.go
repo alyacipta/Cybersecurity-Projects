@@ -1,5 +1,21 @@
-// ©AngelaMos | 2026
-// registry_test.go
+/*
+©AngelaMos | 2026
+registry_test.go
+
+Tests for rules/registry.go
+
+Tests:
+  Register and Get round-trip
+  Get on missing ID returns false
+  Duplicate registration panics
+  All() returns rules sorted alphabetically by ID
+  Disable removes rule from Get and All, and reduces Len
+  MatchKeywords returns only enabled rules with matching keywords, case-insensitively
+  MatchKeywords skips disabled rules even when the keyword matches
+  Replace overwrites an existing rule by ID
+  GlobalPathAllowlist allowlists go.sum, node_modules, vendor, .git, dist/*.min, binaries
+  GlobalValueAllowlist allowlists placeholder patterns and blocks real secret values
+*/
 
 package rules
 

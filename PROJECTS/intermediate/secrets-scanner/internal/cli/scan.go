@@ -1,5 +1,27 @@
-// ©AngelaMos | 2026
-// scan.go
+/*
+©AngelaMos | 2026
+scan.go
+
+"scan" subcommand and shared scan execution logic
+
+Implements "portia scan [path]" for directory scanning and provides
+executeScan() which both scan and git commands use. Spins up the pipeline,
+optionally checks findings against HIBP (generic-password and generic-secret
+rules only), picks the reporter, and writes output to stdout.
+
+Key exports:
+  executeScan - shared scan driver called by runScan and runGit
+  checkHIBP - annotates generic-password/secret findings with breach data
+  applyRuleConfig - applies cfg.Rules.Disable to the rule registry
+
+Connects to:
+  cli/root.go - registered as scanCmd, reads global flags
+  cli/git.go - calls executeScan() and applyRuleConfig()
+  engine/pipeline.go - creates and runs Pipeline
+  hibp/client.go - creates Client and calls Check() for HIBP verification
+  reporter/reporter.go - calls New(format) and Report()
+  source/directory.go - constructs NewDirectory() source
+*/
 
 package cli
 

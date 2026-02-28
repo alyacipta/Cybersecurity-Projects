@@ -1,5 +1,17 @@
-// ©AngelaMos | 2026
-// entropy_test.go
+/*
+©AngelaMos | 2026
+entropy_test.go
+
+Tests for rules/entropy.go
+
+Tests:
+  ShannonEntropy edge cases (empty, single repeated char, equally distributed chars)
+  Entropy bounds for real passwords, AWS keys, hex strings, and random base64
+  Charset filtering removes non-charset characters before entropy calculation
+  Exact entropy values verified with InDelta
+  DetectCharset classifies hex, base64, and alphanumeric strings
+  ExtractHighEntropyTokens returns tokens above threshold, ignores short or low-entropy values
+*/
 
 package rules
 

@@ -1,5 +1,22 @@
-// ©AngelaMos | 2026
-// types.go
+/*
+©AngelaMos | 2026
+types.go
+
+Core domain types shared across the entire scanner
+
+Defines all shared data structures: Rule (pattern + metadata for a detection
+rule), Chunk (a slice of file or commit content to scan), Finding (a confirmed
+secret with location and severity), and ScanResult (aggregate output of a full
+scan run). Also defines the SecretType, Severity, and HIBPStatus enums used
+to classify findings.
+
+Connects to:
+  rules/registry.go - stores and retrieves Rule values
+  engine/detector.go - produces Finding values from Chunk inputs
+  engine/pipeline.go - returns ScanResult after aggregating findings
+  reporter/*.go - reads ScanResult and Finding for output
+  hibp/client.go - reads and sets HIBPStatus on findings
+*/
 
 package types
 

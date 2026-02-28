@@ -1,6 +1,20 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Settings page showing current account info and a profile update form
+//
+// The top section displays the current username, email, and role read-only
+// from the auth store. The form only submits when at least one field has a
+// new value and current_password is provided. On success the form fields
+// reset to empty so placeholders show the current values again.
+//
+// Key components:
+//   Component - lazy-loaded settings page; displayName "Settings"
+//
+// Connects to:
+//   useAuth.ts - useUpdateProfile mutation
+//   auth.store.ts - reads current user for display and placeholder values
 // ===================
 
 import { useState } from 'react'

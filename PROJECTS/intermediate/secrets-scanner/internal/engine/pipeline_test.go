@@ -1,5 +1,16 @@
-// ©AngelaMos | 2026
-// pipeline_test.go
+/*
+©AngelaMos | 2026
+pipeline_test.go
+
+Tests for engine/pipeline.go
+
+Tests:
+  Directory scan finds AWS key written to a temp file
+  Clean file produces no findings
+  Multiple secrets in one file are all detected
+  Pre-cancelled context returns an error
+  Deduplication limits repeated identical secrets to one finding per chunk
+*/
 
 package engine
 

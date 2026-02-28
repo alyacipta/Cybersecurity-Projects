@@ -1,5 +1,19 @@
-// ©AngelaMos | 2026
-// client_test.go
+/*
+©AngelaMos | 2026
+client_test.go
+
+Tests for hibp/client.go
+
+Tests:
+  sha1Hash produces correct uppercase hex SHA-1 for known input
+  Check() identifies breached secrets and returns the correct count
+  Check() correctly marks clean secrets as not breached
+  LRU cache prevents duplicate HTTP calls for the same secret
+  Non-200 server responses propagate as errors
+  429 responses trigger retries and succeed once the server recovers
+  All 3 retries exhausted returns a "retries exhausted" error
+  Cancelled context fails Check() before the HTTP call reaches the server
+*/
 
 package hibp
 

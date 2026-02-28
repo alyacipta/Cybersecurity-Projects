@@ -1,5 +1,18 @@
-// ©AngelaMos | 2026
-// builtin_test.go
+/*
+©AngelaMos | 2026
+builtin_test.go
+
+Tests for rules/builtin.go
+
+Tests:
+  RegisterBuiltins loads at least 70 rules
+  All rules have non-empty ID, description, keywords, and a non-nil pattern with no duplicates
+  Pattern match correctness for 50+ services (AWS, GitHub, GitLab, GCP, Azure, Stripe,
+    Twilio, Slack, JWT, SSH/PGP keys, DB connection strings, Shopify, npm, PyPI, Docker,
+    Vault, DigitalOcean, Grafana, Databricks, HuggingFace, Supabase, and more)
+  MatchKeywords routes content to the correct rule by keyword
+  No false positives on benign code patterns (imports, constants, comments, loops)
+*/
 
 package rules
 

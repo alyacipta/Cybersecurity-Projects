@@ -1,5 +1,9 @@
-// ©AngelaMos | 2026
-// main.go
+/*
+©AngelaMos | 2026
+main.go
+
+Entry point: delegates to cli.Execute
+*/
 
 package main
 

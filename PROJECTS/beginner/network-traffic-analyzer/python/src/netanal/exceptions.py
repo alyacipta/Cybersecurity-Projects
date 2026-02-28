@@ -3,6 +3,24 @@
 exceptions.py
 
 Custom exception hierarchy for network traffic analyzer
+
+All exceptions inherit from NetAnalError, which inherits from Exception.
+This lets callers catch all tool errors with a single except clause while
+still being able to handle specific failure modes separately.
+
+Key exports:
+  NetAnalError - Base class for all tool exceptions
+  CaptureError - General capture failure
+  CapturePermissionError - User lacks privileges for packet capture
+  NpcapNotFoundError - Npcap not installed on Windows
+  InvalidFilterError - Malformed BPF filter expression
+  ExportError - Failure when writing export files
+  AnalysisError - Failure during packet analysis
+  ValidationError - Invalid input values (ports, IPs, networks)
+
+Connects to:
+  filters.py - raises ValidationError for invalid inputs
+  __init__.py - re-exports all exceptions to the public API
 """
 
 

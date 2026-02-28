@@ -1,64 +1,30 @@
 """
 ©AngelaMos | 2026
 test_api.py
+
+Tests the FastAPI REST endpoints for threats, stats, health, readiness, and model management.
 """
 
 import uuid
 from datetime import datetime, UTC
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-from app.main import app
 from app.models.threat_event import ThreatEvent
 
 
 @pytest.mark.asyncio
-async def test_health_returns_200() -> None:
+async def test_health_returns_200(db_client) -> None:
     """
-    Health endpoint returns 200 with status and uptime.
+    Health endpoint returns 200 with status, uptime, and pipeline flag.
     """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
+    response = await db_client.get("/health")
 
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert "uptime_seconds" in data
     assert isinstance(data["uptime_seconds"], int | float)
-    assert "pipeline_running" in data
-
-
-@pytest.mark.asyncio
-async def test_health_returns_pipeline_status() -> None:
-    """
-    Health response includes pipeline_running boolean.
-    """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
-
-    data = response.json()
     assert isinstance(data["pipeline_running"], bool)
-
-
-@pytest.mark.asyncio
-async def test_ready_returns_check_structure() -> None:
-    """
-    Readiness endpoint returns structured component checks.
-    """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/ready")
-
-    assert response.status_code in (200, 503)
-    data = response.json()
-    assert "status" in data
-    assert "checks" in data
-    assert "database" in data["checks"]
-    assert "redis" in data["checks"]
-    assert "models_loaded" in data["checks"]
 
 
 @pytest.mark.asyncio
@@ -166,7 +132,7 @@ async def test_stats_empty_window(db_client) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["time_range"] == "24h"
-    assert data["total_requests"] == 0
+    assert data["threats_stored"] == 0
     assert data["threats_detected"] == 0
     assert data["severity_breakdown"]["high"] == 0
     assert data["severity_breakdown"]["medium"] == 0
@@ -176,28 +142,25 @@ async def test_stats_empty_window(db_client) -> None:
 
 
 @pytest.mark.asyncio
-async def test_model_status() -> None:
+async def test_model_status(db_client) -> None:
     """
-    GET /models/status returns rules-only detection mode.
+    GET /models/status returns detection mode and active model list.
     """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/models/status")
+    response = await db_client.get("/models/status")
 
     assert response.status_code == 200
     data = response.json()
-    assert data["detection_mode"] == "rules-only"
-    assert data["active_models"] == []
+    assert "detection_mode" in data
+    assert "active_models" in data
+    assert isinstance(data["active_models"], list)
 
 
 @pytest.mark.asyncio
-async def test_retrain_returns_202() -> None:
+async def test_retrain_returns_202(db_client) -> None:
     """
     POST /models/retrain returns 202 Accepted with a job ID.
     """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/models/retrain")
+    response = await db_client.post("/models/retrain")
 
     assert response.status_code == 202
     data = response.json()

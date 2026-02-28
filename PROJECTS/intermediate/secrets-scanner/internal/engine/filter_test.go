@@ -1,5 +1,17 @@
-// ©AngelaMos | 2026
-// filter_test.go
+/*
+©AngelaMos | 2026
+filter_test.go
+
+Tests for engine/filter.go
+
+Tests:
+  IsStopword with exact stopwords, substrings, and per-rule extra words
+  IsPlaceholder with example patterns, template vars, CHANGEME, none, xxxx
+  IsTemplated with shell/Python/JS/Go/Spring/Helm environment read patterns
+  HasAssignmentOperator with =, :, :=, => and negative cases (imports, bare names)
+  IsAllowedPath against GlobalPathAllowlist (go.sum, vendor, dist/*.min.js, etc.)
+  FilterFinding composing all checks into a single pass/fail decision
+*/
 
 package engine
 

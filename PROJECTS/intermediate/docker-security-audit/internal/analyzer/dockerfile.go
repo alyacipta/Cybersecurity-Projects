@@ -1,6 +1,26 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 dockerfile.go
+
+DockerfileAnalyzer scans Dockerfile instructions for CIS Section 4
+violations
+
+Parses the Dockerfile using the buildkit frontend parser and checks for:
+missing USER instruction, missing or disabled HEALTHCHECK, ADD vs COPY
+usage, hardcoded secrets in ENV/ARG/RUN/LABEL, implicit or explicit
+:latest tags, curl-pipe-to-shell patterns, and sudo in RUN instructions.
+
+Key exports:
+  DockerfileAnalyzer - implements Analyzer for Dockerfiles
+  NewDockerfileAnalyzer - constructor taking file path
+
+Connects to:
+  analyzer.go - implements Analyzer interface, uses CategoryDockerfile
+  rules/secrets.go - DetectSecrets, IsSensitiveEnvName,
+IsHighEntropyString
+  benchmark/controls.go - fetches CIS Section 4 controls by ID
+  config/constants.go - reads MinSecretLength and MinEntropyForSecret
+  finding.go - creates findings with line-accurate locations
 */
 
 package analyzer

@@ -80,7 +80,7 @@ Expected output:
 Keylogger Started
 
 Log Directory: /home/user/.keylogger_logs
-Current Log: keylog_20250131_143022.txt
+Current Log: keylog_20250131_143022_451283.txt
 Toggle Key: F9
 Webhook: Disabled
 
@@ -94,8 +94,8 @@ Once running, type some test text. Check `~/.keylogger_logs/` for the captured k
 
 ```
 keylogger/
-├── keylogger.py          # Main implementation (440 lines)
-├── test_keylogger.py     # Component tests
+├── keylogger.py          # Main implementation (~540 lines)
+├── test_keylogger.py     # 46 pytest tests
 ├── pyproject.toml        # Dependencies and linting configuration
 ├── justfile              # Build automation commands
 └── .keylogger_logs/      # Created at runtime for log storage
@@ -111,9 +111,9 @@ keylogger/
 
 ## Common Issues
 
-**ImportError: No module named 'pynput'**
+**ImportError: pynput is required**
 ```
-Error: pynput not installed. Run: pip install pynput
+ImportError: pynput is required: uv add pynput
 ```
 Solution: Run `just setup` to install all dependencies via uv. The project requires pynput 1.8.1 for keyboard capture.
 

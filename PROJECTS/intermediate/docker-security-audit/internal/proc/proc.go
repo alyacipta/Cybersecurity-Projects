@@ -1,6 +1,27 @@
 /*
 CarterPerez-dev | 2025
 proc.go
+
+Linux /proc filesystem reader for process metadata, namespaces, and cgroup
+info
+
+Reads /proc/<pid>/status, cmdline, cgroup, and ns to build a
+ProcessInfo struct. Supports cgroup-based container detection and
+64-character hex container ID extraction. Optional fields (namespaces,
+cmdline, cgroups) fail silently for graceful degradation on non-Linux
+systems.
+
+Key exports:
+  ProcessInfo - process metadata including capabilities, cgroups,
+namespaces
+  GetProcessInfo - builds ProcessInfo from /proc/<pid>
+  GetContainerPID1, ListContainerProcesses - cgroup-based process
+discovery
+  IsInContainer, ContainerID - container detection from cgroup paths
+
+Connects to:
+  proc/capabilities.go - CapabilitySet populated from status hex fields
+  proc/security.go - SecurityProfile builds on the same /proc data
 */
 
 package proc

@@ -25,9 +25,11 @@ macos = [
 ]
 
 dev = [
+    "pytest==8.4.1",
     "ruff==0.14.14",
     "mypy==1.19.1",
     "pylint==4.0.4",
+    "types-requests==2.32.4.20260107",
     "yapf==0.43.0",
 ]
 
@@ -65,8 +67,9 @@ select = [
 ]
 
 ignore = [
-    "E501",   # Line length (handled by formatter)
-    "I001",   # Import sorting (conditional imports in try/except blocks)
+    "E501",    # Line length (handled by formatter)
+    "I001",    # Import sorting (conditional imports in try/except blocks)
+    "SIM115",  # LogManager owns file handles across its lifetime
 ]
 
 
@@ -94,6 +97,7 @@ exclude = [
 [[tool.mypy.overrides]]
 module = [
     "pynput.*",
+    "requests.*",
     "win32gui.*",
     "win32process.*",
     "psutil.*",
@@ -106,7 +110,6 @@ ignore_missing_imports = true
 py-version = "3.13"
 jobs = 4
 persistent = true
-suggestion-mode = true
 
 ignore = [
     "venv",
@@ -137,6 +140,9 @@ disable = [
     # Style preferences
     "C0111",  # missing-docstring (some methods are self-explanatory)
     "C0103",  # invalid-name
+    "C0325",  # superfluous-parens (yapf formatting)
+    "R1732",  # consider-using-with (LogManager owns file handles)
+    "W0105",  # pointless-string-statement (ASCII art)
 ]
 
 

@@ -1,6 +1,27 @@
 """
 ©AngelaMos | 2026
 peeler.py
+
+Recursive multi-layer encoding detection and decoding
+
+Iteratively calls detect_best() on the current text, decodes one
+layer at a time, and continues until no encoding is detected, the
+decoded output is not valid UTF-8, or max_depth is reached. Each
+iteration produces a PeelLayer record capturing the format, confidence,
+and previews. The complete result is returned as an immutable PeelResult.
+
+Key exports:
+  PeelLayer - Frozen dataclass for a single decoded layer (depth, format, confidence, previews)
+  PeelResult - Frozen dataclass with all layers, final bytes output, and success flag
+  peel() - Main entry point for recursive decoding
+
+Connects to:
+  constants.py - imports PEEL_MAX_DEPTH, CONFIDENCE_THRESHOLD, EncodingFormat
+  detector.py - imports detect_best, score_all_formats
+  utils.py - imports safe_bytes_preview, truncate
+  formatter.py - imports PeelResult
+  cli.py - imports peel
+  test_peeler.py - tests single and multi-layer peeling
 """
 
 from dataclasses import dataclass

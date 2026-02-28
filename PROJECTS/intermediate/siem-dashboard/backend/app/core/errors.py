@@ -1,6 +1,24 @@
 """
 ©AngelaMos | 2026
 errors.py
+
+Application exception hierarchy and Flask error handler registration
+
+Defines AppError and subclasses (NotFoundError, ValidationError,
+AuthenticationError, ForbiddenError, ConflictError), each carrying
+an HTTP status code. register_error_handlers attaches JSON handlers
+for all AppError subclasses plus 404, 405, and 500.
+
+Key exports:
+  AppError - base exception with status_code and message
+  NotFoundError, ValidationError, AuthenticationError, ForbiddenError, ConflictError
+  register_error_handlers - attaches handlers to the Flask app
+
+Connects to:
+  __init__.py - calls register_error_handlers
+  models/Base.py - raises NotFoundError from get_by_id
+  core/decorators/endpoint.py - catches AppError, raises auth and forbidden errors
+  core/decorators/schema.py - raises ValidationError on Pydantic failure
 """
 
 from typing import Any

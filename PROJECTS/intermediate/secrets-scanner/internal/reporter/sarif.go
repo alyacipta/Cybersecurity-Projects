@@ -1,5 +1,19 @@
-// ©AngelaMos | 2026
-// sarif.go
+/*
+©AngelaMos | 2026
+sarif.go
+
+SARIF 2.1.0 output reporter for CI/CD tooling integration
+
+Serializes findings to Static Analysis Results Interchange Format for
+consumption by GitHub Advanced Security, VS Code SARIF viewer, and other
+compatible tools. Severity maps to SARIF error/warning/note levels. Entropy
+and HIBP breach data attach as result properties. Implements the Reporter
+interface.
+
+Connects to:
+  reporter/reporter.go - returned by New("sarif")
+  pkg/types/types.go - reads ScanResult and Finding fields
+*/
 
 package reporter
 

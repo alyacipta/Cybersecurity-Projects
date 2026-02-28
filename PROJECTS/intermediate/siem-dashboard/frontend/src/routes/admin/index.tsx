@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Admin-only user management table with role, status, and delete controls
+//
+// Renders a paginated table of all users. Each row is a UserRow component
+// that checks whether the row belongs to the current user and disables
+// self-modification actions. Role changes fire immediately via a select
+// element. Activate/deactivate toggle based on is_active. Delete is permanent.
+// UserRow is an internal helper component.
+//
+// Key components:
+//   Component - lazy-loaded admin users page; displayName "Admin Users"
+//
+// Connects to:
+//   useAdmin.ts - user list, role update, activate, deactivate, delete mutations
+//   auth.store.ts - reads current user ID for self-protection logic
+//   admin.types.ts - UserResponse, UserRole types
 // ===================
 
 import { useState } from 'react'

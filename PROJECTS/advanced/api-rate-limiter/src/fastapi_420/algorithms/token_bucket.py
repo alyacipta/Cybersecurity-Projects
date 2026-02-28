@@ -1,6 +1,17 @@
 """
 ⒸAngelaMos | 2025
 token_bucket.py
+
+Token bucket rate limiting algorithm
+
+Allows controlled bursting up to bucket capacity while enforcing
+an average rate over time. Tokens refill at a constant rate, and
+each request consumes one token. Good for APIs where occasional
+traffic spikes are acceptable as long as the average stays within
+bounds. The bucket capacity sets the maximum burst size.
+
+Connects to:
+  base.py - extends BaseAlgorithm
 """
 
 from __future__ import annotations

@@ -2,8 +2,26 @@
 ⒸAngelaMos | 2026
 capture.py
 
-Scapy based packet capture engine with
-BPF filtering and producer consumer pattern
+Scapy-based packet capture engine with BPF filtering and producer-consumer pattern
+
+Runs Scapy's AsyncSniffer as the producer and a daemon thread as the consumer.
+Captured packets are queued and processed off the sniffer thread to avoid
+dropping packets under load. GracefulCapture wraps CaptureEngine as a context
+manager that installs SIGINT/SIGTERM handlers for clean shutdown on Ctrl+C.
+
+Key exports:
+  CaptureEngine - Producer-consumer capture engine with start(), stop(), and wait()
+  GracefulCapture - Context manager that handles signals and stops the engine on exit
+  capture_packets() - Convenience function for one-shot captures with default settings
+  get_available_interfaces() - Returns available network interface names from Scapy
+  check_capture_permissions() - Checks OS-level permissions for raw packet capture
+
+Connects to:
+  models.py - imports CaptureConfig, CaptureStatistics, PacketInfo
+  analyzer.py - calls extract_packet_info() in the consumer thread
+  constants.py - imports CaptureDefaults, NpcapPaths
+  statistics.py - creates StatisticsCollector and drives record_packet()
+  main.py - imports CaptureEngine, GracefulCapture, check_capture_permissions, get_available_interfaces
 """
 
 import contextlib

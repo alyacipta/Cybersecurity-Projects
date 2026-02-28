@@ -1,6 +1,23 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 reporter.go
+
+Reporter interface and factory that dispatches to format-specific
+implementations
+
+NewReporter selects and constructs a TerminalReporter, JSONReporter,
+SARIFReporter, or JUnitReporter based on the format string. When
+outputFile is empty, output goes to stdout. baseReporter holds the
+shared writer and closer for the concrete implementations.
+
+Key exports:
+  Reporter - interface with Report(findings Collection) error
+  NewReporter - factory returning the correct implementation
+
+Connects to:
+  scanner.go - calls NewReporter with cfg.Output and cfg.OutputFile
+  terminal.go, json.go, sarif.go, junit.go - implement Reporter
+  finding.go - Report() accepts finding.Collection
 */
 
 package report

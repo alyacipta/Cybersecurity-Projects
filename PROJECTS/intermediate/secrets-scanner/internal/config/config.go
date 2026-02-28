@@ -1,5 +1,24 @@
-// ©AngelaMos | 2026
-// config.go
+/*
+©AngelaMos | 2026
+config.go
+
+TOML configuration loader with pyproject.toml fallback
+
+Loads scanner settings from .portia.toml, a .portia/config.toml directory
+file, or a global ~/.config/portia/config.toml. If none exist, falls back to
+a [tool.portia] section in pyproject.toml. Applies sane defaults for
+MaxFileSize and output format when no config is found.
+
+Key exports:
+  Config - top-level struct with rules, scan, output, hibp, and allowlist sections
+  Load - loads config from an explicit path or auto-discovers it
+  DefaultTemplate - returns a starter .portia.toml file
+  PyprojectTemplate - returns a pyproject.toml stub with [tool.portia] section
+
+Connects to:
+  cli/root.go - calls Load() during cobra initialization
+  cli/init.go - calls DefaultTemplate() and PyprojectTemplate()
+*/
 
 package config
 

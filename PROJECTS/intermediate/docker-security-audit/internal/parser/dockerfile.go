@@ -1,6 +1,23 @@
 /*
 CarterPerez-dev | 2026
 dockerfile.go
+
+Dockerfile parser that builds a structured AST with stage and command info
+
+Wraps the Moby buildkit parser to add stage tracking, per-stage
+instruction slicing, and multi-stage build awareness. DockerfileAST
+exposes query methods (GetInstructions, HasInstruction, FinalStage)
+so callers can scan specific instruction types without traversing
+the raw AST.
+
+Key exports:
+  DockerfileAST - parsed Dockerfile with Stages and Commands
+  ParseDockerfile, ParseDockerfileReader - parse from path or io.Reader
+  Stage, Command - typed instruction and stage containers
+  DockerfileVisitor - interface for the visitor pattern
+
+Connects to:
+  visitor.go - DockerfileVisitor interface and RuleContext use these types
 */
 
 package parser

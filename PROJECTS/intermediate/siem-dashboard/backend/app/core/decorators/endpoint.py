@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 endpoint.py
+
+endpoint() decorator for auth, role enforcement, and error boundary
+
+Wraps route handlers with JWT extraction and user loading onto flask.g,
+optional role checking against g.current_user.role, and a catch-all
+exception handler that returns JSON 500 instead of an HTML traceback.
+
+Key exports:
+  endpoint - factory returning a decorator; params are auth_required and roles
+
+Connects to:
+  core/auth.py - calls decode_access_token, extract_bearer_token
+  core/errors.py - raises AuthenticationError, ForbiddenError; catches AppError
+  models/User.py - loads user by ID from JWT sub claim
+  routes/ - applied to every route handler
 """
 
 import functools

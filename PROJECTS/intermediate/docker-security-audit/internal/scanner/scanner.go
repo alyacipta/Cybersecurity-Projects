@@ -1,6 +1,29 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 scanner.go
+
+Main scan orchestrator that builds, runs, filters, and reports all
+analyzer results
+
+Assembles analyzers from config targets, runs them concurrently with
+an errgroup worker pool and token bucket rate limiter, merges findings,
+applies severity and CIS control filters, calls the reporter, and
+checks the fail-on threshold for CI exit codes. ExitError signals
+to main.go that findings exceeded the configured threshold.
+
+Key exports:
+  Scanner - orchestrator with Run() driving the full pipeline
+  New - creates Scanner with Docker client, slog logger, limiter, and
+reporter
+  ExitError - typed error carrying an exit code for the fail-on feature
+
+Connects to:
+  config/config.go - all scan options and filter logic
+  config/constants.go - MaxWorkers, RateLimitPerSecond, MaxTotalFindings
+  docker/client.go - Docker client passed to runtime analyzers
+  analyzer/*.go - constructs and runs each Analyzer
+  report/reporter.go - NewReporter called with output format and file
+  finding.go - Collection filtered and passed to Reporter
 */
 
 package scanner

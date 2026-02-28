@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Registration page with confirm-password validation and automatic login on success
+//
+// Extends registerRequestSchema locally with a confirmPassword field and a
+// refine check that both passwords match. On success, useRegister stores the
+// token and user profile then redirects to the dashboard. Both password
+// fields have independent visibility toggles.
+//
+// Key components:
+//   Component - lazy-loaded register page; displayName "Register"
+//
+// Connects to:
+//   useAuth.ts - useRegister mutation
+//   auth.types.ts - registerRequestSchema, PASSWORD_MIN constant
+//   config.ts - ROUTES for navigation targets
 // ===================
 
 import { useState } from 'react'

@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 dashboard_ctrl.py
+
+Business logic for dashboard aggregations
+
+Provides the overview summary (event and alert counts, open alert
+count, severity breakdown), time-bucketed event timeline, per-severity
+event counts, and top source IPs. All calls are read-only MongoDB
+aggregation queries with no side effects.
+
+Key exports:
+  overview, timeline, severity_breakdown, top_sources
+
+Connects to:
+  models/Alert.py - alert count and status aggregations
+  models/LogEvent.py - timeline, severity, and top source queries
+  routes/dashboard.py - called from route handlers
 """
 
 from typing import Any

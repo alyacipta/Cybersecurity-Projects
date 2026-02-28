@@ -1,5 +1,18 @@
-// ©AngelaMos | 2026
-// symbol.go
+/*
+©AngelaMos | 2026
+symbol.go
+
+Unicode symbol constants and horizontal rule helper for terminal output
+
+Defines Arrow, Diamond, Check, Warning, Shield, and other Unicode glyphs used
+throughout the terminal reporter and CLI commands. HRule generates a repeated
+divider character string of the given width.
+
+Connects to:
+  reporter/terminal.go - uses Arrow, Diamond, Warning, Check, Shield
+  ui/banner.go - uses HRule and HiWhite for divider lines
+  cli/root.go, cli/scan.go, cli/git.go - use symbols in status output
+*/
 
 package ui
 

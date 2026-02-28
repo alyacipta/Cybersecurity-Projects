@@ -1,5 +1,20 @@
-// ©AngelaMos | 2026
-// init.go
+/*
+©AngelaMos | 2026
+init.go
+
+"init" and "pyproject" subcommands for config file scaffolding
+
+"portia init" writes a default .portia.toml to the current directory if one
+does not already exist. "portia pyproject" writes a pyproject.toml file with
+a [tool.portia] section, using the current directory name as the project name.
+Both commands abort with a warning if the target file already exists.
+
+Connects to:
+  cli/root.go - registered as initCmd and pyprojectCmd via rootCmd.AddCommand
+  config/config.go - calls DefaultConfigFile, DefaultTemplate(), PyprojectTemplate()
+  ui/color.go - uses CyanBold, HiGreen for success output
+  ui/symbol.go - uses Check, Warning constants
+*/
 
 package cli
 

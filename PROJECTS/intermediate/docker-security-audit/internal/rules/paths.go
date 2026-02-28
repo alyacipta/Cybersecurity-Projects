@@ -1,6 +1,26 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 paths.go
+
+Sensitive host path and container socket definitions with severity ratings
+
+DockerSocketPaths covers container runtime sockets (Docker, containerd,
+CRI-O, Podman, CRI-dockerd, rkt). SensitiveHostPaths covers system
+config, kernel interfaces, CI/CD runner dirs, cloud agent dirs,
+secrets managers, databases, and more. Lookups use pre-computed hash
+sets and prefix matching for consistent O(1) checks.
+
+Key exports:
+  DockerSocketPaths - map of container runtime socket paths with severity
+  SensitiveHostPaths - map of sensitive host filesystem paths with
+severity
+  IsSensitivePath, IsDockerSocket - fast boolean checks
+  GetPathInfo, GetPathSeverity - retrieve description and severity by path
+
+Connects to:
+  finding.go - uses Severity constants
+  analyzer/container.go - checks container mount sources
+  analyzer/compose.go - checks compose volume mount sources
 */
 
 package rules

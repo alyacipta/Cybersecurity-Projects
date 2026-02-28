@@ -1,6 +1,29 @@
 """
 ©AngelaMos | 2026
 runner.py
+
+Scenario playback engine
+
+ScenarioThread plays back a Playbook in a daemon thread, applying
+speed multiplier and 20% jitter to event delays. For each event it
+normalizes, classifies, persists to MongoDB, and publishes to the log
+Redis Stream. ScenarioRunner is a class-level singleton registry that
+manages all active threads across start, stop, pause, resume, and
+speed adjustment.
+
+Key exports:
+  ScenarioRunner - singleton manager for all active scenario threads
+  ScenarioThread - daemon thread that plays back a single playbook
+
+Connects to:
+  config.py - reads SCENARIO_PLAYBOOK_DIR, LOG_STREAM_KEY
+  core/streaming.py - calls publish_event after each event
+  engine/normalizer.py - calls normalize
+  engine/severity.py - calls classify
+  models/LogEvent.py - calls LogEvent.create_event
+  models/ScenarioRun.py - calls lifecycle methods
+  scenarios/playbook.py - calls Playbook.load
+  controllers/scenario_ctrl.py - calls ScenarioRunner methods
 """
 
 import random

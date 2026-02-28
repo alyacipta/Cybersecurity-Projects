@@ -3,6 +3,25 @@
 export.py
 
 Export capture data to CSV and JSON formats
+
+Serializes CaptureStatistics and PacketInfo to disk. JSON export is
+selective — ExportOptions flags control whether packets, endpoints, and
+conversations are included. Separate CSV helpers write endpoint stats and
+protocol summaries as standalone files. load_from_json() reconstructs
+statistics from a previously exported file.
+
+Key exports:
+  statistics_to_dict() - Converts CaptureStatistics to a JSON-serializable dict
+  packet_to_dict() - Converts PacketInfo to a JSON-serializable dict
+  export_to_json() - Writes statistics and optionally packets to a JSON file
+  export_to_csv() - Writes packet rows to a CSV file
+  export_endpoints_csv() - Writes per-endpoint stats to a CSV file
+  export_protocol_summary_csv() - Writes protocol distribution to a CSV file
+  load_from_json() - Reads a JSON export and reconstructs CaptureStatistics and packets
+
+Connects to:
+  models.py - imports CaptureStatistics, ExportOptions, PacketInfo, Protocol
+  main.py - calls export_to_json() and export_to_csv() from the export and capture commands
 """
 
 import csv

@@ -1,6 +1,27 @@
 """
 ©AngelaMos | 2026
 utils.py
+
+Input resolution and string/bytes utility functions
+
+Handles the three input sources the CLI accepts: a positional
+argument, a --file path, or piped stdin. Also provides truncate()
+for capping display strings, safe_bytes_preview() for converting
+raw bytes to a readable preview, and is_printable_text() for
+checking whether decoded bytes look like human-readable output.
+
+Key exports:
+  resolve_input_bytes() - Returns raw bytes from argument, file, or stdin
+  resolve_input_text() - Returns decoded text from argument, file, or stdin
+  truncate() - Truncates a string with "..." if it exceeds the length limit
+  safe_bytes_preview() - Converts bytes to UTF-8 string or hex fallback
+  is_printable_text() - Returns True if bytes decode to mostly printable characters
+
+Connects to:
+  detector.py - imports is_printable_text
+  peeler.py - imports safe_bytes_preview, truncate
+  formatter.py - imports safe_bytes_preview
+  cli.py - imports resolve_input_bytes, resolve_input_text
 """
 
 import sys

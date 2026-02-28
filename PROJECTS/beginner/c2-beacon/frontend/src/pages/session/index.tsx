@@ -1,6 +1,22 @@
 // ===========================
 // © AngelaMos | 2026
 // pages/session/index.tsx
+//
+// Interactive terminal session for issuing commands to a single beacon
+//
+// Renders a terminal-style interface for a specific beacon: command
+// input with history navigation and Tab autocomplete, quick-action
+// buttons for sysinfo/proclist/screenshot, and a scrolling output panel
+// that updates as task results arrive. Screenshots render inline as
+// images; all other output renders as preformatted text.
+//
+// Key components:
+//   Component (Session) - lazy-loaded route component for /session/:id
+//
+// Connects to:
+//   config.ts - reads ROUTES.DASHBOARD for the back link
+//   core/types.ts - imports CommandType, TaskResult
+//   core/ws.ts - calls useBeacon, useOperatorSocket, useTaskResults, useTaskIdMap
 // ===========================
 
 import { useCallback, useEffect, useRef, useState } from 'react'

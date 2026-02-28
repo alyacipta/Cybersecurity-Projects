@@ -1,6 +1,24 @@
 // ===================
 // © AngelaMos | 2026
 // types.ts
+//
+// Zod schemas and TypeScript types for all C2 data structures
+//
+// Mirrors the server-side Pydantic models: CommandType, BeaconRecord,
+// TaskRecord, and TaskResult. Also defines the full set of WebSocket
+// message schemas and WsServerMessage, a discriminated union that
+// covers every event the operator channel can emit.
+//
+// Key exports:
+//   CommandType - enum of supported beacon commands
+//   BeaconRecord, TaskRecord, TaskResult - core C2 data models
+//   WsServerMessage - discriminated union of all server message types
+//   parseServerMessage - parse and validate a raw WebSocket string
+//
+// Connects to:
+//   core/ws.ts - imports all types and parseServerMessage
+//   pages/dashboard/index.tsx - imports BeaconRecord
+//   pages/session/index.tsx - imports CommandType, TaskResult
 // ===================
 
 import { z } from 'zod/v4'

@@ -1,6 +1,26 @@
 // ===================
 // ©AngelaMos | 2026
 // useAdmin.ts
+//
+// React Query hooks for admin-only user management: list, role update, and lifecycle
+//
+// useAdminUsers fetches a paginated user list. useAdminUpdateRole patches a
+// user's role and shows a message that includes the new role label.
+// useAdminDeactivateUser and useAdminActivateUser toggle the is_active flag.
+// useAdminDeleteUser permanently removes a user. All mutations invalidate the
+// full admin cache.
+//
+// Key exports:
+//   useAdminUsers - paginated user list
+//   useAdminUser - single user by ID
+//   useAdminUpdateRole - role change mutation
+//   useAdminDeactivateUser, useAdminActivateUser - status toggle mutations
+//   useAdminDeleteUser - permanent delete mutation
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   admin.types.ts - AdminUpdateRoleRequest, ADMIN_SUCCESS_MESSAGES
+//   auth.types.ts - UserResponse
 // ===================
 
 import {

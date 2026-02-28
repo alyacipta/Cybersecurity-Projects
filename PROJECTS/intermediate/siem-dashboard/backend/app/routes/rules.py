@@ -1,6 +1,17 @@
 """
 ©AngelaMos | 2026
 rules.py
+
+Route handlers for the correlation rules API (/v1/rules)
+
+Mounts full CRUD (GET /, POST, GET /<id>, PATCH /<id>, DELETE /<id>)
+plus POST /<id>/test for dry-run rule evaluation against historical
+events.
+
+Connects to:
+  controllers/rule_ctrl.py - business logic
+  schemas/rule.py - RuleCreateRequest, RuleUpdateRequest, RuleTestRequest
+  routes/__init__.py - rules_bp registered here
 """
 
 from typing import Any

@@ -1,6 +1,24 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 daemon.go
+
+DaemonAnalyzer inspects Docker daemon configuration for CIS Section 2
+violations
+
+Calls the Docker daemon Info endpoint and checks for seccomp support,
+user namespace remapping, live restore, experimental mode, logging
+driver, and cgroup driver. Each check maps to a specific CIS Section
+2 control and produces a finding with remediation guidance.
+
+Key exports:
+  DaemonAnalyzer - implements Analyzer for the Docker daemon
+  NewDaemonAnalyzer - constructor taking a docker.Client
+
+Connects to:
+  analyzer.go - implements Analyzer interface, uses CategoryDaemon
+  docker/client.go - calls Info() to get daemon metadata
+  benchmark/controls.go - fetches CIS Section 2 controls by ID
+  finding.go - creates findings with CISControl references
 */
 
 package analyzer

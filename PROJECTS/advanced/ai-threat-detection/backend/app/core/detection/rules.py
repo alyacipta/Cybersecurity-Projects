@@ -11,8 +11,10 @@ from app.core.features.patterns import (
     COMMAND_INJECTION,
     DOUBLE_ENCODED,
     FILE_INCLUSION,
+    LOG4SHELL,
     PATH_TRAVERSAL,
     SQLI,
+    SSRF,
     XSS,
 )
 from app.core.features.signatures import SCANNER_USER_AGENTS
@@ -41,10 +43,12 @@ class _ThresholdRule(NamedTuple):
 
 
 _PATTERN_RULES: list[_PatternRule] = [
+    _PatternRule("LOG4SHELL", LOG4SHELL, 0.95),
     _PatternRule("COMMAND_INJECTION", COMMAND_INJECTION, 0.90),
     _PatternRule("SQL_INJECTION", SQLI, 0.85),
     _PatternRule("XSS", XSS, 0.80),
     _PatternRule("FILE_INCLUSION", FILE_INCLUSION, 0.75),
+    _PatternRule("SSRF", SSRF, 0.70),
     _PatternRule("PATH_TRAVERSAL", PATH_TRAVERSAL, 0.60),
 ]
 

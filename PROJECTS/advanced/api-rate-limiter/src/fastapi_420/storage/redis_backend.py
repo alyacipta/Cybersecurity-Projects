@@ -1,6 +1,24 @@
 """
 ⒸAngelaMos | 2025
 redis_backend.py
+
+Redis storage backend using atomic Lua scripts
+
+All rate limit operations (sliding window increment, fixed window
+increment, token bucket consume) run as Lua scripts inside Redis
+for race-condition-free atomic execution. Scripts are loaded from
+disk on first use, and their SHA1 hashes are cached for EVALSHA
+calls. If Redis flushes its script cache, NOSCRIPT errors trigger
+automatic reload and retry.
+
+Key exports:
+  RedisStorage - Redis-backed storage with from_settings(),
+    connect(), increment(), increment_fixed_window(),
+    consume_token(), close(), health_check()
+
+Connects to:
+  exceptions.py - raises StorageConnectionError, StorageError
+  types.py - imports WindowState, TokenBucketState, StorageType
 """
 from __future__ import annotations
 

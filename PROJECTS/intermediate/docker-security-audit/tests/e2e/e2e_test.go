@@ -1,6 +1,27 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 e2e_test.go
+
+End-to-end tests that run real analyzers against testdata fixtures
+
+Exercises DockerfileAnalyzer and ComposeAnalyzer through the public
+Analyze() method using fixtures from testdata/. Tests cover severity
+expectations, finding counts, required field completeness, severity
+filtering, and file-not-found error handling. All tests skip in
+short mode.
+
+Tests:
+  TestE2E_DockerfileAnalysis - bad-secrets and good-security Dockerfiles
+  TestE2E_ComposeAnalysis - bad-docker-socket and good-production compose
+  TestE2E_MultipleFiles - sequential analysis of mixed file types
+  TestE2E_FindingProperties - all required finding fields present
+  TestE2E_SeverityFiltering - BySeverity and AtOrAbove filter correctness
+  TestE2E_FileNotFound - proper errors returned for missing files
+
+Connects to:
+  analyzer/dockerfile.go - DockerfileAnalyzer under test
+  analyzer/compose.go - ComposeAnalyzer under test
+  finding.go - asserts on Collection methods and Severity values
 */
 
 package e2e_test

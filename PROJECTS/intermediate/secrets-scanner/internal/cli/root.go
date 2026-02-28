@@ -1,5 +1,26 @@
-// ©AngelaMos | 2026
-// root.go
+/*
+©AngelaMos | 2026
+root.go
+
+Root cobra command, global flags, and config initialization
+
+Defines the portia root command and all persistent flags (--config, --format,
+--verbose, --no-color, --exclude, --max-size, --hibp). initConfig() runs
+before every command: it loads the TOML config, applies CLI flag overrides,
+and sets format defaults. Registers scan, git, init, config, and pyproject
+subcommands. Execute() is the entry point called by main.
+
+Key exports:
+  Execute - called by main to run the CLI
+
+Connects to:
+  cli/scan.go - registers scanCmd, shares cfg and global flags
+  cli/git.go - registers gitCmd, shares cfg and global flags
+  cli/init.go - registers initCmd and pyprojectCmd
+  cli/config.go - registers configCmd
+  config/config.go - calls Load() to populate cfg
+  ui/banner.go - calls PrintBannerWithArt and PrintBanner for help display
+*/
 
 package cli
 

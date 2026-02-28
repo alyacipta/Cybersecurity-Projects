@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // errors.ts
+//
+// Typed API error class, error code enum, and Axios error transformer
+//
+// ApiError extends Error with a typed code, HTTP status code, and optional
+// field-level details map. transformAxiosError converts raw Axios errors
+// into ApiErrors with appropriate codes. Also augments the React Query type
+// registry so defaultError is typed as ApiError across all hooks without
+// explicit annotation.
+//
+// Key exports:
+//   ApiError - typed error class with getUserMessage() for toast display
+//   ApiErrorCode - exhaustive set of client-side error category codes
+//   transformAxiosError - maps Axios HTTP errors to ApiError instances
+//
+// Connects to:
+//   api.ts - calls transformAxiosError in the response interceptor
+//   query.ts - imports ApiError and ApiErrorCode for retry logic
 // ===================
 
 import type { AxiosError } from 'axios'

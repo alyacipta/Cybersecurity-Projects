@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 auth_ctrl.py
+
+Business logic for authentication operations
+
+Handles user registration with uniqueness checks, timing-safe login
+with Argon2 param rehashing on success, self-service profile updates
+confirmed by current password, and the /me identity endpoint.
+
+Key exports:
+  register, login, update_profile, me
+
+Connects to:
+  core/auth.py - hash_password, verify_password, create_access_token
+  core/errors.py - raises ConflictError, AuthenticationError, ValidationError
+  models/User.py - find_by_username, create_user, username_exists
+  schemas/auth.py - instantiates TokenResponse, UserResponse, UpdateProfileResponse
+  routes/auth.py - called from route handlers
 """
 
 from typing import Any

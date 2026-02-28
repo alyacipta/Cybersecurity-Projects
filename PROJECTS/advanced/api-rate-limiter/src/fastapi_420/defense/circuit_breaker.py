@@ -1,6 +1,23 @@
 """
 ⒸAngelaMos | 2025
 circuit_breaker.py
+
+Global circuit breaker for API-wide DDoS protection
+
+Tracks total request volume across all clients. When the count
+exceeds a threshold within a time window, the circuit opens and
+blocks all incoming requests until a recovery period passes.
+After recovery, enters a half-open state that lets a limited
+number of requests through to test if conditions have improved.
+If those succeed, the circuit closes again and normal traffic
+resumes.
+
+Key exports:
+  CircuitBreaker - tracks state with check(), record_request(),
+    reset(), and exposes is_open and current_state
+
+Connects to:
+  types.py - imports CircuitState, DefenseMode
 """
 
 from __future__ import annotations

@@ -45,14 +45,25 @@ class _LogHandler(FileSystemEventHandler):
         Open the target log file and seek to the end.
         """
         try:
-            self._file = open(self._target, encoding="utf-8", errors="replace")  # noqa: SIM115
+            self._file = open(  # noqa: SIM115
+                self._target, encoding="utf-8", errors="replace")
             self._file.seek(0, os.SEEK_END)
             self._inode = os.stat(self._target).st_ino
             logger.info("Tailing %s (inode %s)", self._target, self._inode)
         except FileNotFoundError:
-            logger.warning("Log file %s not found — waiting for creation", self._target)
+            logger.warning("Log file %s not found — waiting for creation",
+                           self._target)
             self._file = None
             self._inode = None
+
+    def _enqueue(self, line: str) -> None:
+        """
+        Push one line into the queue, logging drops on full queue
+        """
+        try:
+            self._queue.put_nowait(line)
+        except asyncio.QueueFull:
+            logger.warning("Raw queue full — log line dropped")
 
     def _read_new_lines(self) -> None:
         """
@@ -64,7 +75,7 @@ class _LogHandler(FileSystemEventHandler):
         for line in self._file:
             stripped = line.rstrip("\n\r")
             if stripped:
-                self._loop.call_soon_threadsafe(self._queue.put_nowait, stripped)
+                self._loop.call_soon_threadsafe(self._enqueue, stripped)
 
     def _handle_rotation(self) -> None:
         """
@@ -76,9 +87,11 @@ class _LogHandler(FileSystemEventHandler):
             self._file.close()
 
         try:
-            self._file = open(self._target, encoding="utf-8", errors="replace")  # noqa: SIM115
+            self._file = open(  # noqa: SIM115
+                self._target, encoding="utf-8", errors="replace")
             self._inode = os.stat(self._target).st_ino
-            logger.info("Rotated to new %s (inode %s)", self._target, self._inode)
+            logger.info("Rotated to new %s (inode %s)", self._target,
+                        self._inode)
         except FileNotFoundError:
             self._file = None
             self._inode = None
@@ -93,7 +106,8 @@ class _LogHandler(FileSystemEventHandler):
         except FileNotFoundError:
             return False
 
-    def on_modified(self, event: FileModifiedEvent) -> None:  # type: ignore[override]
+    def on_modified(
+            self, event: FileModifiedEvent) -> None:  # type: ignore[override]
         """
         Handle new data appended to the log file.
         """
@@ -109,7 +123,8 @@ class _LogHandler(FileSystemEventHandler):
 
         self._read_new_lines()
 
-    def on_moved(self, event: FileMovedEvent) -> None:  # type: ignore[override]
+    def on_moved(self,
+                 event: FileMovedEvent) -> None:  # type: ignore[override]
         """
         Handle log rotation via rename (access.log -> access.log.1).
         """
@@ -117,10 +132,12 @@ class _LogHandler(FileSystemEventHandler):
             return
 
         if Path(str(event.src_path)).resolve() == Path(self._target).resolve():
-            logger.info("Log rotated: %s -> %s", event.src_path, event.dest_path)
+            logger.info("Log rotated: %s -> %s", event.src_path,
+                        event.dest_path)
             self._handle_rotation()
 
-    def on_created(self, event: FileCreatedEvent) -> None:  # type: ignore[override]
+    def on_created(self,
+                   event: FileCreatedEvent) -> None:  # type: ignore[override]
         """
         Handle log rotation where a new file is created at the target path.
         """

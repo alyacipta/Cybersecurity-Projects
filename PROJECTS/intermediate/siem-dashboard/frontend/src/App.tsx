@@ -1,6 +1,19 @@
 // ===================
 // ©AngelaMos | 2026
 // App.tsx
+//
+// Root application component
+//
+// Wraps the app in QueryClientProvider and RouterProvider, mounts the
+// Sonner toast container, and attaches React Query Devtools. Every
+// authenticated page renders inside this component's tree.
+//
+// Key components:
+//   App - Root component exported as default
+//
+// Connects to:
+//   router.tsx - provides the browser router
+//   query.ts - provides the queryClient singleton
 // ===================
 
 import { QueryClientProvider } from '@tanstack/react-query'

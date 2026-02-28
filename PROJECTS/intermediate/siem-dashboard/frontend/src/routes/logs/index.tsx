@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Log viewer page with source/severity filters, event type search, and detail drawer
+//
+// Source type and severity dropdowns narrow the paginated log list. The search
+// input filters by event_type. Clicking a table row fetches the full event
+// via useLogDetail and renders a side drawer showing all fields including
+// normalized and raw JSON blobs. LogDetail and DetailField are internal helpers.
+//
+// Key components:
+//   Component - lazy-loaded log viewer page; displayName "LogViewer"
+//
+// Connects to:
+//   useLogs.ts - paginated log list with source/severity filtering
+//   log.types.ts - LogEvent, LogQueryParams types
+//   config.ts - SEVERITY_LABELS for display strings
 // ===================
 
 import { useState } from 'react'

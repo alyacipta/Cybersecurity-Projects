@@ -1,5 +1,16 @@
-// ©AngelaMos | 2026
-// json.go
+/*
+©AngelaMos | 2026
+json.go
+
+JSON output reporter
+
+Serializes scan results to indented JSON with a findings array and a summary
+block. Secrets are masked before output. Implements the Reporter interface.
+
+Connects to:
+  reporter/reporter.go - returned by New("json")
+  pkg/types/types.go - reads ScanResult and Finding fields
+*/
 
 package reporter
 

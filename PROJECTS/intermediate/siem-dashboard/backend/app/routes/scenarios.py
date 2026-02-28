@@ -1,6 +1,16 @@
 """
 ©AngelaMos | 2026
 scenarios.py
+
+Route handlers for the scenarios API (/v1/scenarios)
+
+Mounts GET /available, GET /running, POST /start, POST /<id>/stop,
+POST /<id>/pause, POST /<id>/resume, and PUT /<id>/speed.
+
+Connects to:
+  controllers/scenario_ctrl.py - business logic
+  schemas/scenario.py - ScenarioStartRequest, SpeedRequest
+  routes/__init__.py - scenarios_bp registered here
 """
 
 from typing import Any

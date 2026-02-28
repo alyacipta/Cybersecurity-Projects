@@ -1,6 +1,20 @@
 """
 AngelaMos | 2026
 tasking.py
+
+Per-beacon asyncio task queues backed by SQLite persistence
+
+TaskManager maintains an asyncio.Queue per beacon for pending tasks.
+submit writes to SQLite and enqueues; get_next blocks until a task is
+available; store_result persists the result and marks the task
+completed; get_history returns tasks joined with their results.
+
+Connects to:
+  core/models.py - uses TaskRecord, TaskResult
+  beacon/router.py - calls get_next, store_result, remove_queue
+  ops/router.py - calls submit, get_history
+  __main__.py - creates singleton on startup
+  tests/test_tasking.py - tests all task lifecycle methods
 """
 
 import asyncio

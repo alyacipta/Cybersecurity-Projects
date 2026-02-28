@@ -1,6 +1,22 @@
 """
 ⒸAngelaMos | 2025
 types.py
+
+Core type definitions for the rate limiting library
+
+Every enum, dataclass, and Protocol in the library lives here.
+This is the foundation layer with zero internal dependencies,
+so every other module can import from it without circular issues.
+Defines the three algorithm choices, fingerprint levels, defense
+modes, and the storage/algorithm/fingerprinter Protocols that
+backends must satisfy.
+
+Key exports:
+  Algorithm, FingerprintLevel, DefenseMode - behavior enums
+  RateLimitResult - frozen result from a limit check
+  RateLimitRule - frozen rule with parse() for "100/minute" strings
+  FingerprintData - extracted client identity fields
+  StorageBackend, Fingerprinter, RateLimitAlgorithm - Protocols
 """
 # pylint: disable=unnecessary-ellipsis
 

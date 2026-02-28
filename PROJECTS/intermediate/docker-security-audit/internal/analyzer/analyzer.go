@@ -1,6 +1,25 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 analyzer.go
+
+Analyzer interface and CIS category constants shared by all analyzer
+implementations
+
+Analyzer is the common interface implemented by ContainerAnalyzer,
+DaemonAnalyzer, ImageAnalyzer, DockerfileAnalyzer, and ComposeAnalyzer.
+The Category constants align with CIS Docker Benchmark sections and
+appear on every finding produced in this package.
+
+Key exports:
+  Analyzer - interface with Name() and Analyze(ctx) (finding.Collection,
+error)
+  Result - findings and error from a single analyzer run
+  Category - string type for CIS-aligned finding categories
+
+Connects to:
+  scanner.go - builds and runs a []Analyzer
+  container.go, daemon.go, image.go, dockerfile.go, compose.go - implement
+Analyzer
 */
 
 package analyzer

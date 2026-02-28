@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // useLogs.ts
+//
+// React Query hooks for the logs API: list, detail, full-text search, and pivot
+//
+// useLogs returns a paginated, filterable event list polled on the frequent
+// strategy. useLogSearch queries the full-text search endpoint and is only
+// enabled when a query string is present. useLogPivot fetches all events
+// matching a given IP, username, or hostname for alert investigation.
+//
+// Key exports:
+//   useLogs - paginated log list with source/severity filtering
+//   useLogDetail - single event by ID
+//   useLogSearch - full-text search across log events
+//   useLogPivot - cross-field pivot for forensic investigation
+//
+// Connects to:
+//   api.ts, config.ts - HTTP client and endpoint/key constants
+//   log.types.ts - LogEvent, LogQueryParams, LogSearchParams, PivotParams
 // ===================
 
 import type { UseQueryResult } from '@tanstack/react-query'

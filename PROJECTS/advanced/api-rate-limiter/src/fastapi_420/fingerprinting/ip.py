@@ -1,6 +1,20 @@
 """
 ⒸAngelaMos | 2025
 ip.py
+
+Client IP extraction and normalization from HTTP requests
+
+Handles the tricky parts of identifying clients by IP. IPv6
+addresses get normalized to /64 prefixes because end users
+typically control an entire /64 block and can rotate within it.
+IPv4-mapped IPv6 addresses get unwrapped to plain IPv4.
+For proxied requests, parses X-Forwarded-For using the
+rightmost-trusted approach (trusting the entry closest to
+your infrastructure, not the client-supplied leftmost one).
+
+Key exports:
+  IPExtractor - extracts and normalizes client IPs with
+    extract(), is_ipv6(), and is_private()
 """
 
 from __future__ import annotations

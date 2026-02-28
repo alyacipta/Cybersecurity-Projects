@@ -1,6 +1,8 @@
 // ===========================
 // © AngelaMos | 2026
 // main.tsx
+//
+// React entry point that mounts App into the DOM root
 // ===========================
 
 import { StrictMode } from 'react'

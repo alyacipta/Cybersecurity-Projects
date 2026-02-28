@@ -1,6 +1,23 @@
 // ===================
 // ©AngelaMos | 2026
 // alert.types.ts
+//
+// Zod schemas and types for alert list, detail, and SSE stream responses
+//
+// Exports the main alertSchema for paginated list data, alertDetailSchema
+// that includes matched log events, and the lighter streamAlertEventSchema
+// used by the SSE feed. Each schema has a companion type alias and runtime
+// type guard.
+//
+// Key exports:
+//   alertSchema, Alert - full alert document type
+//   alertDetailSchema, AlertDetail - alert plus matched log events
+//   streamAlertEventSchema, StreamAlertEvent - compact SSE payload type
+//   AlertStatusUpdateRequest - mutation payload for status changes
+//
+// Connects to:
+//   log.types.ts - imports logEventSchema for alertDetailSchema
+//   useAlerts.ts, useEventStream.ts - consume these types
 // ===================
 
 import { z } from 'zod'

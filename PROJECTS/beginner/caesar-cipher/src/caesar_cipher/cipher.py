@@ -1,6 +1,18 @@
 """
-ⒸAngelaMos | 2026
+©AngelaMos | 2026
 cipher.py
+
+Caesar cipher with encrypt, decrypt, and brute-force crack methods
+
+Provides the CaesarCipher class that performs letter shifting for a given
+key while preserving case, spaces, and punctuation. The static crack()
+method generates all 26 possible decryptions without needing the key,
+leaving ranking to the analyzer layer.
+
+Connects to:
+  constants.py - imports UPPERCASE_LETTERS, LOWERCASE_LETTERS, ALPHABET_SIZE
+  main.py - all three CLI commands instantiate CaesarCipher
+  analyzer.py - crack() output is passed to FrequencyAnalyzer for ranking
 """
 
 from caesar_cipher.constants import (

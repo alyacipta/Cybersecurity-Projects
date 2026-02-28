@@ -1,6 +1,19 @@
 """
 ©AngelaMos | 2026
 admin.py
+
+Route handlers for the admin user management API (/v1/admin)
+
+All endpoints require the admin role, enforced by the endpoint()
+decorator. Mounts GET /users, GET /users/<id>, PATCH /users/<id>/role,
+POST /users/<id>/deactivate, POST /users/<id>/activate, and
+DELETE /users/<id>.
+
+Connects to:
+  controllers/admin_ctrl.py - business logic
+  schemas/admin.py - AdminUpdateRoleRequest, AdminUserListParams
+  models/User.py - imports UserRole for the ADMIN role constant
+  routes/__init__.py - admin_bp registered here
 """
 
 from typing import Any

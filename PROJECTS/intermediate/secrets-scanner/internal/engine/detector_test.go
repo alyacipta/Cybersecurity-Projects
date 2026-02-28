@@ -1,5 +1,20 @@
-// ©AngelaMos | 2026
-// detector_test.go
+/*
+©AngelaMos | 2026
+detector_test.go
+
+Tests for engine/detector.go
+
+Tests:
+  AWS key, Stripe key, and password detection with entropy threshold
+  Low-entropy secrets filtered by rule entropy gate
+  Keyword pre-filter prevents unnecessary regex work
+  Placeholder values suppressed by the filter chain
+  Multi-finding chunks and line number attribution
+  Allowed path (go.sum etc.) skips detection entirely
+  High-entropy fallback detector fires when no rule matches
+  High-entropy detector does not duplicate rule-matched findings
+  extractSecret helper for secret group extraction
+*/
 
 package engine
 

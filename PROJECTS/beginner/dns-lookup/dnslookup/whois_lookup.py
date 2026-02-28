@@ -3,6 +3,21 @@
 whois_lookup.py
 
 WHOIS domain information lookup and display
+
+Wraps the python-whois library to query domain registration data and
+normalize results into the WhoisResult dataclass. Handles the inconsistent
+responses that whois returns across registrars (single values vs lists,
+missing fields). Also provides Rich table rendering and JSON serialization
+for the whois CLI command.
+
+Key exports:
+  WhoisResult - Dataclass with registrar, dates, name servers, DNSSEC, and error fields
+  lookup_whois() - Queries WHOIS and returns a normalized WhoisResult
+  print_whois_result() - Renders WhoisResult as a two-column Rich table
+  whois_to_json() - Serializes WhoisResult to a JSON string with ISO date formatting
+
+Connects to:
+  cli.py - lookup_whois(), print_whois_result(), whois_to_json() called in the whois command
 """
 
 from __future__ import annotations

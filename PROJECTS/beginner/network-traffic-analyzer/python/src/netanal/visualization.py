@@ -3,6 +3,24 @@
 visualization.py
 
 Matplotlib chart generation for network traffic analysis
+
+Generates PNG charts from CaptureStatistics. The Agg backend is forced
+at import time so charts work without a display. Protocol colors come
+from ProtocolColors.HEX to stay consistent with Rich console colors.
+All chart functions return a Figure so the caller controls save timing.
+
+Key exports:
+  create_protocol_pie_chart() - Pie chart of packet count by protocol
+  create_protocol_bar_chart() - Bar chart of packet count by protocol, sorted descending
+  create_top_talkers_chart() - Horizontal bar chart of sent vs received bytes per IP
+  create_bandwidth_chart() - Dual-axis line chart of KB/s and packets/s over time
+  save_chart() - Saves a Figure to disk at the specified DPI and closes it
+  generate_all_charts() - Generates all four charts and saves them to an output directory
+
+Connects to:
+  models.py - imports CaptureStatistics, Protocol
+  constants.py - imports ByteUnits, ChartDefaults, ProtocolColors
+  main.py - calls individual chart functions and generate_all_charts() from the chart command
 """
 
 from pathlib import Path

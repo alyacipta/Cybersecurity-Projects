@@ -1,6 +1,20 @@
 """
 ©AngelaMos | 2026
 alert.py
+
+Pydantic schemas for the alerts endpoints
+
+Defines AlertStatusUpdate for status transitions and AlertQueryParams
+for paginated alert listing with optional status and severity filters.
+
+Key exports:
+  AlertStatusUpdate - status transition request
+  AlertQueryParams - listing filters with pagination
+
+Connects to:
+  models/Alert.py - imports AlertStatus for the status field
+  config.py - reads DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+  routes/alerts.py - passed to S()
 """
 
 from pydantic import BaseModel, Field

@@ -1,6 +1,30 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 dockerfile_test.go
+
+Integration tests for DockerfileAnalyzer against all testdata Dockerfile
+fixtures
+
+Each function targets a specific fixture and asserts expected findings
+at correct rule IDs and severities. Covers secret detection, missing
+USER and HEALTHCHECK, :latest tags, ADD vs COPY, and clean best-
+practice Dockerfiles that should produce minimal findings.
+
+Tests:
+  TestDockerfileAnalyzer_BadSecrets - AWS, GitHub, DB, Stripe, OpenAI
+secrets
+  TestDockerfileAnalyzer_BadRootUser - missing USER and HEALTHCHECK
+  TestDockerfileAnalyzer_BadPrivileged - :latest tag and missing USER
+  TestDockerfileAnalyzer_BadAddCommand - ADD vs COPY and ADD with URL
+  TestDockerfileAnalyzer_GoodMinimal - no critical or high findings
+  TestDockerfileAnalyzer_GoodSecurity - best-practice Dockerfile
+near-clean
+  TestDockerfileAnalyzer_AllFiles - table-driven coverage across all
+fixtures
+
+Connects to:
+  analyzer/dockerfile.go - DockerfileAnalyzer under test
+  finding.go - asserts on Severity, RuleID, and Collection methods
 */
 
 package integration_test

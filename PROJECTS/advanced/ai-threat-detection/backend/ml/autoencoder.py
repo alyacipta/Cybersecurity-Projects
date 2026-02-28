@@ -45,20 +45,19 @@ class ThreatAutoencoder(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Dropout(0.2),
             nn.Linear(24, input_dim),
-            nn.Sigmoid(),
         )
 
     def encode(self, x: Tensor) -> Tensor:
         """
         Compress input through the encoder to the 6-dim bottleneck.
         """
-        return self.encoder(x)
+        return self.encoder(x)  # type: ignore[no-any-return]
 
     def decode(self, z: Tensor) -> Tensor:
         """
         Reconstruct input from the bottleneck representation.
         """
-        return self.decoder(z)
+        return self.decoder(z)  # type: ignore[no-any-return]
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -71,4 +70,4 @@ class ThreatAutoencoder(nn.Module):
         Per-sample mean squared error between input and reconstruction.
         """
         reconstructed = self.forward(x)
-        return torch.mean((x - reconstructed) ** 2, dim=1)
+        return torch.mean((x - reconstructed)**2, dim=1)

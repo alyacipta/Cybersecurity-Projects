@@ -1,5 +1,26 @@
-// ©AngelaMos | 2026
-// filter.go
+/*
+©AngelaMos | 2026
+filter.go
+
+False positive filtering for detected secrets
+
+FilterFinding runs each candidate finding through a chain of checks: known
+placeholder patterns, known stopwords, path-based allowlists, rule-level value
+allowlists, and environment variable reference patterns. Each check is also
+exported individually so tests and custom integrations can call them directly.
+
+Key exports:
+  FilterFinding - applies all filters; returns true if the finding is genuine
+  IsPlaceholder - checks for known fake-secret patterns (template vars, nulls, stars)
+  IsTemplated - checks for env-var and config-lookup references
+  IsStopword - checks against the built-in stopword dictionary
+  IsAllowedPath - checks a path against a set of allowlist regexps
+  HasAssignmentOperator - checks whether a line contains an assignment context
+
+Connects to:
+  engine/detector.go - calls FilterFinding after each regex match
+  rules/registry.go - reads GlobalPathAllowlist and GlobalValueAllowlist
+*/
 
 package engine
 

@@ -1,6 +1,17 @@
 """
 ©AngelaMos | 2026
 logs.py
+
+Route handlers for the log events API (/v1/logs)
+
+Mounts GET /, GET /<log_id>, POST /ingest, GET /search, GET /stream
+(SSE), and GET /pivot. The ingest endpoint is unauthenticated to
+support direct log shipping from sources.
+
+Connects to:
+  controllers/log_ctrl.py - business logic
+  schemas/log_event.py - LogIngestRequest, LogQueryParams, LogSearchParams, PivotParams
+  routes/__init__.py - logs_bp registered here
 """
 
 from typing import Any

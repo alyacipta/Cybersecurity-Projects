@@ -1,6 +1,19 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Dashboard route that composes the four main analytics panels
+//
+// Fires all four dashboard queries in parallel and passes data and loading
+// state down to each panel component. The two chart panels sit side-by-side
+// in a row below the full-width timeline.
+//
+// Key components:
+//   Component - lazy-loaded dashboard page; displayName "Dashboard"
+//
+// Connects to:
+//   useDashboard.ts - useDashboardOverview, useTimeline, useSeverityBreakdown, useTopSources
+//   stat-cards.tsx, event-timeline.tsx, severity-chart.tsx, top-sources.tsx - panel components
 // ===================
 
 import {

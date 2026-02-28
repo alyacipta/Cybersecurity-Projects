@@ -1,6 +1,20 @@
 """
 AngelaMos | 2026
 registry.py
+
+Tracks active beacon WebSocket connections with SQLite persistence
+
+BeaconRegistry holds an in-memory dict of live connections keyed by
+beacon ID alongside the SQLite beacons table. register/unregister
+update both stores. is_active and get_connection read from memory;
+get_all and get_one query the database.
+
+Connects to:
+  core/models.py - uses BeaconMeta, BeaconRecord
+  beacon/router.py - registers and unregisters connections
+  ops/router.py - reads beacon list and active status
+  __main__.py - creates singleton on startup
+  tests/test_registry.py - tests all registry methods
 """
 
 from datetime import UTC, datetime

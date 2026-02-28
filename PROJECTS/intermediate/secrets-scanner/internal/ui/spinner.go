@@ -1,5 +1,22 @@
-// ©AngelaMos | 2026
-// spinner.go
+/*
+©AngelaMos | 2026
+spinner.go
+
+Braille-frame terminal spinner with goroutine lifecycle management
+
+Animates a 10-frame Braille spinner at 80ms intervals using a background
+goroutine. Start() and Stop() are safe to call concurrently. The cursor is
+hidden during animation and restored on Stop(). Used to indicate scan progress
+when verbose mode is off.
+
+Key exports:
+  Spinner - spinner with Start() and Stop() methods
+  NewSpinner - creates a Spinner with a display message
+
+Connects to:
+  cli/scan.go - creates and controls spinners for scan and HIBP check phases
+  ui/color.go - uses CyanBold and HiMagenta for frame and message styling
+*/
 
 package ui
 

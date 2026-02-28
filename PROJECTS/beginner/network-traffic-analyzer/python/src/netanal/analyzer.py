@@ -3,6 +3,24 @@
 analyzer.py
 
 Protocol dissection and packet analysis using Scapy layers
+
+Inspects raw Scapy packets and extracts structured data into PacketInfo.
+Protocol identification checks layers in priority order: DNS first (since
+DNS runs over TCP or UDP), then TCP with port-based HTTP/HTTPS detection,
+then UDP, ICMP, and ARP. Packets without an IP or ARP layer return None.
+
+Key exports:
+  identify_protocol() - Returns the highest-level Protocol for a packet
+  extract_packet_info() - Parses a Scapy packet into PacketInfo, or None for non-IP packets
+  extract_dns_info() - Pulls query name or answer records from a DNS packet
+  get_packet_summary() - Returns a one-line human-readable description of a packet
+  analyze_pcap_file() - Reads a pcap file with PcapReader and returns a list of PacketInfo
+
+Connects to:
+  models.py - imports PacketInfo, Protocol
+  constants.py - imports DefaultIPs, Ports
+  capture.py - calls extract_packet_info() in the consumer thread
+  main.py - calls analyze_pcap_file() for analyze, stats, export, and chart commands
 """
 
 from scapy.layers.dns import DNS

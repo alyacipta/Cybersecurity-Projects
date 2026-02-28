@@ -1,5 +1,18 @@
-// ©AngelaMos | 2026
-// integration_test.go
+/*
+©AngelaMos | 2026
+integration_test.go
+
+End-to-end integration tests for the full scan pipeline
+
+Runs a Pipeline with all builtin rules against the testdata/fixtures directory,
+verifying that AWS keys, Stripe keys, SSH private keys, passwords, GitHub
+tokens, and PostgreSQL connection strings are all detected at the correct
+severity from the correct files. Also verifies that safe.txt and template.env
+produce no false positives, that path excludes work, that rule disabling works,
+and that context cancellation propagates cleanly.
+
+Tests: engine, rules, source packages together via engine_test (external package)
+*/
 
 package engine_test
 

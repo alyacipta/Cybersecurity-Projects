@@ -1,5 +1,25 @@
-// ©AngelaMos | 2026
-// entropy.go
+/*
+©AngelaMos | 2026
+entropy.go
+
+Shannon entropy calculation and high-entropy token extraction
+
+ShannonEntropy computes the information density of a string within a given
+character set (Base64, hex, or alphanumeric). DetectCharset classifies a
+string so the right charset can be chosen automatically.
+ExtractHighEntropyTokens splits a line into charset-delimited tokens and
+returns only those meeting a minimum length and entropy threshold.
+
+Key exports:
+  ShannonEntropy - computes entropy for a string filtered to a given charset
+  DetectCharset - classifies a string as hex, base64, or alphanumeric
+  ExtractHighEntropyTokens - returns all tokens above a length and entropy threshold
+  EntropyToken - value + entropy score pair returned by ExtractHighEntropyTokens
+
+Connects to:
+  engine/detector.go - calls all three functions during chunk scanning
+  rules/builtin.go - uses the charset constants in rule entropy thresholds
+*/
 
 package rules
 

@@ -1,6 +1,23 @@
 """
 ©AngelaMos | 2026
 __init__.py
+
+Flask application factory
+
+Creates and configures the Flask app by wiring up MongoDB, Redis,
+CORS, rate limiting, blueprints, CLI commands, consumer groups,
+and the correlation engine daemon. Marks any orphaned scenario
+runs as stopped from a previous process.
+
+Connects to:
+  extensions.py - init_mongo, init_redis
+  core/errors.py - register_error_handlers
+  core/rate_limiting.py - init_limiter
+  routes/__init__.py - register_blueprints
+  cli.py - register_cli
+  core/streaming.py - ensure_consumer_group
+  models/ScenarioRun.py - marks orphaned runs stopped
+  engine/correlation.py - start_engine
 """
 
 from flask import Flask

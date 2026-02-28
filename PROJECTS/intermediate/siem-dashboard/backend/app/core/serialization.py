@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 serialization.py
+
+MongoEngine-to-JSON serialization utilities
+
+Converts MongoEngine documents, querysets, and embedded documents
+to JSON-safe dicts by recursively handling ObjectId, datetime,
+and nested types. auto_serialize is the main dispatch function
+called by the R() decorator to convert any controller return value
+before passing it to jsonify.
+
+Key exports:
+  serialize_document - converts a single MongoEngine document to dict
+  auto_serialize - dispatches serialization based on object type
+
+Connects to:
+  core/decorators/response.py - calls auto_serialize on every response
 """
 
 from typing import Any

@@ -1,6 +1,18 @@
 // ===================
 // ©AngelaMos | 2026
 // common.types.ts
+//
+// Shared enum-like constants, Zod schemas, and types used across all API type modules
+//
+// Defines the core domain value sets (SourceType, Severity, AlertStatus,
+// RuleType, RunStatus) as const objects with companion type aliases. Also
+// exports the generic paginatedResponseSchema factory and PaginatedResponse<T>
+// type used by every paginated API hook.
+//
+// Key exports:
+//   Severity, AlertStatus, RuleType, SourceType, RunStatus - domain value sets
+//   paginatedResponseSchema - generic Zod factory for paginated list responses
+//   PaginatedResponse<T> - TypeScript type for paginated API responses
 // ===================
 
 import { z } from 'zod'

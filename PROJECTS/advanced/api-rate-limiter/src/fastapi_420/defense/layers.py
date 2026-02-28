@@ -1,6 +1,26 @@
 """
 ⒸAngelaMos | 2025
 layers.py
+
+Three-layer defense system for graduated rate limiting
+
+Layer 1 is per-user per-endpoint (individual abuse). Layer 2 is
+per-endpoint global (endpoint-level flood). Layer 3 is the global
+circuit breaker (full API DDoS). Each layer checks independently
+and the first rejection wins. Defense modes control bypass logic:
+adaptive mode lets authenticated users through when limits hit,
+lockdown mode restricts to known-good and authenticated clients
+only.
+
+Key exports:
+  LayerResult - result from a single defense layer check
+  LayeredDefense - orchestrates all three layers via
+    check_all_layers()
+
+Connects to:
+  circuit_breaker.py - uses CircuitBreaker for layer 3
+  exceptions.py - raises EnhanceYourCalm on rejection
+  types.py - imports DefenseContext, DefenseMode, Layer, others
 """
 
 from __future__ import annotations

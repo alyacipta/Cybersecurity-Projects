@@ -1,6 +1,17 @@
 """
 ⒸAngelaMos | 2025
 sliding_window.py
+
+Sliding window counter rate limiting algorithm
+
+The recommended default for production. Uses weighted interpolation
+between two adjacent fixed windows to approximate a true sliding
+window with ~99.997% accuracy. Gets O(1) memory per client (just
+two counters) compared to O(n) for a sorted-set sliding log.
+Eliminates the boundary burst problem that fixed windows have.
+
+Connects to:
+  base.py - extends BaseAlgorithm
 """
 
 from __future__ import annotations

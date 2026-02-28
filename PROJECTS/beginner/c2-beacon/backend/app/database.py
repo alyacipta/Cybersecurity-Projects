@@ -1,6 +1,21 @@
 """
 AngelaMos | 2026
 database.py
+
+SQLite schema definition and async connection management
+
+Holds the three-table schema (beacons, tasks, task_results) as a SQL
+string and exposes init_db for first-run setup and get_db as an async
+context manager. WAL mode and foreign keys are enabled on every
+connection.
+
+Connects to:
+  config.py - reads DATABASE_PATH via settings
+  beacon/router.py - calls get_db()
+  ops/router.py - calls get_db()
+  __main__.py - calls init_db()
+  tests/test_registry.py - imports SCHEMA
+  tests/test_tasking.py - imports SCHEMA
 """
 
 from collections.abc import AsyncIterator

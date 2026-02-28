@@ -1,6 +1,20 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 json.go
+
+JSON reporter that emits a structured scan result document
+
+Builds a top-level document with schema version, timestamp, severity
+summary, and a full finding list. CISControl, Location, and References
+are included when present. Output is indented JSON written via
+json.Encoder with HTML escaping disabled.
+
+Key exports:
+  JSONReporter - implements Reporter for JSON output
+
+Connects to:
+  reporter.go - implements Reporter interface, returned by NewReporter
+  finding.go - converts Finding and Collection to JSON structures
 */
 
 package report

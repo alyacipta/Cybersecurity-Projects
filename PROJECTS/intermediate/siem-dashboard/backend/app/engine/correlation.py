@@ -1,6 +1,28 @@
 """
 ©AngelaMos | 2026
 correlation.py
+
+Rule evaluation logic and correlation engine daemon
+
+Implements three rule evaluators (threshold, sequence, aggregation)
+and a thread-safe sliding window state store. CorrelationEngine runs
+as a daemon thread, consuming log events from the Redis Stream via
+consumer group, evaluating all enabled rules, and calling
+Alert.create_from_rule when a rule fires.
+
+Key exports:
+  CorrelationEngine - daemon thread that runs the correlation loop
+  CorrelationState - in-memory sliding window and cooldown tracker
+  evaluate_rule - evaluates one rule against one event, returns result or None
+  start_engine, stop_engine - singleton lifecycle functions
+
+Connects to:
+  config.py - reads CORRELATION_* and STREAM settings
+  core/streaming.py - calls read_stream, ensure_consumer_group, ack_message
+  models/Alert.py - calls Alert.create_from_rule on rule fire
+  models/CorrelationRule.py - calls get_enabled_rules, uses RuleType
+  controllers/rule_ctrl.py - imports CorrelationState, evaluate_rule for testing
+  __init__.py - calls start_engine
 """
 
 import time

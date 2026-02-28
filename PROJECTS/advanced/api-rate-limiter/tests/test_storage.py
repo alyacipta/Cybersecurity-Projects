@@ -1,6 +1,17 @@
 """
 ⒸAngelaMos | 2025
 test_storage.py
+
+Tests for MemoryStorage and the create_storage() factory
+
+Tests:
+  Basic lifecycle (init, close, health check)
+  Sliding window increment and state retrieval
+  Token bucket consume, refill, and state
+  LRU eviction when max keys is reached
+  Background cleanup of expired entries
+  create_storage() factory function
+  Concurrent access safety under asyncio
 """
 from __future__ import annotations
 

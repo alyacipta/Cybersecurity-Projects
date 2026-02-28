@@ -1,6 +1,15 @@
 """
 ⒸAngelaMos | 2025
 test_algorithms.py
+
+Tests for rate limiting algorithms and the factory function
+
+Tests:
+  create_algorithm() factory mapping
+  SlidingWindowAlgorithm - first request, limit enforcement, keys
+  TokenBucketAlgorithm - bursting, refill, capacity
+  FixedWindowAlgorithm - counting, boundary behavior
+  Cross-algorithm behavioral comparison
 """
 from __future__ import annotations
 

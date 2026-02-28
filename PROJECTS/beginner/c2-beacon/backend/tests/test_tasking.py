@@ -1,6 +1,15 @@
 """
 AngelaMos | 2026
 test_tasking.py
+
+Unit tests for TaskManager queue behavior and SQLite persistence
+
+Verifies task submission, FIFO ordering, blocking get_next behavior,
+result storage and status transitions, task history queries, and queue
+cleanup on beacon disconnect.
+
+Tests:
+  beacon/tasking.py - TaskManager
 """
 
 import asyncio

@@ -40,7 +40,7 @@ class StatsResponse(BaseModel):
     """
 
     time_range: str
-    total_requests: int
+    threats_stored: int
     threats_detected: int
     severity_breakdown: SeverityBreakdown
     top_source_ips: list[IPStatEntry]

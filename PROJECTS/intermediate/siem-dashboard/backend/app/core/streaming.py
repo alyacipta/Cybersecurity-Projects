@@ -1,6 +1,29 @@
 """
 ©AngelaMos | 2026
 streaming.py
+
+Redis Streams utilities for event publishing and SSE delivery
+
+Provides publish_event (XADD), ensure_consumer_group (XGROUP CREATE),
+read_stream (XREADGROUP), ack_message (XACK), and sse_generator
+(XREAD tail as SSE). The correlation engine uses the consumer group
+functions; the SSE endpoints use sse_generator to push real-time
+updates to the browser.
+
+Key exports:
+  publish_event - write an event dict to a Redis Stream
+  ensure_consumer_group - create a consumer group if absent
+  read_stream - pull pending messages from a consumer group
+  ack_message - acknowledge a processed message
+  sse_generator - generator yielding SSE-formatted events by tailing a stream
+
+Connects to:
+  extensions.py - calls get_redis
+  config.py - reads STREAM_*, SSE_*, CONSUMER_* settings
+  models/Alert.py - calls publish_event on alert creation
+  engine/correlation.py - calls read_stream, ensure_consumer_group, ack_message
+  scenarios/runner.py - calls publish_event after each event
+  controllers/alert_ctrl.py, controllers/log_ctrl.py - calls sse_generator
 """
 
 import contextlib

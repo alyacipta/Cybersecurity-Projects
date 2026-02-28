@@ -1,6 +1,15 @@
 """
 AngelaMos | 2026
 test_protocol.py
+
+Unit tests for protocol message pack/unpack roundtrips and validation
+
+Verifies that all five MessageType values survive pack -> unpack, and
+that unpack raises ValueError for invalid base64, malformed JSON,
+missing fields, and unknown message types.
+
+Tests:
+  core/protocol.py - pack, unpack, Message, MessageType
 """
 
 import pytest

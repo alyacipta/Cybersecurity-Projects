@@ -1,6 +1,23 @@
 """
 ⒸAngelaMos | 2025
 config.py
+
+Pydantic-settings configuration with RATELIMIT_ env prefix
+
+All rate limiter settings are validated here and loaded from
+environment variables. The top-level RateLimiterSettings nests
+three sub-configs (storage, fingerprint, defense) and includes
+model validators that resolve shorthand like algorithm names
+and rule strings into their typed equivalents.
+
+Key exports:
+  StorageSettings - Redis URL, max keys, backend selection
+  FingerprintSettings - extractor toggles and fingerprint level
+  RateLimiterSettings - main config that composes all sub-configs
+  get_settings() - cached singleton factory
+
+Connects to:
+  types.py - imports Algorithm, DefenseMode, FingerprintLevel, RateLimitRule
 """
 
 from __future__ import annotations

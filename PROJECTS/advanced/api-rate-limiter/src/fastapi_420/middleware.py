@@ -1,6 +1,23 @@
 """
 ⒸAngelaMos | 2025
 middleware.py
+
+ASGI middleware for automatic rate limiting across all routes
+
+Two middleware classes for different throttling strategies.
+RateLimitMiddleware applies hard limits and returns HTTP 420
+when exceeded, with support for path inclusion/exclusion lists
+and path-specific limit overrides. SlowDownMiddleware takes a
+softer approach, adding progressive delays to responses as
+clients approach their limit instead of blocking them outright.
+
+Key exports:
+  RateLimitMiddleware - hard blocking with HTTP 420 responses
+  SlowDownMiddleware - gradual throttling via response delays
+
+Connects to:
+  exceptions.py - uses HTTP_420_ENHANCE_YOUR_CALM, EnhanceYourCalm
+  limiter.py - imports RateLimiter
 """
 
 from __future__ import annotations

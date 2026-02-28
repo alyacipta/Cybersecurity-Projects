@@ -1,6 +1,15 @@
 """
 AngelaMos | 2026
 test_encoding.py
+
+Unit tests for the XOR cipher and Base64 encoding pipeline
+
+Verifies xor_bytes correctness and idempotency, encode/decode
+roundtrips for ASCII and Unicode payloads, and that mismatched keys
+produce different ciphertext.
+
+Tests:
+  core/encoding.py - xor_bytes, encode, decode
 """
 
 

@@ -1,6 +1,22 @@
 """
 ©AngelaMos | 2026
 auth.py
+
+Pydantic schemas for authentication endpoints
+
+Defines request and response models for registration, login, and
+self-service profile updates. USERNAME_MIN and USERNAME_MAX are
+imported from the User model so validation constraints stay in
+sync with the database layer.
+
+Key exports:
+  RegisterRequest, LoginRequest, UpdateProfileRequest - request schemas
+  TokenResponse, UserResponse, UpdateProfileResponse - response schemas
+
+Connects to:
+  models/User.py - imports USERNAME_MIN, USERNAME_MAX
+  controllers/auth_ctrl.py, controllers/admin_ctrl.py - instantiates response schemas
+  routes/auth.py - passed to S()
 """
 
 from pydantic import BaseModel, EmailStr, Field

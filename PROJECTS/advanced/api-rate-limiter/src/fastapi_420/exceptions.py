@@ -1,6 +1,26 @@
 """
 ⒸAngelaMos | 2025
 exceptions.py
+
+Exception hierarchy for rate limiting failures
+
+The signature exception is EnhanceYourCalm, which returns HTTP 420
+("Enhance Your Calm", from the Twitter API) when a client exceeds
+their limit. Below that, domain-specific errors cover storage
+failures, fingerprint extraction problems, circuit breaker trips,
+and configuration mistakes. Each carries context about which layer
+or storage backend triggered it.
+
+Key exports:
+  HTTP_420_ENHANCE_YOUR_CALM - status code constant (420)
+  EnhanceYourCalm - the HTTP 420 response exception
+  RateLimitExceeded - internal limit exceeded (pre-HTTP)
+  StorageError, StorageConnectionError - backend failures
+  CircuitBreakerOpen - global circuit breaker tripped
+  ConfigurationError, InvalidRuleError - bad config/rules
+
+Connects to:
+  types.py - imports Layer, StorageType for error context
 """
 
 from __future__ import annotations

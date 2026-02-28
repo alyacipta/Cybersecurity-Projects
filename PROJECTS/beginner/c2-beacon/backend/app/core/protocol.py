@@ -1,6 +1,24 @@
 """
 AngelaMos | 2026
 protocol.py
+
+Protocol envelope types and pack/unpack for all WebSocket messages
+
+Defines the shared message format for beacon/server communication.
+MessageType enumerates the five protocol states. pack serializes a
+Message to an encoded string; unpack decodes and validates the result,
+raising ValueError on any malformed input.
+
+Key exports:
+  MessageType - REGISTER, HEARTBEAT, TASK, RESULT, ERROR
+  Message - protocol envelope model
+  pack - serialize and encode a Message to a wire string
+  unpack - decode and validate a raw wire string into a Message
+
+Connects to:
+  encoding.py - calls encode and decode
+  beacon/router.py - calls pack, unpack
+  tests/test_protocol.py - tests pack/unpack roundtrips
 """
 
 import binascii

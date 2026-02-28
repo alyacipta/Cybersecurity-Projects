@@ -1,6 +1,27 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 capabilities.go
+
+Linux capability definitions with severity ratings and fast lookup
+functions
+
+Capabilities maps all 41 Linux capabilities (CAP_CHOWN through
+CAP_CHECKPOINT_RESTORE) to severity ratings and descriptions. Pre-
+computed sets (dangerousCapabilities, criticalCapabilities) enable
+O(1) lookups during scanning without iterating the full map.
+
+Key exports:
+  Capabilities - map of capability name to severity and description
+  IsDangerousCapability - true if severity >= HIGH
+  IsCriticalCapability - true if severity == CRITICAL
+  GetCapabilityInfo, GetCapabilitySeverity - lookup by name
+
+Connects to:
+  finding.go - uses Severity constants
+  analyzer/container.go - classifies cap_add entries from container
+inspect
+  analyzer/compose.go - classifies cap_add entries from compose services
+  proc/capabilities.go - uses IsDangerousCapability, IsCriticalCapability
 */
 
 package rules

@@ -1,6 +1,23 @@
 """
 ©AngelaMos | 2026
 log_ctrl.py
+
+Business logic for log event operations
+
+Handles paginated listing, single event lookup, log ingestion
+(normalize, classify, persist, publish), full-text search, the SSE
+log stream, and forensic pivot queries by IP, username, or hostname.
+
+Key exports:
+  list_logs, get_log, ingest_log, search_logs, stream_logs, pivot
+
+Connects to:
+  models/LogEvent.py - queries and event creation
+  engine/normalizer.py - calls normalize
+  engine/severity.py - calls classify
+  core/streaming.py - calls publish_event, sse_generator
+  config.py - reads LOG_STREAM_KEY
+  routes/logs.py - called from route handlers
 """
 
 from typing import Any

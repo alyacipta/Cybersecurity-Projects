@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 severity.py
+
+Severity classification for normalized log events
+
+Classifies events by first checking a fixed set of high-signal event
+types, then pattern-matching against pre-compiled regexes across four
+tiers (critical, high, medium, low). Called immediately after
+normalization for every ingested and scenario-generated event.
+
+Key exports:
+  classify - returns a Severity string for a normalized event dict
+
+Connects to:
+  models/LogEvent.py - imports Severity for return values
+  controllers/log_ctrl.py - calls classify before persisting
+  scenarios/runner.py - calls classify for each playbook event
 """
 
 import re

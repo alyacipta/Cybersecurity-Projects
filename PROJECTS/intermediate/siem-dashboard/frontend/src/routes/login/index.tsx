@@ -1,6 +1,21 @@
 // ===================
 // ©AngelaMos | 2026
 // index.tsx
+//
+// Login page with client-side Zod validation and JWT storage on success
+//
+// The form validates credentials against loginRequestSchema before sending.
+// On success, useLogin fetches the user profile and stores the token via
+// the auth store, then redirects to the dashboard. Password visibility
+// can be toggled via the eye icon button.
+//
+// Key components:
+//   Component - lazy-loaded login page; displayName "Login"
+//
+// Connects to:
+//   useAuth.ts - useLogin mutation
+//   auth.types.ts - loginRequestSchema for client-side validation
+//   config.ts - ROUTES for navigation targets
 // ===================
 
 import { useState } from 'react'

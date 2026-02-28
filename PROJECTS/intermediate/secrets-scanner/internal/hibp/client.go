@@ -1,5 +1,24 @@
-// ©AngelaMos | 2026
-// client.go
+/*
+©AngelaMos | 2026
+client.go
+
+Have I Been Pwned API client with caching, circuit breaker, and rate limiting
+
+Checks whether a secret appears in known data breaches using the HIBP
+k-anonymity range API. Only the SHA-1 hash prefix is sent; the suffix is
+compared locally. Results are cached in a 10k-entry LRU. A circuit breaker
+trips after 5 consecutive failures. A token-bucket rate limiter enforces one
+request per 200ms with burst 5. 429 responses trigger up to 3 retries with
+exponential backoff.
+
+Key exports:
+  Client - HTTP client wiring together cache, circuit breaker, and rate limiter
+  NewClient - creates a Client with all defaults configured
+  Result - breach outcome (Breached bool, Count int)
+
+Connects to:
+  cli/scan.go - creates a Client and calls Check() on generic password/secret findings
+*/
 
 package hibp
 

@@ -1,5 +1,23 @@
-// ©AngelaMos | 2026
-// directory.go
+/*
+©AngelaMos | 2026
+directory.go
+
+Filesystem directory scanner that streams 50-line chunks
+
+Walks a directory tree, skipping known noise directories (.git, node_modules,
+vendor, .venv, etc.) and binary file extensions. Text files are read in 50-line
+chunks and sent on an output channel for concurrent processing. Files larger
+than MaxSize are skipped entirely.
+
+Key exports:
+  Directory - scanner with Path, MaxSize, and Excludes fields
+  NewDirectory - constructs a Directory with defaults applied
+
+Connects to:
+  source/source.go - implements the Source interface
+  engine/pipeline.go - receives Chunk values from Directory.Chunks()
+  cli/scan.go - creates a Directory and passes it to the pipeline
+*/
 
 package source
 

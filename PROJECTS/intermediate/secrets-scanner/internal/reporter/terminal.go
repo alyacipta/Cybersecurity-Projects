@@ -1,5 +1,21 @@
-// ©AngelaMos | 2026
-// terminal.go
+/*
+©AngelaMos | 2026
+terminal.go
+
+Colored terminal output reporter
+
+Renders findings sorted by severity with color-coded severity labels, file
+paths with line numbers, masked secrets, entropy scores, truncated commit
+SHAs, and HIBP breach status. Prints a summary footer with file, rule, and
+finding counts. Uses errWriter to accumulate errors across multiple Fprintf
+calls without interrupting output mid-render.
+
+Connects to:
+  reporter/reporter.go - returned by New("terminal")
+  ui/color.go - uses color functions for styled output
+  ui/symbol.go - uses Arrow, Diamond, Warning, Check, Shield constants
+  pkg/types/types.go - reads ScanResult and Finding fields
+*/
 
 package reporter
 

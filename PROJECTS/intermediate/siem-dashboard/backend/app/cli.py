@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 cli.py
+
+Flask CLI commands for admin account management
+
+Provides the admin CLI group with a create command that either
+creates a new admin user or promotes an existing user by username
+or email. Registered on the Flask app during startup via register_cli.
+
+Key exports:
+  admin_cli - Click command group
+  register_cli - attaches admin_cli to the Flask app
+
+Connects to:
+  __init__.py - calls register_cli
+  core/auth.py - calls hash_password
+  models/User.py - calls find_by_username, create_user, set_role
 """
 
 import click

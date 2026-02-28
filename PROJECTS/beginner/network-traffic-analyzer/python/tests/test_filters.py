@@ -3,6 +3,21 @@
 test_filters.py
 
 Basic happy path tests for BPF filter builder
+
+Covers FilterBuilder method chaining, logical operator selection, and
+input validation. Tests confirm that invalid ports, IPs, and network
+strings raise ValidationError, while valid boundary values and IPv6
+addresses are accepted.
+
+Tests:
+  TestFilterBuilder - filter construction for protocols, ports, hosts, networks, and chaining
+  TestCombineFilters - combine_filters with empty, single, and multiple inputs
+  TestFilterValidation - ValidationError for bad ports, IPs, and CIDRs; valid boundaries pass
+
+Connects to:
+  models.py - imports Protocol
+  filters.py - imports FilterBuilder, combine_filters under test
+  exceptions.py - imports ValidationError for assertion
 """
 
 import pytest

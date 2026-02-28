@@ -1,6 +1,18 @@
 """
 ©AngelaMos | 2026
 auth.py
+
+Route handlers for the authentication API (/v1/auth)
+
+Mounts POST /register, POST /login, PATCH /me, and GET /me.
+Registration and login apply a stricter rate limit via Flask-Limiter
+on top of the global default.
+
+Connects to:
+  controllers/auth_ctrl.py - business logic
+  schemas/auth.py - RegisterRequest, LoginRequest, UpdateProfileRequest
+  core/rate_limiting.py - imports limiter for per-endpoint auth limits
+  routes/__init__.py - auth_bp registered here
 """
 
 from typing import Any

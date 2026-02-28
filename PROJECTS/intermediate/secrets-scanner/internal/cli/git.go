@@ -1,5 +1,21 @@
-// ©AngelaMos | 2026
-// git.go
+/*
+©AngelaMos | 2026
+git.go
+
+"git" subcommand for scanning git repository history
+
+Implements "portia git [repo-path]" which scans commit history (or only staged
+changes with --staged) for leaked secrets. Accepts --branch, --since, --depth,
+and --staged flags, merging them with values from the loaded config. Delegates
+to executeScan in scan.go once the Git source is constructed.
+
+Connects to:
+  cli/root.go - registered as gitCmd via rootCmd.AddCommand
+  cli/scan.go - calls executeScan() and applyRuleConfig()
+  source/git.go - constructs NewGit() source
+  rules/registry.go - calls NewRegistry() and RegisterBuiltins()
+  ui/banner.go - calls PrintBanner() at scan start
+*/
 
 package cli
 

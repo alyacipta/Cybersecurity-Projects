@@ -1,6 +1,28 @@
 """
 ©AngelaMos | 2026
 cli.py
+
+Typer CLI application with five encoding subcommands
+
+Defines the b64tool Typer app and its five commands: encode, decode,
+detect, peel, and chain. Each command resolves its input from a
+positional argument, --file, or stdin, delegates to the appropriate
+logic module, then passes results to formatter.py for display. The
+chain command applies a comma-separated sequence of formats in order,
+passing each encoded output as the next step's input.
+
+Key exports:
+  app - The Typer application instance registered as the CLI entry point
+
+Connects to:
+  __init__.py - imports __version__
+  constants.py - imports EncodingFormat, ExitCode, PEEL_MAX_DEPTH
+  encoders.py - imports encode, decode, encode_url, decode_url
+  detector.py - imports detect_encoding, score_all_formats
+  peeler.py - imports peel
+  formatter.py - imports all print_* functions
+  utils.py - imports resolve_input_bytes, resolve_input_text
+  test_cli.py - exercises all commands via Typer's CliRunner
 """
 
 from pathlib import Path

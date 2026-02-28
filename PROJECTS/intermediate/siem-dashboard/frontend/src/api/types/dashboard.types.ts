@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // dashboard.types.ts
+//
+// Zod schemas and types for all dashboard API responses
+//
+// Covers the overview stats block, timeline buckets, and top source IP
+// entries. Each schema has a companion type alias, runtime type guard,
+// and where applicable a request param interface for the hook layer.
+//
+// Key exports:
+//   dashboardOverviewSchema, DashboardOverview - combined stats block
+//   timelineBucketSchema, TimelineBucket - per-bucket event count
+//   topSourceSchema, TopSource - source IP with event count
+//   TimelineParams, TopSourcesParams - query param interfaces
+//
+// Connects to:
+//   useDashboard.ts - consumes all these types
+//   event-timeline.tsx, severity-chart.tsx, stat-cards.tsx, top-sources.tsx - render data
 // ===================
 
 import { z } from 'zod'

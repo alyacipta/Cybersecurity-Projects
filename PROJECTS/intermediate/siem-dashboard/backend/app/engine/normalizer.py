@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 normalizer.py
+
+Log event normalization by source type
+
+Provides a registry of per-source-type normalizers (firewall, IDS,
+auth, endpoint, DNS, proxy, generic) registered via a decorator.
+normalize extracts common fields then merges source-specific fields
+into a normalized dict before the event is persisted.
+
+Key exports:
+  normalize - dispatches to the correct normalizer and returns enriched data
+
+Connects to:
+  models/LogEvent.py - imports SourceType for the registry
+  controllers/log_ctrl.py - calls normalize before persisting an event
+  scenarios/runner.py - calls normalize for each playbook event
 """
 
 from datetime import datetime, UTC

@@ -1,6 +1,21 @@
 """
-ⒸAngelaMos | 2026
+©AngelaMos | 2026
 main.py
+
+CLI entry point with encrypt, decrypt, and crack commands via Typer
+
+Wires together input reading, cipher operations, and formatted Rich output
+for three commands. The encrypt and decrypt commands require a key; crack
+tries all 26 shifts and displays the ranked results as a table with the
+best match highlighted.
+
+Key exports:
+  app - Typer application, registered as the caesar-cipher CLI entry point
+
+Connects to:
+  cipher.py - instantiates CaesarCipher for all three commands
+  analyzer.py - crack command uses FrequencyAnalyzer to rank candidates
+  utils.py - imports read_input, validate_key, write_output
 """
 
 from pathlib import Path

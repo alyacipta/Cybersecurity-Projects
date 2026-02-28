@@ -1,6 +1,32 @@
 /*
 CarterPerez-dev | 2026
 capabilities.go
+
+CapabilitySet type for parsing and inspecting Linux process capability
+bitmasks
+
+Wraps the five Linux capability bitmasks (effective, permitted,
+inheritable, bounding, ambient) with methods for testing individual
+capabilities, listing active sets, and diffing against Docker's
+default 14-capability set to find additions or drops.
+
+Key exports:
+  CapabilitySet - holds all five capability bitmasks with bit-level
+methods
+  HasCapability, HasDangerousCapabilities, HasCriticalCapabilities -
+checks
+  GetAddedCapabilities, GetDroppedDefaultCapabilities,
+HasOnlyDefaultCapabilities
+  ParseCapabilityMask, AllCapabilityNames - parsing and enumeration
+utilities
+
+Connects to:
+  rules/capabilities.go - IsDangerousCapability, IsCriticalCapability,
+GetCapabilitySeverity
+  finding.go - uses Severity for GetCapabilitiesBySeverity threshold
+checks
+  proc.go - CapabilitySet embedded in ProcessInfo.Capabilities
+  security.go - CapabilitySet embedded in SecurityProfile.Capabilities
 */
 
 package proc

@@ -1,6 +1,27 @@
 """
 ⒸAngelaMos | 2025
 limiter.py
+
+Main RateLimiter class that orchestrates the library
+
+This is the central entry point. RateLimiter wires together the
+storage backend, algorithm, and fingerprinter on init(), then
+exposes two ways to enforce limits: a limit() decorator for
+routes and a check() method for manual use. Handles fail-open
+logic so a storage outage degrades to allowing requests rather
+than crashing the API. Builds composite rate limit keys from
+the client fingerprint, endpoint path, and layer.
+
+Key exports:
+  RateLimiter - main class with init(), close(), limit(),
+    check(), and settings/is_initialized properties
+
+Connects to:
+  config.py - reads RateLimiterSettings via get_settings()
+  exceptions.py - raises EnhanceYourCalm, catches StorageError
+  algorithms/__init__.py - calls create_algorithm()
+  fingerprinting/__init__.py - uses CompositeFingerprinter
+  storage/__init__.py - calls create_storage(), uses MemoryStorage
 """
 
 from __future__ import annotations

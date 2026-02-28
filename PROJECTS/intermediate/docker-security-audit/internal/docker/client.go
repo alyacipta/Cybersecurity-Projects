@@ -1,6 +1,26 @@
 /*
 © AngelaMos | 2026
 client.go
+
+Docker API client wrapper with singleton initialization and per-call
+timeouts
+
+Wraps the official Docker SDK client using sync.Once so all analyzers
+share one connection. Every API method creates a child context with
+an operation-specific timeout from config/constants.go. Provides
+ping, info, container list/inspect, and image list/inspect/history.
+
+Key exports:
+  Client - wraps docker/client.Client with timeout-aware methods
+  NewClient - singleton constructor reading DOCKER_HOST from environment
+
+Connects to:
+  config/constants.go - reads ConnectionTimeout, InspectTimeout,
+DefaultTimeout
+  analyzer/container.go - ListContainers, InspectContainer
+  analyzer/daemon.go - Info
+  analyzer/image.go - ListImages, InspectImage
+  scanner.go - constructs Client and passes it to runtime analyzers
 */
 
 package docker

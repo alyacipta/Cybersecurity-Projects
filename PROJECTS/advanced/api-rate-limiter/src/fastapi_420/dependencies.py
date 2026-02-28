@@ -1,6 +1,27 @@
 """
 ⒸAngelaMos | 2025
 dependencies.py
+
+FastAPI dependency injection integration for rate limiting
+
+Provides three patterns for wiring rate limits into FastAPI routes.
+RateLimitDep is a callable class you pass to Depends() for
+per-route limits. create_rate_limit_dep() is a factory that
+builds those callables. ScopedRateLimiter groups endpoints by
+prefix (like "/auth") with shared limits and burst overrides.
+Also provides a global limiter singleton via set_global_limiter()
+and get_limiter().
+
+Key exports:
+  RateLimitDep - callable dependency for per-route limits
+  create_rate_limit_dep() - factory for RateLimitDep instances
+  ScopedRateLimiter - per-prefix endpoint group limiter
+  set_global_limiter() / get_limiter() - singleton management
+  require_rate_limit() - simple dependency using defaults
+
+Connects to:
+  limiter.py - imports RateLimiter
+  types.py - imports RateLimitResult, RateLimitRule
 """
 from __future__ import annotations
 

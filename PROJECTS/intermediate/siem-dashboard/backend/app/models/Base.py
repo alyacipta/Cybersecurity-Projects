@@ -1,6 +1,20 @@
 """
 ©AngelaMos | 2026
 Base.py
+
+Abstract MongoEngine document with timestamps and shared query helpers
+
+All MongoEngine models extend BaseDocument to get created_at and
+updated_at timestamps with auto-refresh on save, plus get_by_id,
+get_or_none, and paginate class methods used across every controller.
+
+Key exports:
+  BaseDocument - abstract base class for all MongoEngine documents
+
+Connects to:
+  config.py - reads DEFAULT_PAGE_SIZE
+  core/errors.py - raises NotFoundError from get_by_id
+  Alert.py, CorrelationRule.py, LogEvent.py, ScenarioRun.py, User.py - all extend BaseDocument
 """
 
 from typing import Any, Self

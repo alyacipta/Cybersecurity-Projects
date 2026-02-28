@@ -3,6 +3,31 @@
 models.py
 
 Data models for packet capture and network traffic analysis
+
+Defines all shared data structures used across the project. PacketInfo
+is frozen and slotted for efficiency since thousands are created per
+session. CaptureStatistics holds the aggregated view of an entire session
+including protocol distribution, per-endpoint counters, and bandwidth samples.
+
+Key exports:
+  Protocol - StrEnum of network protocols (TCP, UDP, ICMP, DNS, HTTP, HTTPS, ARP, OTHER)
+  PacketInfo - Frozen dataclass for a single parsed packet
+  EndpointStats - Per-IP counters with total_packets and total_bytes computed properties
+  ConversationStats - Bidirectional traffic stats between two IPs
+  BandwidthSample - Point-in-time bandwidth measurement
+  CaptureStatistics - Full session aggregate with top talkers and protocol percentages
+  CaptureConfig - Frozen config for a capture session (interface, filter, count, timeout)
+  ExportOptions - Flags controlling what to include in export output
+
+Connects to:
+  analyzer.py - creates PacketInfo instances
+  statistics.py - accumulates data into EndpointStats, ConversationStats, CaptureStatistics
+  filters.py - imports Protocol for BPF mapping
+  capture.py - imports CaptureConfig, CaptureStatistics, PacketInfo
+  output.py - imports CaptureStatistics, PacketInfo, Protocol
+  export.py - imports CaptureStatistics, ExportOptions, PacketInfo, Protocol
+  visualization.py - imports CaptureStatistics, Protocol
+  __init__.py - re-exports all models to the public API
 """
 
 from dataclasses import dataclass, field

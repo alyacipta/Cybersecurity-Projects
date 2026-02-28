@@ -1,6 +1,25 @@
 """
 ©AngelaMos | 2026
 rule.py
+
+Pydantic schemas for correlation rule endpoints
+
+Defines condition schemas for each rule type (threshold, sequence,
+aggregation) and validates the conditions dict in RuleCreateRequest
+against the correct schema based on rule_type, catching structural
+errors before a rule reaches the engine.
+
+Key exports:
+  RuleCreateRequest - creation schema with conditions validation
+  RuleUpdateRequest - partial update schema
+  RuleTestRequest - hours window for dry-run evaluation
+  ThresholdConditions, SequenceConditions, AggregationConditions
+
+Connects to:
+  models/CorrelationRule.py - imports RuleType
+  models/LogEvent.py - imports Severity
+  config.py - reads TIMELINE_DEFAULT_HOURS, RULE_TEST_MAX_HOURS
+  routes/rules.py - passed to S()
 """
 
 from typing import Any, Literal

@@ -1,6 +1,21 @@
 """
 ©AngelaMos | 2026
 admin.py
+
+Pydantic schemas for the admin user management endpoints
+
+The role field in AdminUpdateRoleRequest uses a regex pattern built
+from UserRole values to block invalid strings before they reach the
+database layer.
+
+Key exports:
+  AdminUpdateRoleRequest - role change payload with pattern validation
+  AdminUserListParams - pagination params for user listing
+
+Connects to:
+  models/User.py - imports UserRole for pattern generation
+  config.py - reads DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+  routes/admin.py - passed to S()
 """
 
 from pydantic import BaseModel, Field

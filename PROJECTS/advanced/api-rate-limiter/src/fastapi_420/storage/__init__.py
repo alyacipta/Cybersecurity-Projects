@@ -1,6 +1,20 @@
 """
 ⒸAngelaMos | 2025
 __init__.py
+
+Storage subpackage with factory and union type
+
+Defines the Storage type alias (MemoryStorage | RedisStorage)
+used throughout the library for type annotations. Provides
+create_storage() which builds the right backend from settings.
+
+Key exports:
+  Storage - TypeAlias for MemoryStorage | RedisStorage
+  create_storage() - factory that builds a storage backend
+
+Connects to:
+  memory.py - re-exports MemoryStorage
+  redis_backend.py - re-exports RedisStorage
 """
 from __future__ import annotations
 

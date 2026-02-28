@@ -1,6 +1,22 @@
 """
 AngelaMos | 2026
 __main__.py
+
+FastAPI application factory and server entry point
+
+create_app assembles the FastAPI instance with CORS middleware, health
+and root endpoints, and all three routers. The lifespan handler
+initializes the database and creates the shared registry,
+task_manager, and ops_manager singletons stored on app.state.
+
+Connects to:
+  config.py - reads all settings
+  database.py - calls init_db()
+  beacon/registry.py - creates BeaconRegistry singleton
+  beacon/tasking.py - creates TaskManager singleton
+  beacon/router.py - mounts beacon WebSocket router
+  ops/manager.py - creates OpsManager singleton
+  ops/router.py - mounts operator WebSocket and REST routers
 """
 
 import logging

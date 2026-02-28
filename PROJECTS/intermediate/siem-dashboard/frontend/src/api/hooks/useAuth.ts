@@ -1,6 +1,24 @@
 // ===================
 // ©AngelaMos | 2026
 // useAuth.ts
+//
+// React Query hooks for authentication: login, register, logout, and profile update
+//
+// useLogin and useRegister both fetch the user profile after receiving a token,
+// then call login() on the auth store. useLogout clears the store and redirects
+// to /login. useUpdateProfile patches the profile and conditionally refreshes
+// the stored token if the server returns a new one.
+//
+// Key exports:
+//   useCurrentUser - query hook for the authenticated user's profile
+//   useLogin, useRegister - mutation hooks that store the JWT on success
+//   useLogout - clears auth state and redirects to login
+//   useUpdateProfile - mutation hook for username, email, or password changes
+//
+// Connects to:
+//   auth.store.ts - calls login, logout, setAccessToken, updateUser
+//   api.ts - apiClient for HTTP calls
+//   auth.types.ts - schemas, types, and error class
 // ===================
 
 import {

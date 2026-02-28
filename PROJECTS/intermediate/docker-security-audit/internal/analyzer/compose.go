@@ -1,6 +1,26 @@
 /*
-AngelaMos | 2026
+©AngelaMos | 2026
 compose.go
+
+ComposeAnalyzer scans docker-compose files for CIS Docker Benchmark
+violations
+
+Parses compose YAML using a raw yaml.Node tree to preserve line
+numbers, then checks each service for privileged mode, dangerous
+capabilities, sensitive volume mounts, host namespace sharing, missing
+resource limits, hardcoded secrets in environment variables, and
+missing user or read-only configuration.
+
+Key exports:
+  ComposeAnalyzer - implements Analyzer for docker-compose files
+  NewComposeAnalyzer - constructor taking file path
+
+Connects to:
+  analyzer.go - implements Analyzer interface, uses Category constants
+  rules/capabilities.go - checks cap_add capability severity
+  rules/paths.go - checks volume mount paths
+  rules/secrets.go - detects secrets and sensitive variable names
+  finding.go - creates findings with line-accurate locations
 */
 
 package analyzer

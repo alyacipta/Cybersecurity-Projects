@@ -1,6 +1,20 @@
 // ===================
 // ©AngelaMos | 2026
 // router.tsx
+//
+// Browser router definition with lazy-loaded routes and auth guards
+//
+// Public routes (landing, login, register) load without authentication. All
+// other routes nest under ProtectedRoute and the Shell layout. Admin routes
+// are further nested under AdminRoute. All page components are lazy-loaded
+// via dynamic import to enable code splitting.
+//
+// Key exports:
+//   router - the createBrowserRouter instance mounted in App.tsx
+//
+// Connects to:
+//   protected-route.tsx, admin-route.tsx, shell.tsx - layout route elements
+//   config.ts - ROUTES path constants
 // ===================
 
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'

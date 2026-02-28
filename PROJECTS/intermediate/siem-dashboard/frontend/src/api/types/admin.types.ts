@@ -1,6 +1,22 @@
 // ===================
 // ©AngelaMos | 2026
 // admin.types.ts
+//
+// Types, schemas, and message constants for the admin user management API
+//
+// Defines the UserRole const, role update request schema, paginated user
+// list response schema, and toast message constants. Imports userResponseSchema
+// from auth.types so admin lists use the same user shape.
+//
+// Key exports:
+//   UserRole - admin and analyst role constants
+//   adminUpdateRoleRequestSchema - Zod validation for role changes
+//   adminUserListResponseSchema - paginated user list response type
+//   ADMIN_SUCCESS_MESSAGES, ADMIN_ERROR_MESSAGES - toast message templates
+//
+// Connects to:
+//   auth.types.ts - imports userResponseSchema
+//   useAdmin.ts - consumes all admin types
 // ===================
 
 import { z } from 'zod'

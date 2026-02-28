@@ -3,6 +3,24 @@
 output.py
 
 Rich terminal output formatting for DNS results
+
+Handles all visual presentation for query, reverse, trace, batch, and
+WHOIS results. Uses Rich tables, panels, and tree structures with color
+coding per record type. Also provides JSON serialization used when the
+--json flag is passed from the CLI.
+
+Key exports:
+  console - Shared Rich Console instance imported by cli.py
+  print_results_table - Renders DNS records as a color-coded rounded table
+  print_reverse_result - Renders PTR lookup output with hostname table
+  print_trace_result - Renders the DNS resolution path as a Rich tree
+  print_batch_results - Renders a summary table for multiple domain results
+  results_to_json - Serializes one or more DNSResult objects to a JSON string
+  trace_to_json - Serializes a TraceResult to a JSON string
+
+Connects to:
+  resolver.py - imports DNSResult, TraceResult, RecordType for type annotations
+  cli.py - all print_* functions and JSON serializers called in command handlers
 """
 
 from __future__ import annotations

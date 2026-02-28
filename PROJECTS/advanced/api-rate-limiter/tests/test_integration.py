@@ -1,6 +1,17 @@
 """
 ⒸAngelaMos | 2025
 test_integration.py
+
+End-to-end integration tests across all integration patterns
+
+Tests:
+  RateLimitMiddleware - path exclusion, limit enforcement, headers
+  @limiter.limit() decorator - basic flow and rejection
+  RateLimitDep dependency injection - per-route limits
+  ScopedRateLimiter - prefix matching and burst overrides
+  SlowDownMiddleware - progressive delay behavior
+  Concurrent requests and multi-client IP independence
+  Algorithm-specific integration (sliding, token, fixed)
 """
 from __future__ import annotations
 

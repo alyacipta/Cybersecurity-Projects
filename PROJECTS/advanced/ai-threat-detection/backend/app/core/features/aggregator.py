@@ -91,7 +91,7 @@ class WindowAggregator:
 
         results = await pipe.execute()
 
-        read_start = 14
+        read_start = len(keys) * 2
         req_count_1m = results[read_start]
         req_count_5m = results[read_start + 1]
         req_count_10m = results[read_start + 2]
@@ -171,21 +171,21 @@ def _path_depth_variance(depth_members: list[str]) -> float:
         return 0.0
     depths = [int(m.split(":")[0]) for m in depth_members]
     mean = sum(depths) / len(depths)
-    return sum((d - mean) ** 2 for d in depths) / len(depths)
+    return sum((d - mean)**2 for d in depths) / len(depths)
 
 
 def _inter_request_time_stats(
-    entries: list[tuple[str, float]],
-) -> tuple[float, float]:
+    entries: list[tuple[str, float]], ) -> tuple[float, float]:
     """
     Mean and standard deviation of inter-request intervals in milliseconds.
     """
     if len(entries) < 2:
         return 0.0, 0.0
     timestamps = sorted(score for _, score in entries)
-    deltas = [(timestamps[i + 1] - timestamps[i]) * 1000 for i in range(len(timestamps) - 1)]
+    deltas = [(timestamps[i + 1] - timestamps[i]) * 1000
+              for i in range(len(timestamps) - 1)]
     mean = sum(deltas) / len(deltas)
     if len(deltas) < 2:
         return mean, 0.0
-    variance = sum((d - mean) ** 2 for d in deltas) / len(deltas)
+    variance = sum((d - mean)**2 for d in deltas) / len(deltas)
     return mean, math.sqrt(variance)
