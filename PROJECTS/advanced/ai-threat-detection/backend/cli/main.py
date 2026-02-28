@@ -16,6 +16,9 @@ app = typer.Typer(
 DEFAULT_MODEL_DIR = "data/models"
 DEFAULT_EPOCHS = 100
 DEFAULT_BATCH_SIZE = 256
+DEFAULT_SYNTHETIC_NORMAL = 1000
+DEFAULT_SYNTHETIC_ATTACK = 500
+DEFAULT_EXPERIMENT_NAME = "angelusvigil-training"
 DEFAULT_SERVER_URL = "http://localhost:8000"
 
 
@@ -41,7 +44,18 @@ def serve(
 
 @app.command()
 def train(
-    dataset: Path = typer.Option(..., help="Path to CSIC 2010 CSV dataset"),
+    csic_dir: Path = typer.Option(
+        None,
+        help="Path to CSIC 2010 dataset directory",
+    ),
+    synthetic_normal: int = typer.Option(
+        DEFAULT_SYNTHETIC_NORMAL,
+        help="Number of synthetic normal samples",
+    ),
+    synthetic_attack: int = typer.Option(
+        DEFAULT_SYNTHETIC_ATTACK,
+        help="Number of synthetic attack samples",
+    ),
     output_dir: Path = typer.Option(
         DEFAULT_MODEL_DIR,
         help="Directory to save ONNX models",
@@ -54,72 +68,97 @@ def train(
         DEFAULT_BATCH_SIZE,
         help="Training batch size",
     ),
+    experiment_name: str = typer.Option(
+        DEFAULT_EXPERIMENT_NAME,
+        help="MLflow experiment name",
+    ),
 ) -> None:
     """
     Train all ML models and export to ONNX
     """
-    import json
-
     import numpy as np
-    from sklearn.model_selection import train_test_split
 
-    from ml.export_onnx import (
-        export_autoencoder,
-        export_isolation_forest,
-        export_random_forest,
-    )
-    from ml.train_autoencoder import train_autoencoder
-    from ml.train_classifiers import (
-        train_isolation_forest,
-        train_random_forest,
-    )
+    from ml.orchestrator import TrainingOrchestrator
 
-    if not dataset.exists():
+    X_parts: list[np.ndarray] = []
+    y_parts: list[np.ndarray] = []
+
+    if csic_dir is not None:
+        if not csic_dir.exists():
+            typer.echo(
+                f"Error: CSIC directory not found"
+                f" at {csic_dir}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        from ml.data_loader import load_csic_dataset
+
+        normal_path = csic_dir / "normalTrafficTraining.txt"
+        attack_path = csic_dir / "anomalousTrafficTest.txt"
+        typer.echo(f"Loading CSIC data from {csic_dir}")
+        X_csic, y_csic = load_csic_dataset(
+            normal_path, attack_path
+        )
+        X_parts.append(X_csic)
+        y_parts.append(y_csic)
         typer.echo(
-            f"Error: dataset not found at {dataset}",
+            f"  CSIC: {len(X_csic)} samples"
+        )
+
+    if synthetic_normal > 0 or synthetic_attack > 0:
+        from ml.synthetic import generate_mixed_dataset
+
+        typer.echo(
+            f"Generating synthetic data:"
+            f" {synthetic_normal} normal,"
+            f" {synthetic_attack} attack"
+        )
+        X_syn, y_syn = generate_mixed_dataset(
+            synthetic_normal, synthetic_attack
+        )
+        X_parts.append(X_syn)
+        y_parts.append(y_syn)
+
+    if not X_parts:
+        typer.echo(
+            "Error: no data sources specified",
             err=True,
         )
         raise typer.Exit(code=1)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    X = np.vstack(X_parts)
+    y = np.concatenate(y_parts)
+    typer.echo(
+        f"Total: {len(X)} samples"
+        f" ({int(np.sum(y == 0))} normal,"
+        f" {int(np.sum(y == 1))} attack)"
+    )
 
-    typer.echo(f"Loading dataset from {dataset}")
-    data = np.loadtxt(str(dataset), delimiter=",", dtype=np.float32)
-    X = data[:, :-1]
-    y = data[:, -1].astype(int)
-
-    X_normal = X[y == 0]
-    X_train, X_test, y_train, y_test = train_test_split(X,
-                                                        y,
-                                                        test_size=0.2,
-                                                        stratify=y,
-                                                        random_state=42)
-
-    typer.echo(f"Training autoencoder for {epochs} epochs")
-    ae_result = train_autoencoder(
-        X_normal,
+    orch = TrainingOrchestrator(
+        output_dir=Path(output_dir),
+        experiment_name=experiment_name,
         epochs=epochs,
         batch_size=batch_size,
     )
-    export_autoencoder(ae_result["model"], output_dir / "ae.onnx")
-    ae_result["scaler"].save_json(output_dir / "scaler.json")
-    threshold_data = {"threshold": float(ae_result["threshold"])}
-    (output_dir / "threshold.json").write_text(json.dumps(threshold_data))
-    typer.echo(f"  AE threshold: {ae_result['threshold']:.6f}")
-
-    typer.echo("Training random forest")
-    rf_result = train_random_forest(X_train, y_train)
-    export_random_forest(rf_result["model"], X.shape[1],
-                         output_dir / "rf.onnx")
-    typer.echo(f"  RF F1: {rf_result['metrics']['f1']:.4f}")
-
-    typer.echo("Training isolation forest")
-    if_result = train_isolation_forest(X_normal)
-    export_isolation_forest(if_result["model"], X.shape[1],
-                            output_dir / "if.onnx")
-    typer.echo(f"  IF samples: {if_result['metrics']['n_samples']}")
+    result = orch.run(X, y)
 
     typer.echo(f"Models exported to {output_dir}")
+    if result.ensemble_metrics is not None:
+        typer.echo(
+            f"  Ensemble F1:"
+            f" {result.ensemble_metrics.f1:.4f}"
+        )
+        typer.echo(
+            f"  Ensemble PR-AUC:"
+            f" {result.ensemble_metrics.pr_auc:.4f}"
+        )
+    typer.echo(
+        f"  Passed gates: {result.passed_gates}"
+    )
+
+    if not result.passed_gates:
+        raise typer.Exit(code=1)
 
 
 @app.command()
