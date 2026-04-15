@@ -62,6 +62,12 @@ jobs:
           - name: ai-threat-detection-backend
             type: ruff
             path: PROJECTS/advanced/ai-threat-detection/backend
+          - name: linux-ebpf-security-tracer
+            type: ruff
+            path: PROJECTS/beginner/linux-ebpf-security-tracer
+          - name: dlp-scanner
+            type: ruff
+            path: PROJECTS/intermediate/dlp-scanner
           # Biome (frontend)
           - name: bug-bounty-platform-frontend
             type: biome
@@ -154,9 +160,9 @@ jobs:
     # Nim Setup
     - name: Setup Nim
       if: matrix.type == 'nim'
-      uses: jiro4989/setup-nim-action@v2
-      with:
-        nim-version: '2.2.x'
+      run: |
+        curl https://nim-lang.org/choosenim/init.sh -sSf | bash -s -- -y
+        echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
     - name: Install nph
       if: matrix.type == 'nim'
