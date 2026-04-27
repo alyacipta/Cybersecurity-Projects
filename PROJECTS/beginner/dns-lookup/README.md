@@ -16,6 +16,8 @@
 
 *This is a quick overview — security theory, architecture, and full walkthroughs are in the [learn modules](#learn).*
 
+**[Screenshots & demo →](DEMO.md)**
+
 ## What It Does
 
 - Query A, AAAA, MX, NS, TXT, CNAME, and SOA records with colored table output

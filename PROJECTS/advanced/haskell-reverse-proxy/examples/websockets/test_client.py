@@ -29,7 +29,7 @@ async def test_websocket(host="localhost", port=8081):
     print(f"\n[TEST] WebSocket: {uri}")
 
     try:
-        async with websockets.connect(uri, extra_headers={"Host": "ws.localhost"}) as ws:
+        async with websockets.connect(uri, additional_headers={"Host": "ws.localhost"}) as ws:
             print("[OK] WebSocket connected")
 
             await ws.send("ping")

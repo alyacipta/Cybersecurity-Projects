@@ -19,6 +19,52 @@ import Aenebris.TLS
 import Aenebris.Tunnel
 import Aenebris.Middleware.Security
 import Aenebris.Middleware.Redirect
+import Aenebris.RateLimit (RateLimiter, createRateLimiter, parseRateSpec, rateLimitMiddleware)
+import Aenebris.DDoS.EarlyData (earlyDataGuard)
+import Aenebris.DDoS.MemoryShed
+  ( MemoryShed
+  , MemoryShedConfig(..)
+  , defaultHighWaterFraction
+  , memoryShedMiddleware
+  , newMemoryShed
+  , startMemoryShedPoller
+  )
+import Aenebris.DDoS.IPJail
+  ( IPJail
+  , defaultIPJailConfig
+  , ipJailMiddleware
+  , newIPJail
+  , startJailSweeper
+  )
+import Aenebris.DDoS.ConnLimit
+  ( ConnLimiter
+  , ConnLimitConfig(..)
+  , connLimitOnClose
+  , connLimitOnOpen
+  , newConnLimiter
+  )
+import Aenebris.Fingerprint.JA4H (ja4hMiddleware)
+import Aenebris.WAF.Engine (wafMiddleware)
+import Aenebris.WAF.Patterns (defaultRuleSet)
+import Aenebris.WAF.Rule (RuleSet)
+import Aenebris.Honeypot
+  ( HoneypotConfig(..)
+  , buildHoneypotConfig
+  , honeypotMiddleware
+  )
+import Aenebris.Geo
+  ( Geo
+  , buildGeoConfig
+  , geoConfig
+  , gcCountryDb
+  , gcAsnDb
+  , gcFlaggedAsns
+  , gcBlockedCountries
+  , openGeo
+  , startAsnSweeper
+  , geoMiddleware
+  )
+import Control.Concurrent.STM (TVar, newTVarIO)
 import Control.Concurrent.Async (Async, async, waitAnyCancel)
 import Control.Exception (try, SomeException)
 import Data.Function ((&))
@@ -30,13 +76,22 @@ import Data.Ord (comparing)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Network.HTTP.Client (Manager, httpLbs, withResponse, parseRequest, RequestBody(..), brRead)
+import Network.HTTP.Client (Manager, withResponse, parseRequest, RequestBody(..), brRead)
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Types
 import Network.Wai
 import Data.ByteString.Builder (byteString)
 import Control.Monad (unless)
-import Network.Wai.Handler.Warp (run, defaultSettings, setPort)
+import Network.Wai.Handler.Warp
+  ( Settings
+  , defaultSettings
+  , runSettings
+  , setMaxTotalHeaderLength
+  , setOnClose
+  , setOnOpen
+  , setPort
+  , setTimeout
+  )
 import Network.Wai.Handler.WarpTLS (runTLS)
 import System.IO (hPutStrLn, stderr)
 import Data.ByteString (ByteString)
@@ -50,6 +105,12 @@ data ProxyState = ProxyState
   , psLoadBalancers :: Map Text LoadBalancer  -- upstream name -> load balancer
   , psHealthCheckers :: [Async ()]
   , psManager :: Manager
+  , psRateLimiter :: Maybe RateLimiter
+  , psMemoryShed :: Maybe MemoryShed
+  , psIPJail :: Maybe IPJail
+  , psConnLimiter :: Maybe ConnLimiter
+  , psWafRuleSet :: TVar RuleSet
+  , psGeo :: Maybe Geo
   }
 
 -- | Initialize proxy state from config
@@ -62,11 +123,55 @@ initProxyState config manager = do
   -- Start health checkers for all upstreams
   checkers <- mapM startUpstreamHealthChecker (configUpstreams config)
 
+  rateLimiter <- case configRateLimit config >>= parseRateSpec of
+    Just spec -> Just <$> createRateLimiter spec
+    Nothing -> pure Nothing
+
+  let ddos = configDDoS config
+
+  memShed <- case ddos >>= ddosMemoryShedBytes of
+    Just budgetBytes -> do
+      ms <- newMemoryShed
+      let cfg = MemoryShedConfig
+            { mscHeapBudgetBytes = fromInteger budgetBytes
+            , mscHighWaterFraction = fromMaybe defaultHighWaterFraction (ddos >>= ddosMemoryShedHighWater)
+            , mscPollIntervalMicros = 1000000
+            }
+      _ <- startMemoryShedPoller cfg ms
+      pure (Just ms)
+    Nothing -> pure Nothing
+
+  ipJail <- case ddos >>= ddosJailCooldownSeconds of
+    Just _ -> do
+      j <- newIPJail
+      _ <- startJailSweeper defaultIPJailConfig j
+      pure (Just j)
+    Nothing -> pure Nothing
+
+  connLimiter <- case ddos >>= ddosPerIPConnections of
+    Just n -> Just <$> newConnLimiter (ConnLimitConfig n)
+    Nothing -> pure Nothing
+
+  wafVar <- newTVarIO defaultRuleSet
+
+  geoHandle <- case buildGeoConfig (configGeo config) of
+    Just gcfg -> do
+      g <- openGeo gcfg
+      _ <- startAsnSweeper g
+      pure (Just g)
+    Nothing -> pure Nothing
+
   return ProxyState
     { psConfig = config
     , psLoadBalancers = lbMap
     , psHealthCheckers = checkers
     , psManager = manager
+    , psRateLimiter = rateLimiter
+    , psMemoryShed = memShed
+    , psIPJail = ipJail
+    , psConnLimiter = connLimiter
+    , psWafRuleSet = wafVar
+    , psGeo = geoHandle
     }
   where
     -- Create load balancer for an upstream
@@ -112,49 +217,118 @@ startProxy ProxyState{..} = do
   case configListen psConfig of
     [] -> error "No listen ports configured"
     listenConfigs -> do
-      -- Launch a server for each listen port concurrently
-      servers <- mapM (launchServer psConfig psLoadBalancers psManager) listenConfigs
+      case psRateLimiter of
+        Just _ -> putStrLn "Rate limiting enabled"
+        Nothing -> pure ()
 
-      -- Wait for any server to fail (shouldn't happen in normal operation)
-      waitAnyCancel servers
+      putStrLn "WAF enabled (Phase 1: paranoia level 2, default rule pack)"
+      case buildHoneypotConfig (configHoneypot psConfig) of
+        Just hp -> putStrLn $ "Honeypot enabled (" ++ show (length (hpPatterns hp))
+                              ++ " trap patterns, action=" ++ show (hpAction hp) ++ ")"
+        Nothing -> pure ()
+      case psGeo of
+        Just g ->
+          let gc = geoConfig g
+              parts = [ "country_db=" ++ maybe "off" (const "on") (gcCountryDb gc)
+                      , "asn_db=" ++ maybe "off" (const "on") (gcAsnDb gc)
+                      , "blocked=" ++ show (length (gcBlockedCountries gc))
+                      , "flagged_asns=" ++ show (length (gcFlaggedAsns gc))
+                      ]
+          in putStrLn $ "Geo/ASN enabled (" ++ unwords parts ++ ")"
+        Nothing -> pure ()
+      servers <- mapM (launchServer psConfig psLoadBalancers psManager psRateLimiter psMemoryShed psIPJail psConnLimiter psWafRuleSet psGeo) listenConfigs
+
+      _ <- waitAnyCancel servers
 
       putStrLn "All servers stopped"
 
--- | Launch a single server instance (HTTP or HTTPS)
-launchServer :: Config -> Map Text LoadBalancer -> Manager -> ListenConfig -> IO (Async ())
-launchServer config loadBalancers manager listenConfig = async $ do
+launchServer
+  :: Config
+  -> Map Text LoadBalancer
+  -> Manager
+  -> Maybe RateLimiter
+  -> Maybe MemoryShed
+  -> Maybe IPJail
+  -> Maybe ConnLimiter
+  -> TVar RuleSet
+  -> Maybe Geo
+  -> ListenConfig
+  -> IO (Async ())
+launchServer config loadBalancers manager mRateLimiter mMemShed mIPJail mConnLim wafVar mGeo listenConfig = async $ do
   let port = listenPort listenConfig
       shouldRedirect = fromMaybe False (listenRedirectHTTPS listenConfig)
+      ddosCfg = fromMaybe defaultDDoSConfig (configDDoS config)
 
-      -- Build the base application
       baseApp = proxyApp config loadBalancers manager
 
-      -- Add security headers (production level by default)
-      securedApp = addSecurityHeaders defaultSecurityConfig baseApp
+      fingerprintedApp = ja4hMiddleware baseApp
+
+      wafApp = wafMiddleware wafVar fingerprintedApp
+
+      securedApp = addSecurityHeaders defaultSecurityConfig wafApp
+
+      earlyDataApp = if ddosEarlyDataReject ddosCfg
+        then earlyDataGuard securedApp
+        else securedApp
+
+      mHoneypotCfg = buildHoneypotConfig (configHoneypot config)
+
+      honeypotApp = case mHoneypotCfg of
+        Just hp -> honeypotMiddleware hp mIPJail earlyDataApp
+        Nothing -> earlyDataApp
+
+      geoApp = case mGeo of
+        Just g -> geoMiddleware g mIPJail honeypotApp
+        Nothing -> honeypotApp
+
+      jailedApp = case mIPJail of
+        Just j -> ipJailMiddleware j geoApp
+        Nothing -> geoApp
+
+      shedApp = case mMemShed of
+        Just ms -> memoryShedMiddleware ms jailedApp
+        Nothing -> jailedApp
+
+      limitedApp = case mRateLimiter of
+        Just rl -> rateLimitMiddleware rl shedApp
+        Nothing -> shedApp
+
+      warpSettings = applyDDoSSettings ddosCfg mConnLim (defaultSettings & setPort port)
 
   case listenTLS listenConfig of
     Nothing -> do
-      -- Plain HTTP server
       let app = if shouldRedirect
-                then httpsRedirect securedApp  -- Redirect all HTTP to HTTPS
-                else securedApp
+                then httpsRedirect limitedApp
+                else limitedApp
 
       putStrLn $ "✓ HTTP server listening on :" ++ show port
       if shouldRedirect
         then putStrLn $ "  └─ Redirecting all traffic to HTTPS"
         else return ()
 
-      run port app
+      runSettings warpSettings app
 
     Just tlsConfig -> do
-      -- HTTPS server - check if single cert or SNI
       let isSNI = case tlsSNI tlsConfig of
             Just domains -> not (null domains)
             Nothing -> False
 
       if isSNI
-        then launchHTTPSWithSNI port tlsConfig securedApp
-        else launchHTTPS port tlsConfig securedApp
+        then launchHTTPSWithSNI port tlsConfig limitedApp
+        else launchHTTPS port tlsConfig limitedApp
+
+applyDDoSSettings :: DDoSConfig -> Maybe ConnLimiter -> Settings -> Settings
+applyDDoSSettings ddos mConnLim s0 =
+  let s1 = case ddosMaxHeaderBytes ddos of
+        Just n -> setMaxTotalHeaderLength n s1Inner
+        Nothing -> s1Inner
+      s1Inner = case ddosSlowlorisSeconds ddos of
+        Just n -> setTimeout n s0
+        Nothing -> s0
+      s2 = case mConnLim of
+        Just cl -> setOnClose (connLimitOnClose cl) (setOnOpen (connLimitOnOpen cl) s1)
+        Nothing -> s1
+  in s2
 
 -- | Launch HTTPS server with single certificate
 launchHTTPS :: Int -> TLSConfig -> Application -> IO ()
@@ -331,18 +505,24 @@ selectUpstream config hostHeader requestPath =
 -- | Forward request to backend server with streaming support
 forwardRequest :: Manager -> Request -> Text -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 forwardRequest manager clientReq backendHost respond = do
-  requestBody <- strictRequestBody clientReq
-
   let backendUrl = "http://" ++ T.unpack backendHost ++
                    BS8.unpack (rawPathInfo clientReq) ++
                    BS8.unpack (rawQueryString clientReq)
 
   initReq <- parseRequest backendUrl
 
-  let backendReq = initReq
+  let streamingBody = case requestBodyLength clientReq of
+        ChunkedBody ->
+          RequestBodyStreamChunked $ \needsPopper ->
+            needsPopper (getRequestBodyChunk clientReq)
+        KnownLength len ->
+          RequestBodyStream (fromIntegral len) $ \needsPopper ->
+            needsPopper (getRequestBodyChunk clientReq)
+
+      backendReq = initReq
         { HTTP.method = requestMethod clientReq
         , HTTP.requestHeaders = filterHeaders (requestHeaders clientReq)
-        , HTTP.requestBody = RequestBodyLBS requestBody
+        , HTTP.requestBody = streamingBody
         }
 
   withResponse backendReq manager $ \backendResponse -> do
@@ -419,18 +599,6 @@ filterHeaders headers = filter (\(name, _) -> name `notElem` hopByHopHeaders) he
       , "Upgrade"
       ]
 
--- | Filter headers for WebSocket upgrade (preserve Upgrade and Connection)
-filterHeadersForUpgrade :: [(HeaderName, BS.ByteString)] -> [(HeaderName, BS.ByteString)]
-filterHeadersForUpgrade headers = filter (\(name, _) -> name `notElem` hopByHopHeaders) headers
-  where
-    hopByHopHeaders =
-      [ "Keep-Alive"
-      , "Proxy-Authenticate"
-      , "Proxy-Authorization"
-      , "TE"
-      , "Trailers"
-      ]
-
 -- | Log incoming request
 logRequest :: Request -> IO ()
 logRequest req = do
@@ -440,12 +608,6 @@ logRequest req = do
       host = fromMaybe "unknown" $ lookup "Host" (requestHeaders req)
 
   putStrLn $ "[→] " ++ method' ++ " " ++ path ++ query ++ " (Host: " ++ BS8.unpack host ++ ")"
-
--- | Log response
-logResponse :: Response -> IO ()
-logResponse res = do
-  let (Status code msg) = responseStatus res
-  putStrLn $ "[←] " ++ show code ++ " " ++ BS8.unpack msg
 
 -- Helper: zipWithM
 zipWithM :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
