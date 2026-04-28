@@ -16,6 +16,8 @@
 
 *This is a quick overview — security theory, architecture, and full walkthroughs are in the [learn modules](#learn).*
 
+**[Screenshots & demo →](DEMO.md)**
+
 ## What It Does
 
 - Encode and decode Base64, Base64URL, Base32, Hex, and URL formats

@@ -21,3 +21,6 @@ examples/certs/
 
 # Private progress tracking
 refer/
+
+# Development docs (research, status, plans) - not for public repo
+docs/

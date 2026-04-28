@@ -11,9 +11,14 @@ module Aenebris.Config
   , HealthCheck(..)
   , Route(..)
   , PathRoute(..)
+  , DDoSConfig(..)
+  , defaultDDoSConfig
   , loadConfig
   , validateConfig
   ) where
+
+import Aenebris.Honeypot (HoneypotConfigYaml)
+import Aenebris.Geo (GeoConfigYaml)
 
 import Control.Monad (when, forM_)
 import Data.Aeson
@@ -28,6 +33,10 @@ data Config = Config
   , configListen :: [ListenConfig]
   , configUpstreams :: [Upstream]
   , configRoutes :: [Route]
+  , configRateLimit :: Maybe Text
+  , configDDoS :: Maybe DDoSConfig
+  , configHoneypot :: Maybe HoneypotConfigYaml
+  , configGeo :: Maybe GeoConfigYaml
   } deriving (Show, Eq, Generic)
 
 instance FromJSON Config where
@@ -36,6 +45,47 @@ instance FromJSON Config where
     <*> v .: "listen"
     <*> v .: "upstreams"
     <*> v .: "routes"
+    <*> v .:? "rate_limit"
+    <*> v .:? "ddos"
+    <*> v .:? "honeypot"
+    <*> v .:? "geo"
+
+data DDoSConfig = DDoSConfig
+  { ddosEarlyDataReject :: Bool
+  , ddosPerIPConnections :: Maybe Int
+  , ddosMemoryShedBytes :: Maybe Integer
+  , ddosMemoryShedHighWater :: Maybe Double
+  , ddosMaxConcurrentStreams :: Maybe Int
+  , ddosMaxHeaderBytes :: Maybe Int
+  , ddosSlowlorisSeconds :: Maybe Int
+  , ddosJailCooldownSeconds :: Maybe Int
+  , ddosReusePort :: Bool
+  } deriving (Show, Eq, Generic)
+
+instance FromJSON DDoSConfig where
+  parseJSON = withObject "DDoSConfig" $ \v -> DDoSConfig
+    <$> v .:? "early_data_reject" .!= True
+    <*> v .:? "per_ip_connections"
+    <*> v .:? "memory_shed_bytes"
+    <*> v .:? "memory_shed_high_water"
+    <*> v .:? "max_concurrent_streams"
+    <*> v .:? "max_header_bytes"
+    <*> v .:? "slowloris_seconds"
+    <*> v .:? "jail_cooldown_seconds"
+    <*> v .:? "reuse_port" .!= False
+
+defaultDDoSConfig :: DDoSConfig
+defaultDDoSConfig = DDoSConfig
+  { ddosEarlyDataReject = True
+  , ddosPerIPConnections = Nothing
+  , ddosMemoryShedBytes = Nothing
+  , ddosMemoryShedHighWater = Nothing
+  , ddosMaxConcurrentStreams = Nothing
+  , ddosMaxHeaderBytes = Nothing
+  , ddosSlowlorisSeconds = Nothing
+  , ddosJailCooldownSeconds = Nothing
+  , ddosReusePort = False
+  }
 
 -- | Listen port configuration
 data ListenConfig = ListenConfig
