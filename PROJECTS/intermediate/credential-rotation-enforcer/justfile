@@ -88,11 +88,24 @@ demo:
     shards build cre && {{binary}} demo
 
 [group('demo')]
+tui-demo seconds="8":
+    shards build cre && {{binary}} tui-demo --seconds={{seconds}}
+
+[group('demo')]
 demo-full:
     docker compose -f docker/docker-compose.yml up -d
-    @echo "Waiting for services..."
+    @echo "Waiting for services to be healthy..."
     @sleep 8
-    shards build cre && {{binary}} run --config=config/demo-full.cr
+    shards build cre
+    @echo ""
+    @echo "Stack up. Daemon will run against Postgres on port 6022."
+    @echo "Press Ctrl+C to stop the daemon, then 'just demo-full-down' to tear down the stack."
+    @echo ""
+    DATABASE_URL=postgres://cre:cre@localhost:6022/cre \
+      AWS_ENDPOINT=http://localhost:45666 \
+      VAULT_ADDR=http://localhost:18201 \
+      GITHUB_API_BASE=http://localhost:7115 \
+      {{binary}} run --db=postgres://cre:cre@localhost:6022/cre
 
 [group('demo')]
 demo-full-down:
@@ -101,6 +114,10 @@ demo-full-down:
 [group('demo')]
 demo-full-logs:
     docker compose -f docker/docker-compose.yml logs -f --tail=50
+
+[group('demo')]
+demo-full-status:
+    docker compose -f docker/docker-compose.yml ps
 
 # =============================================================================
 # Test

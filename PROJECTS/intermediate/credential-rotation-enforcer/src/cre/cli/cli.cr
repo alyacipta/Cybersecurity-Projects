@@ -24,6 +24,7 @@ module CRE::Cli
     export --framework=<name>    generate signed compliance evidence bundle
     audit verify                 verify hash chain + HMAC ratchet + Merkle batches
     demo                         tier-1 zero-deps demo (SQLite + .env rotator)
+    tui-demo                     8-second TUI preview with synthetic events
     version                      print version
     help                         this message
 
@@ -43,14 +44,15 @@ module CRE::Cli
     when "version"
       io.puts CRE::VERSION
       0
-    when "run"    then Commands::Run.new.execute(argv, io)
-    when "watch"  then Commands::Watch.new.execute(argv, io)
-    when "check"  then Commands::Check.new.execute(argv, io)
-    when "rotate" then Commands::Rotate.new.execute(argv, io)
-    when "policy" then Commands::Policy.new.execute(argv, io)
-    when "export" then Commands::Export.new.execute(argv, io)
-    when "audit"  then Commands::Audit.new.execute(argv, io)
-    when "demo"   then Commands::Demo.new.execute(argv, io)
+    when "run"      then Commands::Run.new.execute(argv, io)
+    when "watch"    then Commands::Watch.new.execute(argv, io)
+    when "check"    then Commands::Check.new.execute(argv, io)
+    when "rotate"   then Commands::Rotate.new.execute(argv, io)
+    when "policy"   then Commands::Policy.new.execute(argv, io)
+    when "export"   then Commands::Export.new.execute(argv, io)
+    when "audit"    then Commands::Audit.new.execute(argv, io)
+    when "demo"     then Commands::Demo.new.execute(argv, io)
+    when "tui-demo" then Commands::TuiDemo.new.execute(argv, io)
     else
       io.puts "unknown subcommand: #{subcommand}"
       io.puts USAGE
