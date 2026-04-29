@@ -6,7 +6,7 @@
 # every <PLACEHOLDER> with your actual values. Delete sections
 # that don't apply to your project's stack.
 #
-# Make is pre-installed on virtually every Unix system — no extra tooling.
+# Make is pre installed on virtually every Unix system — no extra tooling.
 # Use this when you want zero dependencies for task running.
 #
 # Docs: https://www.gnu.org/software/make/manual/make.html
