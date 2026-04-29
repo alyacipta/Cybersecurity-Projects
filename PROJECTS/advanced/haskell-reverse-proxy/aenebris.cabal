@@ -38,6 +38,7 @@ library
                      , Aenebris.WAF.Engine
                      , Aenebris.Honeypot
                      , Aenebris.Geo
+                     , Aenebris.Net.IP
                      , Aenebris.ML.Features
                      , Aenebris.ML.Model
                      , Aenebris.ML.Loader

@@ -231,6 +231,7 @@ import Aenebris.ML.Loader
   ( ParseError(..)
   , parseEnsemble
   )
+import Aenebris.Net.IP (sockAddrToIPBytes)
 import Aenebris.Middleware.Redirect (httpsRedirect, httpsRedirectWithPort)
 import Aenebris.Middleware.Security
   ( addSecurityHeaders
@@ -380,6 +381,7 @@ main = hspec $ do
   wafSpec
   honeypotSpec
   geoSpec
+  netIpSpec
   mlFeaturesSpec
   mlModelSpec
   mlLoaderSpec
@@ -1882,6 +1884,27 @@ mlModelSpec = describe "ML.Model" $ do
         bad  = base { treeThreshold = VU.fromList [99.0, 0.0, 0.0] }
     validateTree 20 bad `shouldSatisfy`
       (\r -> case r of { Left _ -> True; Right _ -> False })
+
+netIpSpec :: Spec
+netIpSpec = describe "Net.IP" $ do
+  it "renders ipv4 sockaddr in dotted decimal" $
+    sockAddrToIPBytes (ipv4Addr (10, 0, 0, 1) 1234) `shouldBe` "10.0.0.1"
+
+  it "renders ipv4 loopback" $
+    sockAddrToIPBytes (ipv4Addr (127, 0, 0, 1) 8080) `shouldBe` "127.0.0.1"
+
+  it "renders unix sockaddr with prefix" $
+    sockAddrToIPBytes (SockAddrUnix "/tmp/sock") `shouldBe` "unix:/tmp/sock"
+
+  it "renders ipv6 sockaddr separated by colons (eight 16-bit groups)" $ do
+    let addr = SockAddrInet6
+          0
+          0
+          (tupleToHostAddress6 (0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))
+          0
+        result = sockAddrToIPBytes addr
+    BS.length result `shouldSatisfy` (> 0)
+    BC.count ':' result `shouldBe` 7
 
 mlLoaderModel :: T.Text
 mlLoaderModel = T.unlines
