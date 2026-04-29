@@ -28,18 +28,11 @@ import Control.Concurrent.STM
   , readTVar
   , writeTVar
   )
+import Aenebris.Net.IP (sockAddrToIPBytes)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BS8
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Network.Socket
-  ( HostAddress6
-  , SockAddr(..)
-  , hostAddress6ToTuple
-  , hostAddressToTuple
-  )
-import Numeric (showHex)
-import Text.Printf (printf)
+import Network.Socket (SockAddr)
 
 defaultPerIPLimit :: Int
 defaultPerIPLimit = 16
@@ -86,24 +79,10 @@ currentCount ConnLimiter{..} ip = do
   pure (Map.findWithDefault 0 ip m)
 
 connLimitOnOpen :: ConnLimiter -> SockAddr -> IO Bool
-connLimitOnOpen cl sa = atomically (tryAcquire cl (ipBytesFromSockAddr sa))
+connLimitOnOpen cl sa = atomically (tryAcquire cl (sockAddrToIPBytes sa))
 
 connLimitOnClose :: ConnLimiter -> SockAddr -> IO ()
-connLimitOnClose cl sa = atomically (release cl (ipBytesFromSockAddr sa))
+connLimitOnClose cl sa = atomically (release cl (sockAddrToIPBytes sa))
 
 ipBytesFromSockAddr :: SockAddr -> ByteString
-ipBytesFromSockAddr (SockAddrInet _ ha) =
-  let (a, b, c, d) = hostAddressToTuple ha
-  in BS8.pack (printf "%d.%d.%d.%d" a b c d)
-ipBytesFromSockAddr (SockAddrInet6 _ _ ha6 _) = v6Bytes ha6
-ipBytesFromSockAddr (SockAddrUnix p) = BS8.pack ("unix:" <> p)
-
-v6Bytes :: HostAddress6 -> ByteString
-v6Bytes ha =
-  let (a, b, c, d, e, f, g, h) = hostAddress6ToTuple ha
-  in BS8.pack (joinColons (map (`showHex` "") [a, b, c, d, e, f, g, h]))
-
-joinColons :: [String] -> String
-joinColons [] = ""
-joinColons [x] = x
-joinColons (x : xs) = x <> ":" <> joinColons xs
+ipBytesFromSockAddr = sockAddrToIPBytes

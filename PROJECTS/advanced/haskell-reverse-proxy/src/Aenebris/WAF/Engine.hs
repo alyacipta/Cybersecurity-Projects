@@ -39,7 +39,7 @@ import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
 import Data.Char (toLower)
 import Data.Word (Word32)
-import Network.HTTP.Types (Status, mkStatus)
+import Network.HTTP.Types (status403)
 import Network.HTTP.Types.URI (urlDecode)
 import Network.Wai
   ( Middleware
@@ -159,9 +159,6 @@ decisionFromScore hasBlock score threshold matches
 wafResponseHeader :: CI ByteString
 wafResponseHeader = "x-aenebris-waf"
 
-status403 :: Status
-status403 = mkStatus 403 "Forbidden"
-
 wafMiddleware :: TVar RuleSet -> Middleware
 wafMiddleware rsVar app req respond = do
   rs <- readTVarIO rsVar
@@ -173,4 +170,4 @@ wafMiddleware rsVar app req respond = do
         [ ("Content-Type", "text/plain; charset=utf-8")
         , (wafResponseHeader, "blocked score=" <> BC.pack (show score))
         ]
-        "403 Forbidden — request blocked by Aenebris WAF"
+        "403 Forbidden - request blocked by Aenebris WAF"

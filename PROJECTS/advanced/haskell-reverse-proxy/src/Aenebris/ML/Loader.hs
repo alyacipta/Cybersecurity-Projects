@@ -44,6 +44,12 @@ requiredNumClass = 1
 requiredNumTreePerIteration :: Int
 requiredNumTreePerIteration = 1
 
+maxNumLeaves :: Int
+maxNumLeaves = 4096
+
+maxNumTrees :: Int
+maxNumTrees = 10000
+
 postParseLineSentinel :: Int
 postParseLineSentinel = -1
 
@@ -355,18 +361,26 @@ requireField key mv = case mv of
       ("Missing required header key: " <> key))
 
 runTrees :: [(Int, Text)] -> Either ParseError [Tree]
-runTrees lns = case dropWhile (lineIsBlank . snd) lns of
-  [] -> Right []
-  ((n, ln):rest)
-    | T.strip ln == endOfTreesMarker -> Right []
-    | T.isPrefixOf baseTreeKeyPrefix (T.strip ln) -> do
-        let (block, after) = break (lineIsBlank . snd) rest
-        tree <- parseTreeBlock block
-        more <- runTrees after
-        Right (tree : more)
-    | otherwise -> Left
-        (ParseError n treeKey
-          ("Expected 'Tree=N' or 'end of trees', got: " <> ln))
+runTrees = goTrees 0
+  where
+    goTrees :: Int -> [(Int, Text)] -> Either ParseError [Tree]
+    goTrees treeCount lns
+      | treeCount > maxNumTrees = Left
+          (ParseError postParseLineSentinel treeKey
+            ("Tree count exceeds maxNumTrees "
+             <> T.pack (show maxNumTrees)))
+      | otherwise = case dropWhile (lineIsBlank . snd) lns of
+          [] -> Right []
+          ((n, ln):rest)
+            | T.strip ln == endOfTreesMarker -> Right []
+            | T.isPrefixOf baseTreeKeyPrefix (T.strip ln) -> do
+                let (block, after) = break (lineIsBlank . snd) rest
+                tree <- parseTreeBlock block
+                more <- goTrees (treeCount + 1) after
+                Right (tree : more)
+            | otherwise -> Left
+                (ParseError n treeKey
+                  ("Expected 'Tree=N' or 'end of trees', got: " <> ln))
 
 parseTreeBlock :: [(Int, Text)] -> Either ParseError Tree
 parseTreeBlock block = do
@@ -428,6 +442,14 @@ assignTreeField acc n key val
 finalizeTree :: TreeAcc -> Either ParseError Tree
 finalizeTree acc = do
   nL <- requireField keyNumLeaves (taNumLeaves acc)
+  unless (nL > 0)
+    (Left (ParseError postParseLineSentinel keyNumLeaves
+            ("num_leaves must be positive: " <> T.pack (show nL))))
+  unless (nL <= maxNumLeaves)
+    (Left (ParseError postParseLineSentinel keyNumLeaves
+            ("num_leaves " <> T.pack (show nL)
+             <> " exceeds maxNumLeaves "
+             <> T.pack (show maxNumLeaves))))
   nC <- requireField keyNumCat (taNumCat acc)
   leafValues <- requireField keyLeafValue (taLeafValue acc)
   unless (length leafValues == nL)

@@ -29,6 +29,7 @@ import Control.Concurrent.STM
   , readTVar
   , writeTVar
   )
+import Aenebris.Net.IP (sockAddrToIPBytes)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS8
 import Data.Map.Strict (Map)
@@ -38,12 +39,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Read as TR
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
 import Network.HTTP.Types (status429)
-import Network.Socket
-  ( HostAddress6
-  , SockAddr(..)
-  , hostAddress6ToTuple
-  , hostAddressToTuple
-  )
 import Network.Wai
   ( Middleware
   , Request
@@ -51,8 +46,6 @@ import Network.Wai
   , remoteHost
   , responseLBS
   )
-import Numeric (showHex)
-import Text.Printf (printf)
 
 secondsPerMinute :: Double
 secondsPerMinute = 60
@@ -164,23 +157,7 @@ rateLimitMiddleware rl app req respond = do
     intBS n = BS8.pack (show n)
 
 clientIPKey :: Request -> ByteString
-clientIPKey req = case remoteHost req of
-  SockAddrInet _ ha ->
-    let (a, b, c, d) = hostAddressToTuple ha
-    in BS8.pack (printf "%d.%d.%d.%d" a b c d)
-  SockAddrInet6 _ _ ha6 _ -> v6Bytes ha6
-  SockAddrUnix p -> BS8.pack ("unix:" <> p)
-  where
-    v6Bytes :: HostAddress6 -> ByteString
-    v6Bytes ha =
-      let (a, b, c, d, e, f, g, h) = hostAddress6ToTuple ha
-          parts = [a, b, c, d, e, f, g, h]
-      in BS8.pack (joinColons (map (`showHex` "") parts))
-
-    joinColons :: [String] -> String
-    joinColons [] = ""
-    joinColons [x] = x
-    joinColons (x : xs) = x <> ":" <> joinColons xs
+clientIPKey = sockAddrToIPBytes . remoteHost
 
 pathClassKey :: Request -> ByteString
 pathClassKey req =

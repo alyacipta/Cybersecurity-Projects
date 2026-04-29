@@ -47,7 +47,7 @@ import qualified Data.Text.Encoding as TE
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
 import Data.Word (Word64)
 import GHC.Generics (Generic)
-import Network.HTTP.Types (Status, mkStatus)
+import Network.HTTP.Types (status200, status404)
 import Network.Wai
   ( Middleware
   , Response
@@ -219,12 +219,6 @@ trapLabel :: TrapPattern -> ByteString
 trapLabel (TrapExact e) = e
 trapLabel (TrapPrefix p) = p <> "*"
 
-status404 :: Status
-status404 = mkStatus 404 "Not Found"
-
-status200 :: Status
-status200 = mkStatus 200 "OK"
-
 honeypotMiddleware :: HoneypotConfig -> Maybe IPJail -> Middleware
 honeypotMiddleware cfg@HoneypotConfig{..} mJail app req respond
   | hpServeRobotsTxt && requestMethod req == "GET"
@@ -280,7 +274,7 @@ robotsResponse cfg =
 robotsTxtBody :: HoneypotConfig -> ByteString
 robotsTxtBody HoneypotConfig{..} = BS.concat $
   [ "User-agent: *\n"
-  , "# Honeypot trap paths — Disallow per RFC 9309. Visiting these\n"
+  , "# Honeypot trap paths. Disallow per RFC 9309. Visiting these\n"
   , "# paths is treated as a violation signal regardless of declared UA.\n"
   ] <> map disallowLine hpPatterns
   where

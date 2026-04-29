@@ -1,3 +1,8 @@
+{-
+©AngelaMos | 2026
+Connection.hs
+-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -10,14 +15,14 @@ module Aenebris.Connection
   , isWebSocketUpgrade
   , isStreamingResponse
   , getTimeout
+  , microsPerSecond
+  , httpOkStatusCode
   ) where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
-import Data.CaseInsensitive (CI)
 import qualified Data.CaseInsensitive as CI
-import Data.Maybe (isJust, fromMaybe)
+import Data.Maybe (isJust)
 import Network.HTTP.Types (HeaderName, Status, statusCode)
 
 data ConnectionState
@@ -35,23 +40,31 @@ data ConnectionType
   | ChunkedStream
   deriving (Eq, Show)
 
+microsPerSecond :: Int
+microsPerSecond = 1_000_000
+
+httpOkStatusCode :: Int
+httpOkStatusCode = 200
+
 data TimeoutConfig = TimeoutConfig
-  { tcHttpIdle :: Int
-  , tcWebSocketTunnel :: Int
-  , tcStreamingResponse :: Int
-  , tcProxyPingInterval :: Int
-  , tcPongTimeout :: Int
-  , tcConnectTimeout :: Int
+  { tcHttpIdle           :: !Int
+  , tcWebSocketTunnel    :: !Int
+  , tcStreamingResponse  :: !Int
+  , tcProxyPingInterval  :: !Int
+  , tcPongTimeout        :: !Int
+  , tcConnectTimeout     :: !Int
+  , tcUpstreamReadSeconds :: !Int
   }
 
 defaultTimeoutConfig :: TimeoutConfig
 defaultTimeoutConfig = TimeoutConfig
-  { tcHttpIdle = 60
-  , tcWebSocketTunnel = 3600
-  , tcStreamingResponse = 3600
-  , tcProxyPingInterval = 30
-  , tcPongTimeout = 10
-  , tcConnectTimeout = 5
+  { tcHttpIdle            = 60
+  , tcWebSocketTunnel     = 3600
+  , tcStreamingResponse   = 3600
+  , tcProxyPingInterval   = 30
+  , tcPongTimeout         = 10
+  , tcConnectTimeout      = 5
+  , tcUpstreamReadSeconds = 30
   }
 
 getTimeout :: TimeoutConfig -> ConnectionState -> Int
@@ -96,4 +109,7 @@ isStreamingResponse status headers =
 
     hasContentLength = isJust (lookup "Content-Length" headers)
 
-    isUnknownLength = statusCode status == 200 && not hasContentLength && not hasTransferEncodingChunked
+    isUnknownLength =
+      statusCode status == httpOkStatusCode
+        && not hasContentLength
+        && not hasTransferEncodingChunked

@@ -59,7 +59,21 @@ class SurrealDBManager:
             settings.SURREAL_DATABASE,
         )
 
+        await self._init_schema()
+
         self._connected = True
+
+    async def _init_schema(self) -> None:
+        """
+        Define tables used by the application so empty SELECTs do not error
+        """
+        schema = """
+            DEFINE TABLE IF NOT EXISTS rooms SCHEMALESS;
+            DEFINE TABLE IF NOT EXISTS room_participants SCHEMALESS;
+            DEFINE TABLE IF NOT EXISTS messages SCHEMALESS;
+            DEFINE TABLE IF NOT EXISTS presence SCHEMALESS;
+        """
+        await self.db.query(schema)
 
     async def disconnect(self) -> None:
         """

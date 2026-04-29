@@ -1,3 +1,7 @@
+{-
+©AngelaMos | 2026
+TLS.hs
+-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -8,23 +12,27 @@ module Aenebris.TLS
   , createSNISettings
   , validateCertificate
   , CertificateError(..)
+  , strongCipherSuites
   ) where
 
-import qualified Data.ByteString as BS
+import Control.Exception (SomeException, try)
+import qualified Data.ByteString.Lazy as LBS
+import Data.Default.Class (def)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Map.Strict as Map
-import Network.Wai.Handler.WarpTLS
-import qualified Network.TLS as TLS
-import qualified Network.TLS.Extra.Cipher as Cipher
-import Data.Default.Class (def)
 import Data.X509 (SignedCertificate)
 import Data.X509.File (readSignedObject)
+import qualified Network.TLS as TLS
+import qualified Network.TLS.Extra.Cipher as Cipher
+import Network.Wai.Handler.WarpTLS
 import System.Directory (doesFileExist)
-import Control.Exception (try, SomeException)
+import System.IO (hPutStrLn, stderr)
 
--- | Certificate loading errors
+httpsRequiredMessage :: LBS.ByteString
+httpsRequiredMessage = "This server requires HTTPS"
+
 data CertificateError
   = CertFileNotFound FilePath
   | KeyFileNotFound FilePath
@@ -32,130 +40,128 @@ data CertificateError
   | InvalidKey FilePath String
   deriving (Show, Eq)
 
--- | Create TLS settings for a single certificate (non-SNI)
-createTLSSettings :: FilePath -> FilePath -> IO (Either CertificateError TLSSettings)
+createTLSSettings
+  :: FilePath
+  -> FilePath
+  -> IO (Either CertificateError TLSSettings)
 createTLSSettings certFile keyFile = do
-  -- Validate files exist
   certExists <- doesFileExist certFile
-  keyExists <- doesFileExist keyFile
-
+  keyExists  <- doesFileExist keyFile
   if not certExists
-    then return $ Left (CertFileNotFound certFile)
+    then pure (Left (CertFileNotFound certFile))
     else if not keyExists
-      then return $ Left (KeyFileNotFound keyFile)
+      then pure (Left (KeyFileNotFound keyFile))
       else do
-        -- Try to load the credential to validate it
         result <- try $ TLS.credentialLoadX509 certFile keyFile
         case result of
           Left (err :: SomeException) ->
-            return $ Left (InvalidCertificate certFile (show err))
-
+            pure (Left (InvalidCertificate certFile (show err)))
           Right (Left err) ->
-            return $ Left (InvalidCertificate certFile err)
+            pure (Left (InvalidCertificate certFile err))
+          Right (Right _) ->
+            pure (Right (configureTLS certFile keyFile))
 
-          Right (Right _credential) -> do
-            -- Create TLS settings with strong security
-            let tlsConfig = (tlsSettings certFile keyFile)
-                  { tlsAllowedVersions = [TLS.TLS13, TLS.TLS12]
-                  , tlsCiphers = strongCipherSuites
-                  , onInsecure = DenyInsecure "This server requires HTTPS"
-                  }
+configureTLS :: FilePath -> FilePath -> TLSSettings
+configureTLS certFile keyFile = (tlsSettings certFile keyFile)
+  { tlsAllowedVersions = [TLS.TLS13, TLS.TLS12]
+  , tlsCiphers = strongCipherSuites
+  , onInsecure = DenyInsecure httpsRequiredMessage
+  }
 
-            return $ Right tlsConfig
-
--- | Create TLS settings with SNI support for multiple domains
-createSNISettings :: [(Text, FilePath, FilePath)] -> FilePath -> FilePath -> IO (Either CertificateError TLSSettings)
+createSNISettings
+  :: [(Text, FilePath, FilePath)]
+  -> FilePath
+  -> FilePath
+  -> IO (Either CertificateError TLSSettings)
 createSNISettings domains defaultCert defaultKey = do
-  -- Validate default certificate
-  defaultExists <- doesFileExist defaultCert
-  defaultKeyExists <- doesFileExist defaultKey
-
-  if not defaultExists
-    then return $ Left (CertFileNotFound defaultCert)
-    else if not defaultKeyExists
-      then return $ Left (KeyFileNotFound defaultKey)
+  defaultCertOk <- doesFileExist defaultCert
+  defaultKeyOk  <- doesFileExist defaultKey
+  if not defaultCertOk
+    then pure (Left (CertFileNotFound defaultCert))
+    else if not defaultKeyOk
+      then pure (Left (KeyFileNotFound defaultKey))
       else do
-        -- Validate all domain certificates exist
-        validationResults <- mapM validateDomainCert domains
-        case sequence validationResults of
-          Left err -> return $ Left err
-          Right _ -> do
-            -- Create SNI-enabled TLS settings using the default cert first
-            let baseTLS = tlsSettings defaultCert defaultKey
-                tlsConfig = baseTLS
-                  { tlsAllowedVersions = [TLS.TLS13, TLS.TLS12]
-                  , tlsCiphers = strongCipherSuites
-                  , onInsecure = DenyInsecure "This server requires HTTPS"
-                  , tlsServerHooks = def
-                      { TLS.onServerNameIndication = \mHostname -> case mHostname of
-                          Nothing -> loadCredentials defaultCert defaultKey
-                          Just hostname -> sniCallback domains defaultCert defaultKey hostname
-                      }
-                  }
+        validations <- mapM validateDomainCert domains
+        case sequence validations of
+          Left err -> pure (Left err)
+          Right _ -> pure (Right (configureSNI domains defaultCert defaultKey))
 
-            return $ Right tlsConfig
-  where
-    validateDomainCert :: (Text, FilePath, FilePath) -> IO (Either CertificateError ())
-    validateDomainCert (domain, certFile, keyFile) = do
-      certExists <- doesFileExist certFile
-      keyExists <- doesFileExist keyFile
+configureSNI
+  :: [(Text, FilePath, FilePath)]
+  -> FilePath
+  -> FilePath
+  -> TLSSettings
+configureSNI domains defaultCert defaultKey =
+  let baseTLS = tlsSettings defaultCert defaultKey
+  in baseTLS
+       { tlsAllowedVersions = [TLS.TLS13, TLS.TLS12]
+       , tlsCiphers = strongCipherSuites
+       , onInsecure = DenyInsecure httpsRequiredMessage
+       , tlsServerHooks = def
+           { TLS.onServerNameIndication = \mHostname -> case mHostname of
+               Nothing -> credentialsOrDefault defaultCert defaultKey
+               Just hostname ->
+                 sniCallback domains defaultCert defaultKey hostname
+           }
+       }
 
-      if not certExists
-        then return $ Left (CertFileNotFound certFile)
-        else if not keyExists
-          then return $ Left (KeyFileNotFound keyFile)
-          else return $ Right ()
+validateDomainCert
+  :: (Text, FilePath, FilePath) -> IO (Either CertificateError ())
+validateDomainCert (_domain, certFile, keyFile) = do
+  certExists <- doesFileExist certFile
+  keyExists  <- doesFileExist keyFile
+  if not certExists
+    then pure (Left (CertFileNotFound certFile))
+    else if not keyExists
+      then pure (Left (KeyFileNotFound keyFile))
+      else pure (Right ())
 
--- | SNI callback function - returns credentials based on hostname
-sniCallback :: [(Text, FilePath, FilePath)] -> FilePath -> FilePath -> String -> IO TLS.Credentials
-sniCallback domains defaultCert defaultKey hostname = do
-  let hostnameText = T.pack hostname
-      -- Look up domain in map
+sniCallback
+  :: [(Text, FilePath, FilePath)]
+  -> FilePath
+  -> FilePath
+  -> String
+  -> IO TLS.Credentials
+sniCallback domains defaultCert defaultKey hostname =
+  let domainMap :: Map Text (FilePath, FilePath)
       domainMap = Map.fromList [(d, (c, k)) | (d, c, k) <- domains]
+  in case Map.lookup (T.pack hostname) domainMap of
+       Nothing -> credentialsOrDefault defaultCert defaultKey
+       Just (certFile, keyFile) ->
+         credentialsOrDefault certFile keyFile
 
-  case Map.lookup hostnameText domainMap of
-    Nothing -> do
-      -- No match, use default certificate
-      loadCredentials defaultCert defaultKey
-
-    Just (certFile, keyFile) -> do
-      -- Found matching domain, load its certificate
-      loadCredentials certFile keyFile
-
--- | Load TLS credentials from certificate and key files
-loadCredentials :: FilePath -> FilePath -> IO TLS.Credentials
-loadCredentials certFile keyFile = do
+credentialsOrDefault :: FilePath -> FilePath -> IO TLS.Credentials
+credentialsOrDefault certFile keyFile = do
   result <- TLS.credentialLoadX509 certFile keyFile
   case result of
-    Left err ->
-      error $ "Failed to load certificate: " ++ err
+    Left err -> do
+      hPutStrLn stderr $
+        "TLS: failed to load credential at "
+        <> certFile <> " (" <> err <> "); SNI handler returns empty credentials"
+      pure (TLS.Credentials [])
     Right credential ->
-      return $ TLS.Credentials [credential]
+      pure (TLS.Credentials [credential])
 
--- | Validate a certificate file (check if it's readable and valid)
-validateCertificate :: FilePath -> IO (Either CertificateError [SignedCertificate])
+validateCertificate
+  :: FilePath -> IO (Either CertificateError [SignedCertificate])
 validateCertificate certFile = do
   exists <- doesFileExist certFile
   if not exists
-    then return $ Left (CertFileNotFound certFile)
+    then pure (Left (CertFileNotFound certFile))
     else do
       result <- try $ readSignedObject certFile
       case result of
         Left (err :: SomeException) ->
-          return $ Left (InvalidCertificate certFile (show err))
+          pure (Left (InvalidCertificate certFile (show err)))
         Right certs ->
-          return $ Right certs
+          pure (Right certs)
 
--- | Strong cipher suites for production (TLS 1.2 + TLS 1.3)
 strongCipherSuites :: [TLS.Cipher]
 strongCipherSuites =
-  -- TLS 1.3 cipher suites (preferred)
-  [ Cipher.cipher_TLS13_AES128GCM_SHA256
-  , Cipher.cipher_TLS13_AES256GCM_SHA384
-  , Cipher.cipher_TLS13_CHACHA20POLY1305_SHA256
-  ] ++
-  -- TLS 1.2 cipher suites (fallback, only ECDHE + AEAD)
-  [ Cipher.cipher_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+  [ Cipher.cipher13_AES_128_GCM_SHA256
+  , Cipher.cipher13_AES_256_GCM_SHA384
+  , Cipher.cipher13_CHACHA20_POLY1305_SHA256
+  , Cipher.cipher_ECDHE_RSA_WITH_AES_128_GCM_SHA256
   , Cipher.cipher_ECDHE_RSA_WITH_AES_256_GCM_SHA384
   , Cipher.cipher_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
   , Cipher.cipher_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256

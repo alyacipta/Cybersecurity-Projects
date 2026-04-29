@@ -9,7 +9,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Carter Perez
 maintainer:          support@certgames.com
-copyright:           2025 Carter Perez
+copyright:           2026 AngelaMos
 category:            Network, Security, Web
 build-type:          Simple
 extra-source-files:  README.md
@@ -38,6 +38,7 @@ library
                      , Aenebris.WAF.Engine
                      , Aenebris.Honeypot
                      , Aenebris.Geo
+                     , Aenebris.Net.IP
                      , Aenebris.ML.Features
                      , Aenebris.ML.Model
                      , Aenebris.ML.Loader
