@@ -11,7 +11,7 @@ Cybersecurity tools organized by category: network analysis, security auditing, 
 Free and premium learning platforms, Udemy courses, hands-on labs, and specialized training programs.
 
 ### [Certifications](./CERTIFICATIONS.md)
-Exam objectives, practice tests, official study guides, and certification preparation materials for CompTIA, CISSP, cloud providers, and more.
+Exam objectives, practice tests, official study guides, and certification preparation materials for CompTIA, CISSP, CISCO, cloud providers, and more.
 
 ### [Communities](./COMMUNITIES.md)
 YouTube channels, Reddit communities, LinkedIn professionals, and security conferences to connect with other professionals.
