@@ -8,11 +8,32 @@ require "../domain/credential"
 require "../domain/credential_version"
 
 module CRE::Persistence
+  enum RotatorKind
+    AwsSecretsmgr
+    VaultDynamic
+    GithubPat
+    EnvFile
+  end
+
+  enum RotationState
+    Pending
+    Generating
+    Applying
+    Verifying
+    Committing
+    Completed
+    Failed
+    Aborted
+    Inconsistent
+  end
+
+  TERMINAL_STATES = [RotationState::Completed, RotationState::Failed, RotationState::Aborted]
+
   record RotationRecord,
     id : UUID,
     credential_id : UUID,
-    rotator_kind : Symbol,
-    state : Symbol,
+    rotator_kind : RotatorKind,
+    state : RotationState,
     started_at : Time,
     completed_at : Time?,
     failure_reason : String?
@@ -57,7 +78,7 @@ module CRE::Persistence
 
   abstract class RotationsRepo
     abstract def insert(rotation : RotationRecord) : Nil
-    abstract def update_state(id : UUID, state : Symbol, error : String? = nil) : Nil
+    abstract def update_state(id : UUID, state : RotationState, error : String? = nil) : Nil
     abstract def in_flight : Array(RotationRecord)
   end
 
