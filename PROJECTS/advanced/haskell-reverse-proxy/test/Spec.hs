@@ -180,6 +180,20 @@ import Aenebris.ML.Features
   , uaSecChConsistency
   , userAgentLengthCap
   )
+import Aenebris.ML.Calibration
+  ( Calibrator(..)
+  , calibrate
+  , fitIsotonic
+  , fitPlatt
+  )
+import Aenebris.ML.Inference
+  ( kZeroThreshold
+  , predictProba
+  , predictRaw
+  , predictScore
+  , sigmoidLink
+  , walkTree
+  )
 import Aenebris.ML.Loader
   ( ParseError(..)
   , parseEnsemble
@@ -333,6 +347,8 @@ main = hspec $ do
   mlFeaturesSpec
   mlModelSpec
   mlLoaderSpec
+  mlInferenceSpec
+  mlCalibrationSpec
 
 configSpec :: Spec
 configSpec = describe "Config" $ do
@@ -2041,6 +2057,353 @@ mlLoaderSpec = describe "ML.Loader" $ do
       case parseEnsemble (mlLoaderSubst "version=v4" "version=v3") of
         Left err -> peKey err `shouldBe` "version"
         Right _  -> expectationFailure "expected Left"
+
+mkCatStump :: Bool -> MissingType -> [Word32] -> Double -> Double -> Tree
+mkCatStump defaultLeft mtype bitmap leftV rightV =
+  let bitmapVec  = VU.fromList bitmap
+      boundaries = VU.fromList [0, VU.length bitmapVec]
+      dt         = makeDecisionType SplitCategorical defaultLeft mtype
+  in Tree
+       { treeFeatureIdx    = VU.fromList [0, leafSentinel, leafSentinel]
+       , treeThreshold     = VU.fromList [0.0, 0.0, 0.0]
+       , treeLeftChild     = VU.fromList [1, noChildIndex, noChildIndex]
+       , treeRightChild    = VU.fromList [2, noChildIndex, noChildIndex]
+       , treeLeafValue     = VU.fromList [0.0, leftV, rightV]
+       , treeDecisionType  = VU.fromList [dt, 0, 0]
+       , treeCatBoundaries = boundaries
+       , treeCatThreshold  = bitmapVec
+       }
+
+mkSingleFeatureEnsemble :: Objective -> Double -> Bool -> [Tree] -> Ensemble
+mkSingleFeatureEnsemble obj sig avg trees = Ensemble
+  { ensembleVersion       = currentEnsembleVersion
+  , ensembleFeatureCount  = 1
+  , ensembleObjective     = obj
+  , ensembleBaseScore     = 0.0
+  , ensembleSigmoidScale  = sig
+  , ensembleAverageOutput = avg
+  , ensembleTrees         = V.fromList trees
+  }
+
+binaryEnsemble :: [Tree] -> Ensemble
+binaryEnsemble = mkSingleFeatureEnsemble ObjectiveBinaryLogistic defaultSigmoidScale False
+
+singletonFv :: Double -> VU.Vector Double
+singletonFv = VU.singleton
+
+mlInferenceSpec :: Spec
+mlInferenceSpec = describe "ML.Inference" $ do
+  tinyBytes <- runIO (BS.readFile "test/fixtures/ml/tiny_lgbm_v4.txt")
+
+  describe "walkTree on a leaf-only tree" $ do
+    it "returns the root index for a stump tree" $
+      walkTree (makeLeafTree 0.42) (singletonFv 0.0) `shouldBe` 0
+
+    it "predictRaw returns the leaf value for a single-leaf single-tree ensemble" $
+      predictRaw (binaryEnsemble [makeLeafTree 0.42]) (singletonFv 0.0)
+        `shouldBe` 0.42
+
+  describe "walkTree on a numerical stump (defaultLeft=True, MissingTypeNone)" $ do
+    let tree   = makeStumpTreeWithMissing 0 0.5 (-1.0) 1.0 True MissingTypeNone
+        ens    = binaryEnsemble [tree]
+
+    it "fval below threshold goes left (leaf value -1.0)" $
+      predictRaw ens (singletonFv 0.0) `shouldBe` (-1.0)
+
+    it "fval above threshold goes right (leaf value 1.0)" $
+      predictRaw ens (singletonFv 0.9) `shouldBe` 1.0
+
+    it "fval exactly at threshold goes left (predicate is <=, not <)" $
+      predictRaw ens (singletonFv 0.5) `shouldBe` (-1.0)
+
+    it "NaN with MissingTypeNone is remapped to 0 then compared (0 <= 0.5 -> left)" $
+      predictRaw ens (singletonFv (0.0 / 0.0)) `shouldBe` (-1.0)
+
+  describe "MissingType=Zero routes via default-left flag" $ do
+    let leftTree  = makeStumpTreeWithMissing 0 (-10.0) 7.0 (-7.0) True  MissingTypeZero
+        rightTree = makeStumpTreeWithMissing 0 (-10.0) 7.0 (-7.0) False MissingTypeZero
+
+    it "0.0 with defaultLeft=True hits left branch (ignoring threshold)" $
+      predictRaw (binaryEnsemble [leftTree]) (singletonFv 0.0) `shouldBe` 7.0
+
+    it "0.0 with defaultLeft=False hits right branch (ignoring threshold)" $
+      predictRaw (binaryEnsemble [rightTree]) (singletonFv 0.0) `shouldBe` (-7.0)
+
+    it "tiny non-zero (2e-36) is treated as zero by IsZero(kZeroThreshold=1e-35)" $
+      predictRaw (binaryEnsemble [leftTree]) (singletonFv 2.0e-36)
+        `shouldBe` 7.0
+
+    it "value just above kZeroThreshold is NOT treated as zero" $
+      predictRaw (binaryEnsemble [leftTree]) (singletonFv 1.0e-30)
+        `shouldBe` (-7.0)
+
+  describe "MissingType=NaN routes only when feature is NaN" $ do
+    let nanTree = makeStumpTreeWithMissing 0 0.5 (-1.0) 1.0 True MissingTypeNaN
+
+    it "NaN feature uses default-left (left leaf -1.0)" $
+      predictRaw (binaryEnsemble [nanTree]) (singletonFv (0.0 / 0.0))
+        `shouldBe` (-1.0)
+
+    it "non-NaN feature still uses normal threshold comparison" $
+      predictRaw (binaryEnsemble [nanTree]) (singletonFv 0.9)
+        `shouldBe` 1.0
+
+  describe "categorical bitmap routing" $ do
+    let bitmap5 = [5 :: Word32]
+
+    it "category 0 in bitmap 0b101 routes left" $
+      predictRaw (binaryEnsemble [mkCatStump False MissingTypeNone bitmap5 (-2.0) 2.0])
+                 (singletonFv 0.0)
+        `shouldBe` (-2.0)
+
+    it "category 1 NOT in bitmap 0b101 routes right" $
+      predictRaw (binaryEnsemble [mkCatStump False MissingTypeNone bitmap5 (-2.0) 2.0])
+                 (singletonFv 1.0)
+        `shouldBe` 2.0
+
+    it "category 2 in bitmap 0b101 routes left" $
+      predictRaw (binaryEnsemble [mkCatStump False MissingTypeNone bitmap5 (-2.0) 2.0])
+                 (singletonFv 2.0)
+        `shouldBe` (-2.0)
+
+    it "category beyond bitmap range routes right" $
+      predictRaw (binaryEnsemble [mkCatStump False MissingTypeNone bitmap5 (-2.0) 2.0])
+                 (singletonFv 99.0)
+        `shouldBe` 2.0
+
+    it "negative categorical feature routes right" $
+      predictRaw (binaryEnsemble [mkCatStump False MissingTypeNone bitmap5 (-2.0) 2.0])
+                 (singletonFv (-1.0))
+        `shouldBe` 2.0
+
+    it "categorical NaN with MissingTypeZero routes via default-left" $
+      predictRaw (binaryEnsemble [mkCatStump True MissingTypeZero bitmap5 (-2.0) 2.0])
+                 (singletonFv (0.0 / 0.0))
+        `shouldBe` (-2.0)
+
+  describe "multi-tree ensemble sums leaf contributions" $ do
+    let t1 = makeStumpTreeWithMissing 0 0.0 (-0.3) 0.3 False MissingTypeNone
+        t2 = makeStumpTreeWithMissing 0 0.5 (-0.2) 0.2 False MissingTypeNone
+
+    it "sums each tree's chosen leaf value" $
+      predictRaw (binaryEnsemble [t1, t2]) (singletonFv 0.7)
+        `shouldBe` 0.5
+
+    it "different feature value picks different leaves and changes the sum" $
+      predictRaw (binaryEnsemble [t1, t2]) (singletonFv (-0.1))
+        `shouldBe` (-0.5)
+
+  describe "predictScore: average_output divisor" $ do
+    let t1 = makeLeafTree 1.0
+        t2 = makeLeafTree 3.0
+
+    it "no average_output: predictScore equals predictRaw" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveBinaryLogistic defaultSigmoidScale False [t1, t2]
+      predictScore ens (singletonFv 0.0) `shouldBe` 4.0
+
+    it "average_output=True divides raw by num_trees" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveBinaryLogistic defaultSigmoidScale True [t1, t2]
+      predictScore ens (singletonFv 0.0) `shouldBe` 2.0
+
+    it "average_output=True with empty tree vector falls back to raw (n=0 guard)" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveBinaryLogistic defaultSigmoidScale True []
+      predictScore ens (singletonFv 0.0) `shouldBe` 0.0
+
+  describe "sigmoidLink" $ do
+    it "scale*x = 0 yields 0.5" $
+      sigmoidLink 1.0 0.0 `shouldBe` 0.5
+
+    it "very large positive x saturates near 1.0" $
+      sigmoidLink 1.0 1000.0 `shouldBe` 1.0
+
+    it "very large negative x saturates near 0.0" $
+      sigmoidLink 1.0 (-1000.0) `shouldBe` 0.0
+
+    it "scale=0.5 halves the steepness" $
+      sigmoidLink 0.5 2.0 `shouldBe` (1.0 / (1.0 + exp (-1.0)))
+
+  describe "predictProba: objective-specific link function" $ do
+    it "binary logistic applies sigmoid with the ensemble's scale" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveBinaryLogistic 1.0 False [makeLeafTree 0.0]
+      predictProba ens (singletonFv 0.0) `shouldBe` 0.5
+
+    it "binary logistic with sigmoidScale=0.5 applies the scale" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveBinaryLogistic 0.5 False [makeLeafTree 2.0]
+      predictProba ens (singletonFv 0.0) `shouldBe` (1.0 / (1.0 + exp (-1.0)))
+
+    it "regression returns the score directly (no sigmoid)" $ do
+      let ens = mkSingleFeatureEnsemble ObjectiveRegression 1.0 False [makeLeafTree 7.5]
+      predictProba ens (singletonFv 0.0) `shouldBe` 7.5
+
+  describe "kZeroThreshold matches LightGBM" $
+    it "is exactly 1e-35" $
+      kZeroThreshold `shouldBe` 1.0e-35
+
+  describe "end-to-end against the tiny LightGBM v4 fixture" $ do
+    case parseEnsemble tinyBytes of
+      Left err -> it "parses tinyBytes" $ expectationFailure (show err)
+      Right ens -> do
+        it "feature vector [0, 0] (cat_feat=0 -> left, num_feat=0 -> left) hits leaf 0 (0.3)" $
+          predictRaw ens (VU.fromList [0.0, 0.0]) `shouldBe` 0.3
+
+        it "feature vector [10, 1] (cat_feat=1 -> left, num_feat=10 -> right) hits leaf 1 (-0.2)" $
+          predictRaw ens (VU.fromList [10.0, 1.0]) `shouldBe` (-0.2)
+
+        it "feature vector [0, 2] (cat_feat=2 -> right) hits leaf 2 (-0.4)" $
+          predictRaw ens (VU.fromList [0.0, 2.0]) `shouldBe` (-0.4)
+
+        it "predictProba on tinyBytes feeds the sum through binary sigmoid scale=1" $
+          predictProba ens (VU.fromList [0.0, 0.0])
+            `shouldBe` (1.0 / (1.0 + exp (-0.3)))
+
+isPlatt :: Calibrator -> Bool
+isPlatt (PlattCalibrator _ _) = True
+isPlatt _                      = False
+
+isIsotonic :: Calibrator -> Bool
+isIsotonic (IsotonicCalibrator _) = True
+isIsotonic _                       = False
+
+mlCalibrationSpec :: Spec
+mlCalibrationSpec = describe "ML.Calibration" $ do
+  describe "NoCalibrator" $
+    it "is identity for any input" $ do
+      calibrate NoCalibrator 0.0 `shouldBe` 0.0
+      calibrate NoCalibrator 0.5 `shouldBe` 0.5
+      calibrate NoCalibrator 1.0 `shouldBe` 1.0
+      calibrate NoCalibrator (-3.7) `shouldBe` (-3.7)
+
+  describe "PlattCalibrator basic shape" $ do
+    it "(a=0, b=0) yields constant 0.5 regardless of p" $ do
+      calibrate (PlattCalibrator 0.0 0.0) 0.3    `shouldBe` 0.5
+      calibrate (PlattCalibrator 0.0 0.0) 1000.0 `shouldBe` 0.5
+
+    it "negative a produces output increasing in p" $ do
+      let cal = PlattCalibrator (-2.0) 1.0
+      calibrate cal 0.0 `shouldSatisfy` (< calibrate cal 1.0)
+
+    it "positive (a*p + b) saturates near 0 for large p" $
+      calibrate (PlattCalibrator 1.0 0.0) 1000.0 `shouldBe` 0.0
+
+    it "negative (a*p + b) saturates near 1 for large p" $
+      calibrate (PlattCalibrator (-1.0) 0.0) 1000.0 `shouldBe` 1.0
+
+  describe "fitPlatt edge cases" $ do
+    it "returns NoCalibrator for empty input" $
+      fitPlatt VU.empty `shouldBe` NoCalibrator
+
+    it "returns NoCalibrator for single sample" $
+      fitPlatt (VU.singleton (0.5, True)) `shouldBe` NoCalibrator
+
+    it "returns PlattCalibrator for >=2 samples" $
+      fitPlatt (VU.fromList [(0.1, False), (0.9, True)])
+        `shouldSatisfy` isPlatt
+
+  describe "fitPlatt convergence on logistic-like data" $ do
+    let negativeExamples = [(fromIntegral i / 100.0, False) | i <- [0  :: Int .. 49]]
+        positiveExamples = [(fromIntegral i / 100.0, True)  | i <- [50 :: Int .. 99]]
+        samples          = VU.fromList (negativeExamples ++ positiveExamples)
+        cal              = fitPlatt samples
+
+    it "fit recovers a < 0 (output increases with p)" $
+      case cal of
+        PlattCalibrator a _ -> a `shouldSatisfy` (< 0.0)
+        _                    -> expectationFailure "expected PlattCalibrator"
+
+    it "calibrated output at low p is less than at high p" $
+      calibrate cal 0.1 `shouldSatisfy` (< calibrate cal 0.9)
+
+    it "calibrated output stays in (0, 1)" $ do
+      let mid = calibrate cal 0.5
+      mid `shouldSatisfy` (> 0.0)
+      mid `shouldSatisfy` (< 1.0)
+
+  describe "fitIsotonic edge cases" $ do
+    it "returns NoCalibrator for empty input" $
+      fitIsotonic VU.empty `shouldBe` NoCalibrator
+
+    it "returns NoCalibrator for single sample" $
+      fitIsotonic (VU.singleton (0.5, True)) `shouldBe` NoCalibrator
+
+    it "returns IsotonicCalibrator for >=2 samples" $
+      fitIsotonic (VU.fromList [(0.1, False), (0.9, True)])
+        `shouldSatisfy` isIsotonic
+
+  describe "fitIsotonic on already-monotone data" $ do
+    let samples = VU.fromList
+          [(0.1, False), (0.3, False), (0.6, True), (0.9, True)]
+        cal = fitIsotonic samples
+
+    it "low raw clamps to 0.0" $
+      calibrate cal 0.0 `shouldBe` 0.0
+
+    it "high raw clamps to 1.0" $
+      calibrate cal 1.0 `shouldBe` 1.0
+
+    it "calibrated values are monotone non-decreasing" $
+      case cal of
+        IsotonicCalibrator bp ->
+          let cals = VU.toList (VU.map snd bp)
+          in all (uncurry (<=)) (zip cals (drop 1 cals)) `shouldBe` True
+        _ -> expectationFailure "expected IsotonicCalibrator"
+
+  describe "fitIsotonic corrects non-monotone data" $ do
+    let samples = VU.fromList
+          [(0.1, False), (0.4, True), (0.5, False), (0.9, True)]
+        cal = fitIsotonic samples
+
+    it "produces 3 breakpoints (one PAV merge)" $
+      case cal of
+        IsotonicCalibrator bp -> VU.length bp `shouldBe` 3
+        _ -> expectationFailure "expected IsotonicCalibrator"
+
+    it "calibrated values are monotone non-decreasing" $
+      case cal of
+        IsotonicCalibrator bp ->
+          let cals = VU.toList (VU.map snd bp)
+          in all (uncurry (<=)) (zip cals (drop 1 cals)) `shouldBe` True
+        _ -> expectationFailure "expected IsotonicCalibrator"
+
+  describe "fitIsotonic ties" $ do
+    let samples = VU.fromList [(0.5, True), (0.5, False)]
+        cal = fitIsotonic samples
+
+    it "merges identical raw values into one breakpoint" $
+      case cal of
+        IsotonicCalibrator bp -> VU.length bp `shouldBe` 1
+        _ -> expectationFailure "expected IsotonicCalibrator"
+
+    it "merged breakpoint has averaged label" $
+      calibrate cal 0.5 `shouldBe` 0.5
+
+  describe "fitIsotonic with all-same labels" $ do
+    it "all True calibrates to 1.0 across the range" $ do
+      let cal = fitIsotonic (VU.fromList [(0.1, True), (0.5, True), (0.9, True)])
+      calibrate cal 0.5 `shouldBe` 1.0
+
+    it "all False calibrates to 0.0 across the range" $ do
+      let cal = fitIsotonic (VU.fromList [(0.1, False), (0.5, False), (0.9, False)])
+      calibrate cal 0.5 `shouldBe` 0.0
+
+  describe "isotonic lookup behavior" $ do
+    let cal = IsotonicCalibrator
+                (VU.fromList [(0.25, 0.0), (0.5, 0.5), (0.75, 1.0)])
+
+    it "clamps below first breakpoint" $
+      calibrate cal 0.0 `shouldBe` 0.0
+
+    it "clamps above last breakpoint" $
+      calibrate cal 1.5 `shouldBe` 1.0
+
+    it "returns exact value at a breakpoint" $
+      calibrate cal 0.5 `shouldBe` 0.5
+
+    it "linearly interpolates between breakpoints" $ do
+      let bp = VU.fromList [(0.0, 0.25), (1.0, 0.75)]
+      calibrate (IsotonicCalibrator bp) 0.5 `shouldBe` 0.5
+
+    it "empty breakpoints pass through" $
+      calibrate (IsotonicCalibrator VU.empty) 0.42 `shouldBe` 0.42
 
 headersOnlyRequest :: [(BS.ByteString, BS.ByteString)] -> Request
 headersOnlyRequest hs =
