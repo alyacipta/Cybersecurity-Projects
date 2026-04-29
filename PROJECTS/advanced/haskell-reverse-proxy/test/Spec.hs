@@ -186,6 +186,17 @@ import Aenebris.ML.Calibration
   , fitIsotonic
   , fitPlatt
   )
+import Aenebris.ML.IForest
+  ( IForest(..)
+  , ITree(..)
+  , defaultIForestNumTrees
+  , defaultIForestSubsampleSize
+  , eulerMascheroni
+  , harmonicNumber
+  , normalizationConstant
+  , pathLength
+  , scoreIForest
+  )
 import Aenebris.ML.Inference
   ( kZeroThreshold
   , predictProba
@@ -285,7 +296,8 @@ import Network.Wai.Test
   , simpleStatus
   )
 import Test.Hspec
-  ( Spec
+  ( Expectation
+  , Spec
   , describe
   , expectationFailure
   , hspec
@@ -349,6 +361,7 @@ main = hspec $ do
   mlLoaderSpec
   mlInferenceSpec
   mlCalibrationSpec
+  mlIForestSpec
 
 configSpec :: Spec
 configSpec = describe "Config" $ do
@@ -2404,6 +2417,143 @@ mlCalibrationSpec = describe "ML.Calibration" $ do
 
     it "empty breakpoints pass through" $
       calibrate (IsotonicCalibrator VU.empty) 0.42 `shouldBe` 0.42
+
+shouldBeApprox :: Double -> Double -> Expectation
+shouldBeApprox actual expected =
+  abs (actual - expected) `shouldSatisfy` (< 1.0e-9)
+
+singleSplitTree :: Int -> Double -> Int -> Int -> ITree
+singleSplitTree featIdx thr leftSize rightSize =
+  ITreeSplit featIdx thr (ITreeLeaf leftSize) (ITreeLeaf rightSize)
+
+mlIForestSpec :: Spec
+mlIForestSpec = describe "ML.IForest" $ do
+  describe "harmonicNumber" $ do
+    it "H(0) is 0" $
+      harmonicNumber 0 `shouldBe` 0.0
+
+    it "H(1) is exactly 1.0" $
+      harmonicNumber 1 `shouldBe` 1.0
+
+    it "H(2) is exactly 1.5" $
+      harmonicNumber 2 `shouldBe` 1.5
+
+    it "H(3) is 1 + 1/2 + 1/3" $
+      harmonicNumber 3 `shouldBeApprox` (1.0 + 0.5 + 1.0 / 3.0)
+
+    it "H(1000) matches the asymptotic ln(n)+gamma+1/(2n) within 1e-6" $ do
+      let expected = log 1000.0 + eulerMascheroni + 1.0 / (2.0 * 1000.0)
+      abs (harmonicNumber 1000 - expected) `shouldSatisfy` (< 1.0e-6)
+
+    it "rejects negative input by returning 0" $
+      harmonicNumber (-5) `shouldBe` 0.0
+
+  describe "normalizationConstant c(n)" $ do
+    it "c(0) is 0 (degenerate)" $
+      normalizationConstant 0 `shouldBe` 0.0
+
+    it "c(1) is 0 (degenerate)" $
+      normalizationConstant 1 `shouldBe` 0.0
+
+    it "c(2) is 2*H(1) - 2*1/2 = 1.0" $
+      normalizationConstant 2 `shouldBe` 1.0
+
+    it "c(256) matches Liu et al. 2008 reference value" $
+      normalizationConstant 256
+        `shouldBeApprox`
+          (2.0 * harmonicNumber 255 - 2.0 * 255.0 / 256.0)
+
+  describe "pathLength on a single split" $ do
+    let tree = singleSplitTree 0 0.5 1 1
+        fvLeft  = VU.singleton 0.3
+        fvRight = VU.singleton 0.7
+
+    it "feature value <= threshold goes left, depth increments to 1" $
+      pathLength tree fvLeft 0
+        `shouldBe` (1.0 + normalizationConstant 1)
+
+    it "feature value > threshold goes right, depth increments to 1" $
+      pathLength tree fvRight 0
+        `shouldBe` (1.0 + normalizationConstant 1)
+
+    it "leaf adds c(leafSize) to currentDepth" $ do
+      let leaf10 = ITreeLeaf 10
+      pathLength leaf10 (VU.singleton 0.0) 5
+        `shouldBe` (5.0 + normalizationConstant 10)
+
+  describe "pathLength on a deeper tree" $ do
+    let tree = ITreeSplit 0 0.5
+                 (ITreeSplit 1 0.5
+                   (ITreeLeaf 1) (ITreeLeaf 1))
+                 (ITreeLeaf 2)
+        fv00 = VU.fromList [0.3, 0.3]
+        fv01 = VU.fromList [0.3, 0.7]
+        fv1  = VU.fromList [0.7, 0.0]
+
+    it "fv00 traverses two splits and lands on left-left leaf" $
+      pathLength tree fv00 0
+        `shouldBe` (2.0 + normalizationConstant 1)
+
+    it "fv01 traverses two splits and lands on left-right leaf" $
+      pathLength tree fv01 0
+        `shouldBe` (2.0 + normalizationConstant 1)
+
+    it "fv1 traverses one split and lands on right leaf with size 2" $
+      pathLength tree fv1 0
+        `shouldBe` (1.0 + normalizationConstant 2)
+
+  describe "scoreIForest edge cases" $ do
+    it "empty forest returns 0.0" $
+      scoreIForest (IForest V.empty 256) (VU.singleton 0.0) `shouldBe` 0.0
+
+    it "subsample size 0 returns 0.0" $
+      scoreIForest (IForest (V.singleton (ITreeLeaf 1)) 0) (VU.singleton 0.0)
+        `shouldBe` 0.0
+
+    it "subsample size 1 returns 0.0 (c(1) is 0)" $
+      scoreIForest (IForest (V.singleton (ITreeLeaf 1)) 1) (VU.singleton 0.0)
+        `shouldBe` 0.0
+
+  describe "scoreIForest produces values in (0, 1]" $ do
+    let forest = IForest
+          (V.fromList
+            [ singleSplitTree 0 0.5 1 1
+            , singleSplitTree 0 0.7 1 1
+            , singleSplitTree 0 0.3 1 1
+            ])
+          4
+
+    it "anomalous input produces a score" $ do
+      let s = scoreIForest forest (VU.singleton 0.0)
+      s `shouldSatisfy` (> 0.0)
+      s `shouldSatisfy` (<= 1.0)
+
+  describe "scoreIForest: shorter average path = higher anomaly score" $ do
+    let shallow = IForest
+          (V.singleton (ITreeSplit 0 0.5 (ITreeLeaf 1) (ITreeLeaf 1)))
+          16
+        deep    = IForest
+          (V.singleton
+            (ITreeSplit 0 0.5
+              (ITreeSplit 1 0.5
+                (ITreeSplit 2 0.5 (ITreeLeaf 1) (ITreeLeaf 1))
+                (ITreeLeaf 1))
+              (ITreeLeaf 1)))
+          16
+        fv = VU.fromList [0.3, 0.3, 0.3]
+
+    it "shallow tree (depth 1) yields higher score than deep tree (depth 3)" $
+      scoreIForest shallow fv `shouldSatisfy` (> scoreIForest deep fv)
+
+  describe "default constants from Liu et al. 2008" $ do
+    it "default tree count is 100" $
+      defaultIForestNumTrees `shouldBe` 100
+
+    it "default subsample size is 256" $
+      defaultIForestSubsampleSize `shouldBe` 256
+
+    it "Euler-Mascheroni constant matches the standard 16-digit value" $
+      eulerMascheroni `shouldBe` 0.5772156649015329
 
 headersOnlyRequest :: [(BS.ByteString, BS.ByteString)] -> Request
 headersOnlyRequest hs =
