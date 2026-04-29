@@ -41,12 +41,15 @@ Fanout dispatch via Crystal channels. Each subscriber gets its own bounded chann
 | Subscriber | Overflow | Reason |
 |---|---|---|
 | `AuditSubscriber` | `Block` | Never drop audit events; compliance requirement |
-| `TuiSubscriber` | `Drop` | Stale UI is fine; can't block engine |
-| `MetricsSubscriber` | `Drop` | Best-effort metrics |
-| `TelegramSubscriber` | `Drop` (large buffer) | Network-flaky anyway |
-| `RotationOrchestrator` | `Block` | Must process scheduled rotations |
+| `Tui` | `Drop` | Stale UI is fine; can't block engine |
+| `LogNotifier` | `Drop` | Best-effort structured logs |
+| `TelegramSubscriber` | `Drop` (buffer 128) | Network-flaky anyway |
+| `RotationWorker` | `Block` (buffer 32) | Must dispatch scheduled rotations |
 
-The dispatcher is a single fiber reading from the inbox channel and writing to all subscriber channels in order. A slow subscriber configured `Block` causes the dispatcher to block on that subscriber's `send` - which is exactly what you want for audit (better to backpressure than to lose).
+The dispatcher is a single fiber reading from the inbox channel and writing to subscriber channels. Both overflow modes use `select` so a stuck subscriber can't pin the bus indefinitely:
+
+- `Drop`: non-blocking `select … else …` — full buffer logs a warn and drops the event.
+- `Block`: `select … when timeout(@block_send_timeout) …` — if a subscriber's buffer stays full past the timeout (default 5s), the bus drops that one event, logs the stall, and moves on. Operators tune the timeout up for slow downstreams they trust (audit DB writes) and down for unreliable ones.
 
 ### Rotators (`src/cre/rotators/`)
 
@@ -66,10 +69,10 @@ Rotators receive their cloud client through their constructor (DI). The CLI `run
 ### Persistence (`src/cre/persistence/`)
 
 Two adapters behind one interface:
-- `Sqlite::SqlitePersistence` - WAL mode, single connection (avoids `:memory:` per-connection split), application-level mutex for advisory lock simulation. Used for Tier 1 demo.
-- `Postgres::PostgresPersistence` - JSONB tags, BIGSERIAL audit, append-only triggers refusing UPDATE/DELETE/TRUNCATE on `audit_events`, `pg_advisory_xact_lock` for cross-process row locking. Used for Tier 2/3.
+- `Sqlite::SqlitePersistence` - single connection (`max_pool_size=1`) so SQLite's writer-serialization is safe; `synchronous=NORMAL`; `BEFORE UPDATE` and `BEFORE DELETE` triggers on `audit_events` raise `audit_events is append-only`. Application-level mutex for advisory-lock simulation (the abstraction is in-process only on SQLite). Used for Tier 1 demo.
+- `Postgres::PostgresPersistence` - JSONB tags, `BIGSERIAL` audit seq, `audit_events_no_update` trigger refusing UPDATE/DELETE/TRUNCATE, `pg_advisory_xact_lock` for cross-process locking, and a partial unique index on `rotations(credential_id) WHERE state NOT IN ('completed','failed','aborted','inconsistent')` so two daemons can never insert overlapping in-flight rotations for the same credential. Used for Tier 2/3.
 
-Same repo contracts (`CredentialsRepo`, `VersionsRepo`, `RotationsRepo`, `AuditRepo`) for both. The `Persistence` superclass exposes `transaction(&)` and `with_advisory_lock(key, &)` so the rest of the system is backend-agnostic.
+Both backends share the same migration runner (`schema_migrations` table + version-tracked `Step` records), so adding a column is a one-line `Step.new(N, ["ALTER TABLE ..."])` instead of editing a soup of `IF NOT EXISTS`. The repo contracts (`CredentialsRepo`, `VersionsRepo`, `RotationsRepo`, `AuditRepo`) are identical between adapters; `Persistence` exposes `transaction(&)` and `with_advisory_lock(key, &)` so the rest of the system stays backend-agnostic.
 
 ### Crypto layers (`src/cre/crypto/`, `src/cre/audit/`)
 
@@ -150,25 +153,26 @@ The PG triggers are not strictly necessary (the chain catches tampering anyway),
 
 | Scope | Bound | Mechanism |
 |---|---|---|
-| Per-credential | 1 active rotation | PG advisory lock keyed on `credential_id` (or per-process Mutex on SQLite) |
-| Per-rotator-kind | configurable | `Channel(Nil).new(capacity: N)` semaphore |
-| Global | 20 (default) | Global rotation worker pool |
+| Per-credential | 1 active rotation | `RotationWorker` checks `rotations.in_flight` before dispatching; PG also enforces a partial unique index so cross-process duplicates fail at the DB |
+| Per-rotation lifecycle | 1 step at a time | Orchestrator runs `generate -> apply -> verify -> commit` sequentially; `rollback_apply` fires on apply/verify failure; commit failure marks the rotation `inconsistent` and raises a critical alert |
+| Engine event bus | per-subscriber buffer + timeout | `EventBus#dispatch` uses `select` for both Block and Drop overflow (see Bus subscribers table above) |
 
 Crystal fibers + bounded channels = clean rate limiting without threads or locks.
 
 ## Lifecycle (cre run)
 
 ```
-1. Load config (env + flags)
-2. Open persistence (PG or SQLite); migrate!
-3. Initialize crypto (load KEK from env or KMS)
-4. Load + validate compiled-in policies (REGISTRY)
+1. Bootstrap: validate CRE_HMAC_KEY_HEX + CRE_KEK_HEX (hard-fail if missing)
+2. Open persistence (PG or SQLite); migrate! (versioned Step list)
+3. Build Envelope from KEK; build optional Ed25519Signer from CRE_SIGNING_KEY_HEX
+4. Load compiled-in policies (REGISTRY) + register rotators from env vars
 5. Start EventBus.run (dispatcher fiber)
-6. Start subscribers: audit, log, telegram, metrics
-7. Start Scheduler (publishes SchedulerTick on tick)
-8. Start PolicyEvaluator (subscribes to ticks + credential events)
-9. Optionally start TUI (cre watch)
-10. Block on signal: SIGTERM/SIGINT triggers graceful drain
+6. Start subscribers: AuditSubscriber, LogNotifier, RotationWorker, PolicyEvaluator
+7. Start Scheduler (SchedulerTick every CRE_TICK_SECONDS)
+8. Start BatchSealerScheduler if signer present (default every 5min)
+9. Wire Telegram bot if TELEGRAM_TOKEN + chat IDs are set
+10. Optionally start TUI + Snapshotter (cre watch)
+11. Block on stop_signal channel; SIGINT triggers graceful drain
 ```
 
-Graceful shutdown: `engine.stop` publishes `ShutdownRequested`, gives subscribers ~50ms to flush, then closes the bus inbox and joins each subscriber fiber.
+Graceful shutdown: `engine.stop` publishes `ShutdownRequested` and waits up to 2s on `audit_subscriber.await_drain` — the audit subscriber sends on a private completion channel as soon as it processes that event, which proves it has handled everything queued before it. Then the bus closes its inbox and subscriber channels; each subscriber fiber exits on `Channel::ClosedError`.

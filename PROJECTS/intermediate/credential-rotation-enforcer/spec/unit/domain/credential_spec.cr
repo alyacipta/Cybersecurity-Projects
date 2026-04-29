@@ -39,7 +39,7 @@ describe CRE::Domain::Credential do
       tags: {} of String => String,
     )
     c.kind.github_pat?.should be_true
-    c.kind.aws_iam_key?.should be_false
+    c.kind.env_file?.should be_false
   end
 
   it "tag() accepts both string and symbol keys" do
@@ -50,5 +50,32 @@ describe CRE::Domain::Credential do
     )
     c.tag("foo").should eq "bar"
     c.tag(:foo).should eq "bar"
+  end
+
+  it "rotation_anchor falls back to created_at when never rotated" do
+    created = Time.utc - 3.days
+    c = CRE::Domain::Credential.new(
+      id: UUID.random,
+      external_id: "x",
+      kind: CRE::Domain::CredentialKind::EnvFile,
+      name: "n",
+      tags: {} of String => String,
+      created_at: created,
+    )
+    c.rotation_anchor.should eq created
+  end
+
+  it "rotation_anchor uses last_rotated_at once set" do
+    rotated = Time.utc - 1.hour
+    c = CRE::Domain::Credential.new(
+      id: UUID.random,
+      external_id: "x",
+      kind: CRE::Domain::CredentialKind::EnvFile,
+      name: "n",
+      tags: {} of String => String,
+      created_at: Time.utc - 30.days,
+      last_rotated_at: rotated,
+    )
+    c.rotation_anchor.should eq rotated
   end
 end

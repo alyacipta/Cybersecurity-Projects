@@ -6,6 +6,7 @@
 require "./ansi"
 require "./state"
 require "./renderer"
+require "./snapshotter"
 require "../engine/event_bus"
 
 module CRE::Tui

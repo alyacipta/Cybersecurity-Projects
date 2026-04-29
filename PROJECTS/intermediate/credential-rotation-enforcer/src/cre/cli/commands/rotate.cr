@@ -3,10 +3,10 @@
 # rotate.cr
 # ===================
 
+require "../bootstrap"
 require "../../engine/event_bus"
 require "../../engine/rotation_orchestrator"
-require "../../persistence/sqlite/sqlite_persistence"
-require "../../rotators/env_file"
+require "../../engine/rotation_worker"
 
 module CRE::Cli::Commands
   class Rotate
@@ -17,7 +17,7 @@ module CRE::Cli::Commands
 
       OptionParser.parse(argv) do |parser|
         parser.banner = "Usage: cre rotate <credential-id> [options]"
-        parser.on("--db=URL", "") { |u| db_url = u }
+        parser.on("--db=URL", "database URL (sqlite:path or postgres://...)") { |u| db_url = u }
         parser.on("-h", "--help") { _help_requested = true; io.puts parser }
         parser.unknown_args { |args| cred_id_str = args.first? }
       end
@@ -34,34 +34,31 @@ module CRE::Cli::Commands
         return 64
       end
 
-      persist = if db_url.starts_with?("sqlite:")
-                  CRE::Persistence::Sqlite::SqlitePersistence.new(db_url.lchop("sqlite:"))
-                else
-                  raise "rotate currently supports SQLite only via CLI shortcut"
-                end
+      envelope = CRE::Cli::Bootstrap.envelope
+
+      persist = CRE::Cli::Bootstrap.build_persistence(db_url)
       persist.migrate!
 
       cred = persist.credentials.find(cred_id)
       if cred.nil?
         io.puts "credential not found: #{cred_id}"
-        return 1
-      end
-
-      rotator_class = CRE::Rotators::Rotator.for(rotator_kind_for(cred.kind))
-      if rotator_class.nil?
-        io.puts "no rotator registered for kind=#{cred.kind}"
+        persist.close
         return 1
       end
 
       bus = CRE::Engine::EventBus.new
       bus.run
-      orchestrator = CRE::Engine::RotationOrchestrator.new(bus, persist)
+      orchestrator = CRE::Engine::RotationOrchestrator.new(bus, persist, envelope)
+      worker = CRE::Engine::RotationWorker.new(bus, orchestrator, persist)
+      CRE::Cli::Bootstrap.register_rotators(worker, io)
 
-      rotator = case cred.kind
-                when CRE::Domain::CredentialKind::EnvFile then CRE::Rotators::EnvFileRotator.new
-                else
-                  raise "this CLI shortcut only supports env_file via direct rotation; cloud rotators need full daemon config"
-                end
+      rotator = worker.rotator_for_kind(cred.kind)
+      if rotator.nil?
+        io.puts "no rotator registered for #{cred.kind} (set the matching env vars; see README)"
+        bus.stop
+        persist.close
+        return 1
+      end
 
       io.puts "Rotating #{cred.name} (#{cred.id}) via #{rotator.kind}..."
       state = orchestrator.run(cred, rotator)
@@ -70,21 +67,14 @@ module CRE::Cli::Commands
       persist.close
 
       case state
-      when CRE::Persistence::RotationState::Completed then io.puts "✓ rotation completed"; 0
-      when CRE::Persistence::RotationState::Failed    then io.puts "✗ rotation failed"; 1
-      else                                                 io.puts "rotation ended in unexpected state #{state}"; 2
+      when CRE::Persistence::RotationState::Completed    then io.puts "✓ rotation completed"; 0
+      when CRE::Persistence::RotationState::Failed       then io.puts "✗ rotation failed"; 1
+      when CRE::Persistence::RotationState::Inconsistent then io.puts "✗ rotation INCONSISTENT — manual intervention required"; 2
+      else                                                    io.puts "rotation ended in unexpected state #{state}"; 2
       end
-    end
-
-    private def rotator_kind_for(kind : CRE::Domain::CredentialKind) : Symbol
-      case kind
-      in .aws_secretsmgr? then :aws_secretsmgr
-      in .vault_dynamic?  then :vault_dynamic
-      in .github_pat?     then :github_pat
-      in .env_file?       then :env_file
-      in .aws_iam_key?    then :aws_iam_key
-      in .database?       then :database
-      end
+    rescue ex : CRE::Cli::Bootstrap::ConfigError
+      io.puts "configuration error: #{ex.message}"
+      78
     end
   end
 end

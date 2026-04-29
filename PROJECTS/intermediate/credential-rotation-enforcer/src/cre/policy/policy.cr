@@ -54,12 +54,12 @@ module CRE::Policy
     end
 
     def overdue?(c : Domain::Credential, now : Time = Time.utc) : Bool
-      (now - c.updated_at) > @max_age
+      (now - c.rotation_anchor) > @max_age
     end
 
     def in_warning_window?(c : Domain::Credential, now : Time = Time.utc) : Bool
       return false unless w = @warn_at
-      age = now - c.updated_at
+      age = now - c.rotation_anchor
       age > w && age <= @max_age
     end
 

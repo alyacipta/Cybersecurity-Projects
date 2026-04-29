@@ -3,24 +3,18 @@
 # run.cr
 # ===================
 
+require "../bootstrap"
 require "../../engine/engine"
 require "../../engine/scheduler"
 require "../../engine/rotation_orchestrator"
 require "../../engine/rotation_worker"
-require "../../persistence/sqlite/sqlite_persistence"
-require "../../persistence/postgres/postgres_persistence"
+require "../../audit/batch_sealer"
+require "../../audit/batch_sealer_scheduler"
 require "../../policy/evaluator"
 require "../../notifiers/log_notifier"
 require "../../notifiers/telegram"
 require "../../notifiers/telegram_subscriber"
 require "../../notifiers/telegram_bot"
-require "../../rotators/env_file"
-require "../../rotators/aws_secrets"
-require "../../rotators/vault_dynamic"
-require "../../rotators/github_pat"
-require "../../aws/secrets_client"
-require "../../vault/client"
-require "../../github/client"
 
 module CRE::Cli::Commands
   class Run
@@ -40,7 +34,6 @@ module CRE::Cli::Commands
     def execute(argv : Array(String), io : IO) : Int32
       _help_requested = false
       db_url = ENV["DATABASE_URL"]? || "sqlite:cre.db"
-      hmac_hex = ENV["CRE_HMAC_KEY_HEX"]? || "0" * 64
       interval = (ENV["CRE_TICK_SECONDS"]? || "60").to_i
 
       OptionParser.parse(argv) do |parser|
@@ -51,17 +44,26 @@ module CRE::Cli::Commands
       end
       return 0 if _help_requested
 
-      persist = build_persistence(db_url)
+      hmac_key = Bootstrap.require_hmac_key
+      envelope = Bootstrap.require_envelope
+      signer = Bootstrap.signer
+
+      persist = Bootstrap.build_persistence(db_url)
       persist.migrate!
 
-      engine = CRE::Engine::Engine.new(persist, hmac_hex.hexbytes)
+      engine = CRE::Engine::Engine.new(persist, hmac_key)
       log_notifier = CRE::Notifiers::LogNotifier.new(engine.bus)
       evaluator = CRE::Policy::Evaluator.new(engine.bus, persist)
       scheduler = CRE::Engine::Scheduler.new(engine.bus, interval.seconds)
 
-      orchestrator = CRE::Engine::RotationOrchestrator.new(engine.bus, persist)
+      orchestrator = CRE::Engine::RotationOrchestrator.new(engine.bus, persist, envelope)
       worker = CRE::Engine::RotationWorker.new(engine.bus, orchestrator, persist)
-      register_rotators(worker, io)
+      Bootstrap.register_rotators(worker, io)
+
+      sealer_scheduler = if signer_obj = signer
+                           sealer = CRE::Audit::BatchSealer.new(persist, signer_obj)
+                           CRE::Audit::BatchSealerScheduler.new(engine.bus, sealer, Bootstrap.seal_interval)
+                         end
 
       telegram_pieces = wire_telegram(engine.bus, persist, io)
 
@@ -70,10 +72,13 @@ module CRE::Cli::Commands
       worker.start
       evaluator.start
       scheduler.start
+      sealer_scheduler.try(&.start)
       telegram_pieces.each(&.start)
 
-      io.puts "cre running. PID #{Process.pid}, tick #{interval}s, db #{redact(db_url)}"
+      io.puts "cre running. PID #{Process.pid}, tick #{interval}s, db #{Bootstrap.redact_db_url(db_url)}"
       io.puts "rotators: #{worker.kinds.map(&.to_s).join(", ")}"
+      io.puts "envelope: AES-256-GCM (KEK v#{ENV[Bootstrap::KEK_VERSION_VAR]? || "1"})"
+      io.puts "audit batches: #{sealer_scheduler.nil? ? "(disabled — set #{Bootstrap::SIGNING_KEY_VAR})" : "every #{Bootstrap.seal_interval.total_seconds.to_i}s"}"
       io.puts "telegram: #{telegram_pieces.empty? ? "(disabled)" : "enabled"}"
 
       stop_signal = Channel(Nil).new
@@ -82,6 +87,7 @@ module CRE::Cli::Commands
         scheduler.stop
         evaluator.stop
         worker.stop
+        sealer_scheduler.try(&.stop)
         log_notifier.stop
         telegram_pieces.each(&.stop)
         engine.stop
@@ -91,44 +97,9 @@ module CRE::Cli::Commands
 
       stop_signal.receive
       0
-    end
-
-    private def build_persistence(url : String) : CRE::Persistence::Persistence
-      if url.starts_with?("sqlite:")
-        CRE::Persistence::Sqlite::SqlitePersistence.new(url.lchop("sqlite:"))
-      elsif url.starts_with?("postgres://") || url.starts_with?("postgresql://")
-        CRE::Persistence::Postgres::PostgresPersistence.new(url)
-      else
-        raise "unknown database URL: #{url}"
-      end
-    end
-
-    private def register_rotators(worker : CRE::Engine::RotationWorker, io : IO) : Nil
-      worker.register(:env_file, CRE::Rotators::EnvFileRotator.new)
-
-      if (aws_id = ENV["AWS_ACCESS_KEY_ID"]?) && (aws_secret = ENV["AWS_SECRET_ACCESS_KEY"]?)
-        client = CRE::Aws::SecretsManagerClient.new(
-          access_key_id: aws_id,
-          secret_access_key: aws_secret,
-          region: ENV["AWS_REGION"]? || "us-east-1",
-          endpoint: ENV["AWS_ENDPOINT"]?,
-          session_token: ENV["AWS_SESSION_TOKEN"]?,
-        )
-        worker.register(:aws_secretsmgr, CRE::Rotators::AwsSecretsRotator.new(client))
-      end
-
-      if (vault_addr = ENV["VAULT_ADDR"]?) && (vault_token = ENV["VAULT_TOKEN"]?)
-        client = CRE::Vault::Client.new(addr: vault_addr, token: vault_token)
-        worker.register(:vault_dynamic, CRE::Rotators::VaultDynamicRotator.new(client))
-      end
-
-      if gh_token = ENV["GITHUB_TOKEN"]?
-        api = ENV["GITHUB_API_BASE"]? || "https://api.github.com"
-        client = CRE::Github::Client.new(token: gh_token, api_base: api)
-        worker.register(:github_pat, CRE::Rotators::GithubPatRotator.new(client))
-      end
-    rescue ex
-      io.puts "warning: rotator wiring failed: #{ex.message}"
+    rescue ex : CRE::Cli::Bootstrap::ConfigError
+      io.puts "configuration error: #{ex.message}"
+      78 # EX_CONFIG
     end
 
     private def wire_telegram(bus : CRE::Engine::EventBus, persist : CRE::Persistence::Persistence, io : IO) : Array(StartStop)
@@ -153,18 +124,14 @@ module CRE::Cli::Commands
         viewer_chats: viewer_chats, operator_chats: operator_chats,
       )
 
-      pieces << StartStop.new(start_proc: ->{ sub.start }, stop_proc: ->{ sub.stop })
-      pieces << StartStop.new(start_proc: ->{ bot.start }, stop_proc: ->{ bot.stop })
+      pieces << StartStop.new(start_proc: -> { sub.start }, stop_proc: -> { sub.stop })
+      pieces << StartStop.new(start_proc: -> { bot.start }, stop_proc: -> { bot.stop })
       pieces
     end
 
     private def parse_chat_ids(raw : String?) : Array(Int64)
       return [] of Int64 if raw.nil? || raw.empty?
       raw.split(',').map(&.strip).reject(&.empty?).map(&.to_i64)
-    end
-
-    private def redact(url : String) : String
-      url.gsub(/:\/\/[^:]+:[^@]+@/) { |_| "://****:****@" }
     end
   end
 end

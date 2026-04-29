@@ -5,6 +5,7 @@
 
 require "http/client"
 require "json"
+require "../http/retry"
 
 module CRE::Github
   class GithubError < Exception
@@ -15,10 +16,11 @@ module CRE::Github
     end
   end
 
-  # Thin GitHub REST client. We target fine-grained PATs for rotation since the
-  # /user/personal-access-tokens endpoint accepts programmatic creation /
-  # deletion when the bearer token has the appropriate Apps-managed permission.
-  # For the test/portfolio path we mock these endpoints directly.
+  # Thin GitHub REST client. We target fine-grained PATs for rotation since
+  # the /user/personal-access-tokens endpoint accepts programmatic creation
+  # and deletion when the bearer has the appropriate Apps-managed
+  # permission. For the test/portfolio path we mock these endpoints
+  # directly.
   class Client
     record Token, id : Int64, token_value : String, expires_at : String?
 
@@ -50,19 +52,19 @@ module CRE::Github
     end
 
     private def get(path : String) : JSON::Any
-      response = HTTP::Client.get(url(path), headers: headers)
+      response = CRE::Http.request("GET", url(path), headers, label: "github.GET#{path}")
       raise GithubError.new("GET #{path}: #{response.body[0, 200]?}", response.status_code) unless response.status_code < 300
       JSON.parse(response.body)
     end
 
     private def post(path : String, body : String) : JSON::Any
-      response = HTTP::Client.post(url(path), headers: headers, body: body)
+      response = CRE::Http.request("POST", url(path), headers, body, label: "github.POST#{path}")
       raise GithubError.new("POST #{path}: #{response.body[0, 200]?}", response.status_code) unless response.status_code < 300
       JSON.parse(response.body)
     end
 
     private def delete(path : String) : Nil
-      response = HTTP::Client.delete(url(path), headers: headers)
+      response = CRE::Http.request("DELETE", url(path), headers, label: "github.DELETE#{path}")
       raise GithubError.new("DELETE #{path}: #{response.body[0, 200]?}", response.status_code) unless response.status_code < 300
     end
 

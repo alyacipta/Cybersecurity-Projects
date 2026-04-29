@@ -6,13 +6,15 @@
 require "../../spec_helper"
 require "../../../src/cre/policy/dsl"
 
+include CRE::Policy::Dsl
+
 describe "Policy DSL" do
   before_each { CRE::Policy.clear_registry! }
 
   it "registers a policy with full DSL syntax" do
-    policy "production-databases" do
-      description "Prod DB rotation"
-      match { |c| c.kind.database? && c.tag(:env) == "prod" }
+    policy "production-aws-secrets" do
+      description "Prod AWS secret rotation"
+      match { |c| c.kind.aws_secretsmgr? && c.tag(:env) == "prod" }
       max_age 30.days
       warn_at 25.days
       enforce :rotate_immediately
@@ -22,8 +24,8 @@ describe "Policy DSL" do
 
     CRE::Policy.registry.size.should eq 1
     p = CRE::Policy.registry.first
-    p.name.should eq "production-databases"
-    p.description.should eq "Prod DB rotation"
+    p.name.should eq "production-aws-secrets"
+    p.description.should eq "Prod AWS secret rotation"
     p.max_age.should eq 30.days
     p.warn_at.should eq 25.days
     p.enforce_action.should eq CRE::Policy::Action::RotateImmediately

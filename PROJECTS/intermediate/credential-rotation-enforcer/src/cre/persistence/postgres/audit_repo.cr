@@ -11,12 +11,15 @@ module CRE::Persistence::Postgres
   class AuditRepo < CRE::Persistence::AuditRepo
     GENESIS_HASH = Bytes.new(32, 0_u8)
 
+    SELECT_ENTRY_COLS = "seq, event_id::text, occurred_at, event_type, actor, target_id::text, payload::text, prev_hash, content_hash, hmac, hmac_key_version"
+    SELECT_BATCH_COLS = "id::text, start_seq, end_seq, merkle_root, signature, signing_key_version, sealed_at"
+
     def initialize(@db : DB::Database)
     end
 
     def append(entry : AuditEntry) : Nil
       @db.exec(
-        "INSERT INTO audit_events (event_id, occurred_at, event_type, actor, target_id, payload, prev_hash, content_hash, hmac, hmac_key_version) VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6::jsonb, $7, $8, $9, $10) ON CONFLICT (event_id) DO NOTHING",
+        "INSERT INTO audit_events (event_id, occurred_at, event_type, actor, target_id, payload, prev_hash, content_hash, hmac, hmac_key_version) VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6::jsonb, $7, $8, $9, $10)",
         entry.event_id.to_s, entry.occurred_at,
         entry.event_type, entry.actor,
         entry.target_id.try(&.to_s),
@@ -44,10 +47,34 @@ module CRE::Persistence::Postgres
 
     def range(start_seq : Int64, end_seq : Int64) : Array(AuditEntry)
       @db.query_all(
-        "SELECT seq, event_id::text, occurred_at, event_type, actor, target_id::text, payload::text, prev_hash, content_hash, hmac, hmac_key_version FROM audit_events WHERE seq >= $1 AND seq <= $2 ORDER BY seq ASC",
+        "SELECT #{SELECT_ENTRY_COLS} FROM audit_events WHERE seq >= $1 AND seq <= $2 ORDER BY seq ASC",
         start_seq, end_seq,
         as: {Int64, String, Time, String, String, String?, String, Bytes, Bytes, Bytes, Int32},
       ).map { |row| row_to_entry(row) }
+    end
+
+    def each_in_range(start_seq : Int64, end_seq : Int64, &block : AuditEntry ->) : Nil
+      @db.query(
+        "SELECT #{SELECT_ENTRY_COLS} FROM audit_events WHERE seq >= $1 AND seq <= $2 ORDER BY seq ASC",
+        start_seq, end_seq,
+      ) do |rs|
+        rs.each do
+          entry = AuditEntry.new(
+            seq: rs.read(Int64),
+            event_id: UUID.new(rs.read(String)),
+            occurred_at: rs.read(Time),
+            event_type: rs.read(String),
+            actor: rs.read(String),
+            target_id: rs.read(String?).try { |s| UUID.new(s) },
+            payload: rs.read(String),
+            prev_hash: rs.read(Bytes),
+            content_hash: rs.read(Bytes),
+            hmac: rs.read(Bytes),
+            hmac_key_version: rs.read(Int32),
+          )
+          block.call(entry)
+        end
+      end
     end
 
     def insert_batch(batch : AuditBatch) : Nil
@@ -67,6 +94,13 @@ module CRE::Persistence::Postgres
       result || 0_i64
     end
 
+    def all_batches : Array(AuditBatch)
+      @db.query_all(
+        "SELECT #{SELECT_BATCH_COLS} FROM audit_batches ORDER BY start_seq ASC",
+        as: {String, Int64, Int64, Bytes, Bytes, Int32, Time},
+      ).map { |row| row_to_batch(row) }
+    end
+
     private def row_to_entry(row) : AuditEntry
       AuditEntry.new(
         seq: row[0],
@@ -80,6 +114,18 @@ module CRE::Persistence::Postgres
         content_hash: row[8],
         hmac: row[9],
         hmac_key_version: row[10],
+      )
+    end
+
+    private def row_to_batch(row) : AuditBatch
+      AuditBatch.new(
+        id: UUID.new(row[0]),
+        start_seq: row[1],
+        end_seq: row[2],
+        merkle_root: row[3],
+        signature: row[4],
+        signing_key_version: row[5],
+        sealed_at: row[6],
       )
     end
   end

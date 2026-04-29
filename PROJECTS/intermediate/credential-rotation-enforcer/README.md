@@ -29,7 +29,7 @@ README.md
 - Three-layer tamper-evident audit log: SHA-256 hash chain + ratcheting HMAC-SHA256 + Ed25519-signed Merkle batches
 - AEAD envelope encryption (AES-256-GCM, per-row DEKs wrapped by KEK, AAD-bound to credential identity, reserved `algorithm_id` byte for crypto agility)
 - Hand-rolled live TUI (no external TUI framework — stdlib ANSI escapes only) with event-driven repaints coalesced to a tick interval
-- Bidirectional Telegram bot — viewer tier (`/status`, `/queue`, `/history`) + operator tier (`/rotate`, `/snooze`)
+- Bidirectional Telegram bot — viewer tier (`/status`, `/queue`, `/history`, `/alerts`) + operator tier (`/rotate`)
 - Compliance evidence export bundle (signed ZIP with audit log, Merkle batches, control mapping for SOC 2 / PCI-DSS / ISO 27001 / HIPAA)
 
 ## Quick Start
@@ -63,14 +63,25 @@ just demo-full-down     # tear down the stack
 
 ### Daemon usage
 
+`cre run` and `cre watch` require two 32-byte secrets — the seed key for the audit-log HMAC ratchet and the KEK that wraps per-row data keys. Generate fresh values once and store them somewhere durable (KMS, password manager, sealed env file):
+
 ```bash
-cre run --db=sqlite:cre.db                      # headless daemon
-cre watch --db=sqlite:cre.db                    # daemon + live TUI
-cre check --db=sqlite:cre.db --output=json      # one-shot CI gate
-cre rotate <credential-id>                      # manual rotation
-cre policy list                                 # inspect compiled policies
-cre audit verify                                # check hash chain integrity
-cre export --framework=soc2 --out=evidence.zip  # signed compliance bundle
+export CRE_HMAC_KEY_HEX=$(openssl rand -hex 32)
+export CRE_KEK_HEX=$(openssl rand -hex 32)
+export CRE_SIGNING_KEY_HEX=$(openssl rand -hex 32)   # optional: enables Merkle-batch sealing
+```
+
+Then:
+
+```bash
+cre run --db=sqlite:cre.db                       # headless daemon
+cre watch --db=sqlite:cre.db                     # daemon + live TUI
+cre check --db=sqlite:cre.db --output=json       # one-shot CI gate (no key required)
+cre rotate <credential-id>                       # manual rotation (uses same env-driven rotators as run)
+cre policy list                                  # inspect compiled policies
+cre audit verify                                 # hash chain + HMAC ratchet (+ Merkle if --public-key given)
+cre export --framework=soc2 --out=evidence.zip   # signed compliance bundle
+cre verify-bundle evidence.zip                   # offline re-verify a bundle
 ```
 
 `cre check` exits 1 when any credential violates its policy — drop into any CI pipeline.
@@ -131,7 +142,7 @@ All long-lived components are fibers in one OS process. The bus is in-process (C
 
 **Direct LibCrypto FFI** for AES-256-GCM AEAD (Crystal stdlib `OpenSSL::Cipher` lacks GCM auth_data/auth_tag) and Ed25519 signing (stdlib lacks high-level wrapper). Bindings live in `src/cre/crypto/aead.cr` and `src/cre/audit/signing.cr`.
 
-**Testing:** stdlib `Spec` runner, 159+ unit tests + integration tests against real PostgreSQL via Docker.
+**Testing:** stdlib `Spec` runner, 179+ unit tests + integration tests against real PostgreSQL via Docker.
 
 ## Configuration
 

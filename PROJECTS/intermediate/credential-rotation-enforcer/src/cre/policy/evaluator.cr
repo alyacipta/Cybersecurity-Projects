@@ -11,6 +11,8 @@ require "../events/system_events"
 require "../persistence/persistence"
 
 module CRE::Policy
+  class PolicyConflictError < Exception; end
+
   class Evaluator
     Log = ::Log.for("cre.policy.evaluator")
 
@@ -46,22 +48,45 @@ module CRE::Policy
       @ch.try(&.close)
     end
 
+    # evaluate_all groups policies by max_age and uses the persistence layer's
+    # 'overdue' query so we don't pull every credential into memory each tick.
     def evaluate_all(now : Time = Time.utc) : Nil
-      @persistence.credentials.all.each { |c| evaluate(c, now) }
+      return if @policies.empty?
+
+      seen = Set(UUID).new
+      @policies.group_by(&.max_age).each do |max_age, policies_with_age|
+        @persistence.credentials.overdue(now, max_age).each do |c|
+          next if seen.includes?(c.id)
+          seen << c.id
+          evaluate(c, now)
+        end
+      end
     end
 
+    # Evaluates a single credential. When more than one policy matches
+    # we raise PolicyConflictError instead of silently picking by
+    # registration order; conflicting policies are an operator bug, not
+    # a runtime decision.
     def evaluate(c : Domain::Credential, now : Time = Time.utc) : Nil
       matching = @policies.select(&.matches?(c))
       return if matching.empty?
 
-      # Most specific match wins on conflicts (last-match wins as a simple tiebreaker)
-      policy = matching.last
+      if matching.size > 1
+        names = matching.map(&.name).join(", ")
+        @bus.publish Events::AlertRaised.new(
+          severity: Events::Severity::Critical,
+          message: "credential #{c.id} matches #{matching.size} policies (#{names}); refusing to act until ambiguity is resolved",
+        )
+        raise PolicyConflictError.new("credential #{c.id} matches #{matching.size} policies: #{names}")
+      end
+
+      policy = matching.first
       return unless policy.overdue?(c, now)
 
       @bus.publish Events::PolicyViolation.new(
         c.id,
         policy.name,
-        "credential exceeded max_age=#{policy.max_age} (last update #{c.updated_at.to_rfc3339})",
+        "credential exceeded max_age=#{policy.max_age} (rotation_anchor #{c.rotation_anchor.to_rfc3339})",
       )
 
       case policy.enforce_action
@@ -78,6 +103,8 @@ module CRE::Policy
           message: "policy '#{policy.name}' triggered quarantine on credential '#{c.id}'",
         )
       end
+    rescue ex : PolicyConflictError
+      Log.error(exception: ex) { "policy conflict for #{c.id}" }
     rescue ex
       Log.error(exception: ex) { "policy evaluation failed for #{c.id}" }
     end

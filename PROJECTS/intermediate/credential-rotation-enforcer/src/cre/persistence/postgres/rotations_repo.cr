@@ -33,7 +33,7 @@ module CRE::Persistence::Postgres
 
     def in_flight : Array(RotationRecord)
       @db.query_all(
-        "SELECT #{SELECT_COLS} FROM rotations WHERE state NOT IN ('completed','failed','aborted')",
+        "SELECT #{SELECT_COLS} FROM rotations WHERE state NOT IN ('completed','failed','aborted','inconsistent')",
         as: {String, String, String, String, Time, Time?, String?},
       ).map { |row| row_to_record(row) }
     end

@@ -5,6 +5,7 @@
 
 require "http/client"
 require "json"
+require "../http/retry"
 
 module CRE::Vault
   class VaultError < Exception
@@ -54,20 +55,18 @@ module CRE::Vault
     end
 
     private def http_get(path : String) : JSON::Any
-      uri = URI.parse(@addr + path)
       headers = HTTP::Headers{"X-Vault-Token" => @token}
-      response = HTTP::Client.get(uri.to_s, headers: headers)
+      response = CRE::Http.request("GET", @addr + path, headers, label: "vault.GET#{path}")
       raise VaultError.new("vault GET #{path}: #{response.body[0, 200]?}", response.status_code) unless response.status_code < 300
       JSON.parse(response.body)
     end
 
     private def http_put(path : String, body : String) : JSON::Any
-      uri = URI.parse(@addr + path)
       headers = HTTP::Headers{
         "X-Vault-Token" => @token,
         "Content-Type"  => "application/json",
       }
-      response = HTTP::Client.put(uri.to_s, headers: headers, body: body)
+      response = CRE::Http.request("PUT", @addr + path, headers, body, label: "vault.PUT#{path}")
       raise VaultError.new("vault PUT #{path}: #{response.body[0, 200]?}", response.status_code) unless response.status_code < 300
       response.body.empty? ? JSON::Any.new(Hash(String, JSON::Any).new) : JSON.parse(response.body)
     end

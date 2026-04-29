@@ -38,6 +38,10 @@ module CRE::Engine
       @rotators.keys
     end
 
+    def rotator_for_kind(kind : Domain::CredentialKind) : Rotators::Rotator?
+      @rotators[symbol_for_kind(kind)]?
+    end
+
     def start : Nil
       @running = true
       ch = @bus.subscribe(buffer: 32, overflow: EventBus::Overflow::Block)
@@ -79,6 +83,11 @@ module CRE::Engine
         return
       end
 
+      if @persistence.rotations.in_flight.any? { |r| r.credential_id == cred.id }
+        Log.info { "rotation already in flight for credential #{cred.id}; skipping duplicate schedule" }
+        return
+      end
+
       @orchestrator.run(cred, rotator)
     rescue ex
       Log.error(exception: ex) { "rotation_worker.handle failed for event #{ev.class.name}" }
@@ -90,8 +99,6 @@ module CRE::Engine
       in .vault_dynamic?  then :vault_dynamic
       in .github_pat?     then :github_pat
       in .env_file?       then :env_file
-      in .aws_iam_key?    then :aws_iam_key
-      in .database?       then :database
       end
     end
   end

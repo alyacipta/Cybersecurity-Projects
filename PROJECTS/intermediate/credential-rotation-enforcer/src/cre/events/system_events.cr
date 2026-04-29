@@ -26,4 +26,14 @@ module CRE::Events
 
   class ShutdownRequested < Event
   end
+
+  class AuditBatchSealed < Event
+    getter start_seq : Int64
+    getter end_seq : Int64
+    getter signing_key_version : Int32
+
+    def initialize(@start_seq : Int64, @end_seq : Int64, @signing_key_version : Int32)
+      super()
+    end
+  end
 end

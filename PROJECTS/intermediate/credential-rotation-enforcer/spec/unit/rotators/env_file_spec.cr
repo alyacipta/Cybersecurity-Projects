@@ -32,11 +32,11 @@ describe CRE::Rotators::EnvFileRotator do
     new_secret.ciphertext.size.should be > 0
 
     rotator.apply(cred, new_secret)
-    File.exists?("#{path}.pending").should be_true
+    File.exists?("#{path}.pending.#{Process.pid}").should be_true
     rotator.verify(cred, new_secret).should be_true
 
     rotator.commit(cred, new_secret)
-    File.exists?("#{path}.pending").should be_false
+    File.exists?("#{path}.pending.#{Process.pid}").should be_false
 
     final = File.read(path)
     new_value = String.new(new_secret.ciphertext)
@@ -56,10 +56,10 @@ describe CRE::Rotators::EnvFileRotator do
 
     s = rotator.generate(cred)
     rotator.apply(cred, s)
-    File.exists?("#{tmp.path}.pending").should be_true
+    File.exists?("#{tmp.path}.pending.#{Process.pid}").should be_true
 
     rotator.rollback_apply(cred, s)
-    File.exists?("#{tmp.path}.pending").should be_false
+    File.exists?("#{tmp.path}.pending.#{Process.pid}").should be_false
     File.read(tmp.path).should eq "K=v\n"
   ensure
     tmp.try(&.delete)

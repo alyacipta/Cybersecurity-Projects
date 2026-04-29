@@ -80,11 +80,14 @@ Step 4 is the only **irreversible** step. By design. If step 4 fails partially (
 
 Verification is exposed as a CLI command:
 ```
-$ cre audit verify
-✓ chain valid: 14,892 entries
-✓ hmac ratchet: 14 generations traversed; all valid
-✓ merkle batches: 24 sealed, all signatures verify against pubkey v1
+$ cre audit verify --public-key=/etc/cre/audit_pubkey.hex
+  ✓  hash chain: OK
+  ✓  HMAC ratchet: OK
+  ✓  Merkle batches: OK
+✓ audit chain valid: 14892 entries
 ```
+
+The HMAC ratchet replays from the seed key supplied via `CRE_HMAC_KEY_HEX`, so the verifier needs the *same* seed the writer used. Merkle batches are signed under `CRE_SIGNING_KEY_HEX` and verified with the matching public key — bundled in the `cre export` ZIP so an offline auditor can `cre verify-bundle` without DB access.
 
 ## Compliance Framework Coverage
 

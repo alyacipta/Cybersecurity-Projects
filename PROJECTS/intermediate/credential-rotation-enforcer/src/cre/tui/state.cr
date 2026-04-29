@@ -29,12 +29,24 @@ module CRE::Tui
     @completed_24h : Int32
     @started_at : Time
     @kek_version : Int32
+    @creds_total : Int32
+    @due_now : Int32
+    @overdue : Int32
 
     def initialize(@kek_version : Int32 = 0)
       @recent = [] of EventRow
       @active = {} of UUID => RotationRow
       @completed_24h = 0
+      @creds_total = 0
+      @due_now = 0
+      @overdue = 0
       @started_at = Time.utc
+    end
+
+    def update_counts(creds_total : Int32, due_now : Int32, overdue : Int32) : Nil
+      @creds_total = creds_total
+      @due_now = due_now
+      @overdue = overdue
     end
 
     def apply(ev : Events::Event) : Nil
@@ -90,6 +102,9 @@ module CRE::Tui
     getter completed_24h : Int32
     getter started_at : Time
     getter kek_version : Int32
+    getter creds_total : Int32
+    getter due_now : Int32
+    getter overdue : Int32
 
     def uptime : Time::Span
       Time.utc - @started_at

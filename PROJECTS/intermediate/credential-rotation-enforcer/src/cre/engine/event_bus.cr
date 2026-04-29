@@ -22,7 +22,7 @@ module CRE::Engine
     @subs_mutex : Mutex
     @running : Bool
 
-    def initialize(inbox_capacity : Int32 = 1024)
+    def initialize(inbox_capacity : Int32 = 1024, @block_send_timeout : Time::Span = 5.seconds)
       @inbox = Channel(Events::Event).new(capacity: inbox_capacity)
       @subs = [] of Subscription
       @subs_mutex = Mutex.new
@@ -61,10 +61,24 @@ module CRE::Engine
       end
     end
 
+    # Dispatch isolates each subscriber so a slow one cannot block the bus
+    # for everyone else (head-of-line blocking).
+    #
+    # Drop overflow uses a non-blocking select+default; rejections are
+    # logged. Block overflow uses a select with a timeout; if the
+    # subscriber's buffer stays full beyond the timeout, the event is
+    # logged as dropped and the bus moves on rather than freezing the
+    # entire pipeline. Operators tune the timeout up for slow downstreams
+    # they trust (DB writes) and down for unreliable ones (Telegram).
     private def dispatch(sub : Subscription, ev : Events::Event) : Nil
       case sub.overflow
       in Overflow::Block
-        sub.channel.send(ev)
+        select
+        when sub.channel.send(ev)
+          # delivered
+        when timeout(@block_send_timeout)
+          Log.warn { "subscriber stalled past #{@block_send_timeout.total_seconds}s; dropped: #{ev.class.name}" }
+        end
       in Overflow::Drop
         select
         when sub.channel.send(ev)

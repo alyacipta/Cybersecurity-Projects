@@ -8,11 +8,9 @@ require "uuid"
 module CRE::Domain
   enum CredentialKind
     AwsSecretsmgr
-    AwsIamKey
     VaultDynamic
     GithubPat
     EnvFile
-    Database
   end
 
   struct Credential
@@ -26,6 +24,7 @@ module CRE::Domain
     getter previous_version_id : UUID?
     getter created_at : Time
     getter updated_at : Time
+    getter last_rotated_at : Time?
 
     def initialize(
       @id : UUID,
@@ -38,11 +37,16 @@ module CRE::Domain
       @previous_version_id : UUID? = nil,
       @created_at : Time = Time.utc,
       @updated_at : Time = Time.utc,
+      @last_rotated_at : Time? = nil,
     )
     end
 
     def tag(key : String | Symbol) : String?
       @tags[key.to_s]?
+    end
+
+    def rotation_anchor : Time
+      @last_rotated_at || @created_at
     end
   end
 end

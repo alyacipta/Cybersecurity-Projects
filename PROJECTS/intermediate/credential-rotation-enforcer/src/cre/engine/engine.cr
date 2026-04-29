@@ -39,7 +39,13 @@ module CRE::Engine
       return unless @started
       Log.info { "engine stopping" }
       @bus.publish(Events::ShutdownRequested.new) rescue nil
-      sleep 0.05.seconds # let subscribers see it
+
+      # Wait until the audit subscriber has drained everything queued
+      # before ShutdownRequested. Bounded so a stuck subscriber can't
+      # hang shutdown forever.
+      drained = @audit_subscriber.await_drain(2.seconds)
+      Log.warn { "audit subscriber did not drain in time during shutdown" } unless drained
+
       @audit_subscriber.stop
       @bus.stop
       @started = false

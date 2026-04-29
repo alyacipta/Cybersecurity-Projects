@@ -27,7 +27,7 @@ module CRE::Persistence
     Inconsistent
   end
 
-  TERMINAL_STATES = [RotationState::Completed, RotationState::Failed, RotationState::Aborted]
+  TERMINAL_STATES = [RotationState::Completed, RotationState::Failed, RotationState::Aborted, RotationState::Inconsistent]
 
   record RotationRecord,
     id : UUID,
@@ -87,7 +87,9 @@ module CRE::Persistence
     abstract def latest_hash : Bytes
     abstract def latest_seq : Int64
     abstract def range(start_seq : Int64, end_seq : Int64) : Array(AuditEntry)
+    abstract def each_in_range(start_seq : Int64, end_seq : Int64, &block : AuditEntry ->) : Nil
     abstract def insert_batch(batch : AuditBatch) : Nil
     abstract def last_sealed_seq : Int64
+    abstract def all_batches : Array(AuditBatch)
   end
 end

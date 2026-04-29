@@ -45,10 +45,14 @@ module CRE::Tui
 
     private def render_status : Nil
       header = " STATUS    CREDS    DUE-NOW    OVERDUE    ROTATED-24h    KEK"
-      values = " #{Ansi.green("● live")}   ?        ?          ?          #{@state.completed_24h.to_s.ljust(13)} v#{@state.kek_version}"
+      values = " #{Ansi.green("● live")}   #{cell(@state.creds_total, 8)}#{cell(@state.due_now, 11)}#{cell(@state.overdue, 11)}#{cell(@state.completed_24h, 15)}v#{@state.kek_version}"
       @io << PANEL_VL << pad(header, WIDTH - 2) << PANEL_VL << '\n'
       @io << PANEL_VL << pad(values, WIDTH - 2) << PANEL_VL << '\n'
       @io << PANEL_LMID << " Active Rotations " << PANEL_HR * (WIDTH - 21) << PANEL_RMID << '\n'
+    end
+
+    private def cell(n : Int, width : Int) : String
+      n.to_s.ljust(width)
     end
 
     private def render_active : Nil
@@ -78,7 +82,7 @@ module CRE::Tui
 
     private def render_footer : Nil
       @io << PANEL_BL << PANEL_HR * (WIDTH - 2) << PANEL_BR << '\n'
-      @io << Ansi.dim(" q=quit  r=refresh  ?=help") << '\n'
+      @io << Ansi.dim(" Press Ctrl+C to exit") << '\n'
     end
 
     private def colorize(text : String, color : String) : String

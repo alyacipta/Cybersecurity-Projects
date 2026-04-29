@@ -68,7 +68,6 @@ module CRE::Notifiers
       when "alerts"   then alerts_message
       when "help", "" then help_message
       when "rotate"   then handle_rotate(chat_id, rest)
-      when "snooze"   then handle_snooze(chat_id, rest)
       when "history"  then history_message(rest)
       else
         "unknown command: /#{cmd} (try /help)"
@@ -112,7 +111,6 @@ module CRE::Notifiers
         /history <id>      - last events for a credential
         /alerts            - critical alerts pointer
         /rotate <id>       - force rotation (operator)
-        /snooze <id> 24h   - defer scheduled rotation (operator)
       MD
     end
 
@@ -124,11 +122,6 @@ module CRE::Notifiers
       return "invalid credential id" if uuid.nil?
       @bus.publish Events::RotationScheduled.new(uuid, "manual")
       "rotation scheduled for #{uuid}"
-    end
-
-    private def handle_snooze(chat_id : Int64, rest : String) : String
-      return "operator-only command" unless authorized_operator?(chat_id)
-      "snooze is not yet implemented; track via /queue"
     end
 
     private def history_message(rest : String) : String

@@ -8,6 +8,8 @@ require "../../../src/cre/policy/evaluator"
 require "../../../src/cre/policy/dsl"
 require "../../../src/cre/persistence/sqlite/sqlite_persistence"
 
+include CRE::Policy::Dsl
+
 private def fresh_persistence
   persist = CRE::Persistence::Sqlite::SqlitePersistence.new(":memory:")
   persist.migrate!

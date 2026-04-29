@@ -7,6 +7,7 @@ require "http/client"
 require "json"
 require "uuid"
 require "./signer"
+require "../http/retry"
 
 module CRE::Aws
   class AwsApiError < Exception
@@ -77,7 +78,7 @@ module CRE::Aws
       }
       @signer.sign("POST", uri, headers, body)
 
-      response = HTTP::Client.post(uri.to_s, headers: headers, body: body)
+      response = CRE::Http.request("POST", uri.to_s, headers, body, label: "aws.#{action}")
       raise AwsApiError.new(error_message(response), response.status_code, error_code(response)) unless response.status_code < 300
 
       response.body.empty? ? JSON::Any.new(Hash(String, JSON::Any).new) : JSON.parse(response.body)
