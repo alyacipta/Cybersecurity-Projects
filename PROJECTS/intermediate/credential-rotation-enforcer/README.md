@@ -3,83 +3,90 @@
 README.md
 -->
 
-# Credential Rotation Enforcer (`cre`)
+```regex
+ ██████╗██████╗ ███████╗
+██╔════╝██╔══██╗██╔════╝
+██║     ██████╔╝█████╗
+██║     ██╔══██╗██╔══╝
+╚██████╗██║  ██║███████╗
+ ╚═════╝╚═╝  ╚═╝╚══════╝
+```
 
-> A Crystal daemon that tracks credentials, enforces rotation policies as code, and executes the four-step rotation contract against AWS Secrets Manager, HashiCorp Vault, GitHub fine-grained PATs, and local `.env` files. Single binary. Live TUI. Tamper-evident audit log. Bidirectional Telegram bot. Signed compliance evidence export.
+[![Cybersecurity Projects](https://img.shields.io/badge/Cybersecurity--Projects-Project%20%2327%20intermediate-red?style=flat&logo=github)](https://github.com/CarterPerez-dev/Cybersecurity-Projects/tree/main/PROJECTS/intermediate/credential-rotation-enforcer)
+[![Crystal](https://img.shields.io/badge/Crystal-1.20+-black?style=flat&logo=crystal&logoColor=white)](https://crystal-lang.org)
+[![License: AGPLv3](https://img.shields.io/badge/License-AGPL_v3-purple.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 
-[![Crystal](https://img.shields.io/badge/crystal-1.20+-black?logo=crystal)](https://crystal-lang.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-200+-brightgreen)](spec/)
+> Credential rotation enforcer written in Crystal. Tracks credentials, evaluates compile-time-checked policies, and executes the four-step rotation contract against AWS Secrets Manager, HashiCorp Vault, GitHub fine-grained PATs, and local `.env` files. Single binary, live TUI, bidirectional Telegram bot, tamper-evident audit log, signed compliance evidence export.
 
----
+*This is a quick overview — security theory, architecture, and full walkthroughs are in the [learn modules](#learn). Operator setup lives in [CONFIGURATION.md](CONFIGURATION.md).*
 
-## What this is
+## What It Does
 
-A senior+ portfolio implementation of an enterprise credential rotation enforcer, built end-to-end in Crystal. The code is the lesson - every architectural choice (event bus, plugin macros, AEAD envelope, hash-chained audit log, three demo tiers) is intentional and explained in `learn/`.
+- Compile-time-checked policy DSL (typo'd action symbols, missing fields, bad credential property references all fail `crystal build`)
+- Bus + plugin architecture — typed events fan out across Crystal channels; subscribers (audit, TUI, Telegram, log) react independently; rotators register at compile time via `register_as :kind` macro
+- Four-step rotation contract (`generate → apply → verify → commit`) borrowed from AWS Secrets Manager's rotation Lambda template, dual-version safe under concurrent reads
+- Three-layer tamper-evident audit log: SHA-256 hash chain + ratcheting HMAC-SHA256 + Ed25519-signed Merkle batches
+- AEAD envelope encryption (AES-256-GCM, per-row DEKs wrapped by KEK, AAD-bound to credential identity, reserved `algorithm_id` byte for crypto agility)
+- Hand-rolled live TUI (no external TUI framework — stdlib ANSI escapes only) with event-driven repaints coalesced to a tick interval
+- Bidirectional Telegram bot — viewer tier (`/status`, `/queue`, `/history`) + operator tier (`/rotate`, `/snooze`)
+- Compliance evidence export bundle (signed ZIP with audit log, Merkle batches, control mapping for SOC 2 / PCI-DSS / ISO 27001 / HIPAA)
 
-This is **not** a wrapper around HashiCorp Vault or AWS Secrets Manager. It is its own coherent enforcer that talks *to* those systems via their HTTP APIs (real SigV4, real bearer auth, real lease tokens).
-
-## What it does
-
-1. **Tracks** credentials in an inventory (PostgreSQL or SQLite).
-2. **Evaluates** Crystal-DSL policies that compile-time-check for typos, missing fields, and bad enum values.
-3. **Rotates** credentials using AWS Secrets Manager's four-step contract (`generate -> apply -> verify -> commit`) with dual-version safety so concurrent consumers never crash mid-rotation.
-4. **Records** every event in a tamper-evident audit log: SHA-256 hash chain + ratcheting HMAC-SHA256 + Ed25519-signed Merkle batches.
-5. **Encrypts** stored credentials at rest with AES-256-GCM AEAD, per-row DEKs wrapped by a KEK, AAD-bound to credential identity.
-6. **Notifies** via structured logs and a bidirectional Telegram bot supporting `/status`, `/rotate <id>`, `/snooze`, `/history`, `/queue`.
-7. **Exports** signed compliance evidence bundles mapping audit events to SOC 2 / PCI-DSS / ISO 27001 / HIPAA controls.
-8. **Renders** a hand-rolled live TUI (no `crysterm` dependency) showing active rotations, recent events, and KEK version, repainted at most every 200ms.
-
-## Quick start
-
-### Tier 1 - Zero-deps demo (under 30 seconds)
+## Quick Start
 
 ```bash
-git clone <repo> && cd PROJECTS/intermediate/credential-rotation-enforcer
-shards install && shards build cre
+git clone https://github.com/CarterPerez-dev/Cybersecurity-Projects.git
+cd Cybersecurity-Projects/PROJECTS/intermediate/credential-rotation-enforcer
+shards install && shards build cre --release
 ./bin/cre demo
 ```
 
-You'll see live narration of an in-memory SQLite + tempfile rotation, with audit-chain verification at the end.
-
-### Tier 2 - Full mocked stack (under 2 minutes)
+Or use the install script:
 
 ```bash
-just demo-full
+curl -fsSL https://raw.githubusercontent.com/CarterPerez-dev/Cybersecurity-Projects/main/PROJECTS/intermediate/credential-rotation-enforcer/scripts/install.sh | bash
 ```
 
-Brings up Docker Compose with PostgreSQL 16, LocalStack (AWS Secrets Manager), HashiCorp Vault dev mode, and a fake-GitHub Flask service. CRE talks to all four with real network calls.
+> [!TIP]
+> This project uses [`just`](https://github.com/casey/just) as a command runner. Type `just` to see all available recipes.
+>
+> Install: `curl -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin`
 
-### Tier 3 - Real cloud
+### Demo tiers
 
-Edit `config/demo-full.cr.example` and set env vars to point at your real AWS account / Vault server / GitHub Apps token. Then `cre run --db=postgres://...`.
+```bash
+just demo               # Tier 1 — zero-deps SQLite + .env rotator (under 30s)
+just tui-demo           # Live TUI preview with synthetic events (8s, no setup)
+just demo-full          # Tier 2 — Docker Compose: PG + LocalStack + Vault + fake-GH
+just demo-full-down     # tear down the stack
+```
 
-## Subcommands
+### Daemon usage
 
-| Command | Purpose |
-|---|---|
-| `cre run` | Headless daemon (production / systemd) |
-| `cre watch` | Engine + live TUI in same process |
-| `cre check` | One-shot policy evaluation; exit code reflects violations |
-| `cre rotate <id>` | Manually rotate a single credential |
-| `cre policy list / show <name>` | Inspect compiled-in policies |
-| `cre export --framework=soc2` | Generate signed compliance evidence ZIP |
-| `cre audit verify` | Verify hash chain + HMAC ratchet + Merkle batch signatures |
-| `cre demo` | Tier 1 zero-deps demo |
-| `cre version` | Print version |
+```bash
+cre run --db=sqlite:cre.db                      # headless daemon
+cre watch --db=sqlite:cre.db                    # daemon + live TUI
+cre check --db=sqlite:cre.db --output=json      # one-shot CI gate
+cre rotate <credential-id>                      # manual rotation
+cre policy list                                 # inspect compiled policies
+cre audit verify                                # check hash chain integrity
+cre export --framework=soc2 --out=evidence.zip  # signed compliance bundle
+```
 
-## The flagship rotators
+`cre check` exits 1 when any credential violates its policy — drop into any CI pipeline.
+
+## Flagship Rotators
 
 | Rotator | What it talks to | Auth |
 |---|---|---|
-| AWS Secrets Manager | `secretsmanager.us-east-1.amazonaws.com` | SigV4 (rolled from scratch in `src/cre/aws/signer.cr`) |
+| AWS Secrets Manager | `secretsmanager.<region>.amazonaws.com` | SigV4 (rolled from scratch in `src/cre/aws/signer.cr`) |
 | HashiCorp Vault | `vault read database/creds/<role>` + lease revoke | `X-Vault-Token` |
 | GitHub fine-grained PATs | `POST/DELETE /user/personal-access-tokens` | `Bearer ghp_...` |
 | Local `.env` file | atomic temp+rename | n/a |
 
-Adding a fifth rotator means dropping a single file in `src/cre/rotators/`. The `register_as :kind` macro hooks it into the registry at compile time.
+Adding a fifth rotator means dropping a single file in `src/cre/rotators/` — the `register_as :kind` macro hooks it into the registry at compile time. Zero changes to the orchestrator, scheduler, or any subscriber.
 
-## Architecture at a glance
+## Architecture
 
 ```
                        ┌──────────────────────────────────────┐
@@ -91,69 +98,63 @@ Adding a fifth rotator means dropping a single file in `src/cre/rotators/`. The 
    └────────────┘      │     │     │     │     │     │        │
                        │  ┌──▼──┐ ┌▼────┐ ┌▼──┐ ┌▼──┐ ┌▼───┐  │
                        │  │Rot. │ │Audit│ │TUI│ │Tg │ │Pol.│  │
-                       │  │Reg. │ │Log  │ │   │ │Bot│ │Eval│  │
+                       │  │Wrkr │ │Sub  │ │Sub│ │Bot│ │Eval│  │
                        │  └──┬──┘ └──┬──┘ └───┘ └───┘ └────┘  │
-                       │     └──────┴──────────────┐          │
-                       │                           │          │
-                       │              ┌────────────▼────────┐ │
-                       │              │  Persistence        │ │
-                       │              │  (PG / SQLite)      │ │
-                       │              └─────────────────────┘ │
+                       │     │       │                        │
+                       │     ▼       ▼                        │
+                       │  ┌──────────────────────────────┐    │
+                       │  │  Persistence (PG / SQLite)   │    │
+                       │  │  + 3-layer audit integrity   │    │
+                       │  └──────────────────────────────┘    │
                        └──────────────────────────────────────┘
 ```
 
-All components are fibers in one OS process. The bus is in-process - Crystal channels are nanosecond-scale.
+All long-lived components are fibers in one OS process. The bus is in-process (Crystal channels are nanosecond-scale) so the architectural overhead is essentially free. Per-subscriber overflow policy: `Block` for audit (compliance — never drop), `Drop` for TUI / metrics / Telegram (best-effort).
 
-## Project layout
+## The Three-Layer Audit Log
 
 ```
-credential-rotation-enforcer/
-├── shard.yml          Crystal manifest (1.20+)
-├── justfile           build / test / demo / lint recipes
-├── policies/          USER policy files (compiled in)
-├── src/cre/
-│   ├── cli/           subcommand dispatch + 9 commands
-│   ├── tui/           ANSI primitives + 4-panel live monitor
-│   ├── engine/        scheduler, event bus, lifecycle, orchestrator
-│   ├── events/        typed event hierarchy
-│   ├── rotators/      registry + 4 flagship rotators
-│   ├── policy/        macro DSL + evaluation engine
-│   ├── audit/         hash chain + HMAC ratchet + Merkle + Ed25519
-│   ├── crypto/        AES-256-GCM envelope, KEK/DEK
-│   ├── persistence/   PG + SQLite adapters (same interface)
-│   ├── notifiers/     structured log + Telegram bidirectional bot
-│   ├── compliance/    SOC2/PCI/ISO/HIPAA control mapping + bundle export
-│   ├── aws/           SigV4 signer + Secrets Manager client
-│   ├── vault/         dynamic-secrets HTTP client
-│   ├── github/        fine-grained PAT API client
-│   └── demo/          Tier 1 demo
-├── docker/            Tier 2 docker-compose stack (PG + LocalStack + Vault + fake-GH)
-├── spec/              200+ unit + integration tests
-└── learn/             walkthrough docs (this is the teaching folder)
+   Layer 3 ─ Ed25519-signed Merkle batches  →  auditor verifies with public key only
+   Layer 2 ─ HMAC ratchet (key zeroized per rotation)  →  past entries unforgeable
+   Layer 1 ─ SHA-256 hash chain  →  any single-row tampering breaks forward chain
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Postgres ─ append-only via TRIGGER + role grants (INSERT-only)
 ```
 
-## Read the walkthrough
+`cre audit verify` walks all three layers and reports which (if any) is broken.
 
-- [`learn/00-OVERVIEW.md`](learn/00-OVERVIEW.md) - quick start, prerequisites, three-tier demo path
-- [`learn/01-CONCEPTS.md`](learn/01-CONCEPTS.md) - rotation theory, real breaches that motivated the design, framework controls
-- [`learn/02-ARCHITECTURE.md`](learn/02-ARCHITECTURE.md) - bus + plugin design, persistence layers, crypto stack
-- [`learn/03-IMPLEMENTATION.md`](learn/03-IMPLEMENTATION.md) - code-level walkthrough; where to look in the source for each concept
-- [`learn/04-CHALLENGES.md`](learn/04-CHALLENGES.md) - 10 extension challenges (beginner -> advanced)
+## Stack
 
-## Running the test suite
+**Language:** Crystal 1.20+
 
-```bash
-crystal spec                     # all 200+ tests
-crystal spec spec/unit            # unit only (no DB required)
-DATABASE_URL=postgres://cre_test:cre_test@localhost:5432/cre_test \
-  crystal spec spec/integration   # integration with real PG
-just ci                        # format + lint + unit
-```
+**Dependencies:** crystal-db (DB abstraction), crystal-pg (PostgreSQL), crystal-sqlite3 (SQLite), tourmaline (Telegram framework, used minimally), webmock.cr (test HTTP mocks)
+
+**Direct LibCrypto FFI** for AES-256-GCM AEAD (Crystal stdlib `OpenSSL::Cipher` lacks GCM auth_data/auth_tag) and Ed25519 signing (stdlib lacks high-level wrapper). Bindings live in `src/cre/crypto/aead.cr` and `src/cre/audit/signing.cr`.
+
+**Testing:** stdlib `Spec` runner, 159+ unit tests + integration tests against real PostgreSQL via Docker.
+
+## Configuration
+
+Setup is fully env-var driven — no config file required. See **[CONFIGURATION.md](CONFIGURATION.md)** for the operator guide:
+
+- Required env vars (`CRE_KEK_HEX`, `CRE_HMAC_KEY_HEX`, `DATABASE_URL`)
+- Per-rotator setup (AWS IAM policy, Vault token policy, GitHub admin PAT)
+- Telegram bot creation + chat-ID discovery
+- systemd service unit with hardening directives
+- Production security checklist
+
+## Learn
+
+This project includes step-by-step learning materials covering security theory, architecture, and implementation.
+
+| Module | Topic |
+|--------|-------|
+| [00 - Overview](learn/00-OVERVIEW.md) | Prerequisites, quick start, three-tier demo path |
+| [01 - Concepts](learn/01-CONCEPTS.md) | Rotation theory, real breaches, NIST/SOC2/PCI/ISO/HIPAA framework controls |
+| [02 - Architecture](learn/02-ARCHITECTURE.md) | Bus + plugin design, persistence layers, three-layer audit integrity, AEAD envelope |
+| [03 - Implementation](learn/03-IMPLEMENTATION.md) | Code-level walkthrough; where to look in source for each concept |
+| [04 - Challenges](learn/04-CHALLENGES.md) | 10 ranked extension challenges (PG ALTER USER, Slack, ML-KEM, OpenTimestamps, SPIFFE, JIT broker, etc.) |
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
-
-## Credits
-
-Built as part of the [Cybersecurity Projects](https://github.com/CarterPerez-dev/Cybersecurity-Projects) portfolio - 60+ enterprise-grade cybersecurity projects designed as senior-level learning resources.
+AGPL 3.0
