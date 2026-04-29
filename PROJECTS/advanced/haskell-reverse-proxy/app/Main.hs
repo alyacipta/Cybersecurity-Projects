@@ -3,8 +3,18 @@
 module Main (main) where
 
 import Aenebris.Config
+import Aenebris.Connection
+  ( defaultTimeoutConfig
+  , microsPerSecond
+  , tcUpstreamReadSeconds
+  )
 import Aenebris.Proxy
-import Network.HTTP.Client (newManager, defaultManagerSettings)
+import Network.HTTP.Client
+  ( ManagerSettings(..)
+  , defaultManagerSettings
+  , newManager
+  , responseTimeoutMicro
+  )
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -37,8 +47,12 @@ main = do
         Right () -> do
           putStrLn "Configuration loaded and validated successfully"
 
-          -- Create HTTP client manager with connection pooling
-          manager <- newManager defaultManagerSettings
+          let upstreamMicros = tcUpstreamReadSeconds defaultTimeoutConfig
+                             * microsPerSecond
+              managerSettings = defaultManagerSettings
+                { managerResponseTimeout = responseTimeoutMicro upstreamMicros
+                }
+          manager <- newManager managerSettings
 
           -- Initialize proxy state (load balancers + health checkers)
           proxyState <- initProxyState config manager

@@ -13,6 +13,12 @@ module Aenebris.Proxy
 import Aenebris.Backend
 import Aenebris.Config
 import Aenebris.Connection
+  ( ConnectionType(..)
+  , defaultTimeoutConfig
+  , detectConnectionType
+  , microsPerSecond
+  , tcUpstreamReadSeconds
+  )
 import Aenebris.HealthCheck
 import Aenebris.LoadBalancer
 import Aenebris.TLS
@@ -93,7 +99,9 @@ import Network.Wai.Handler.Warp
   , setTimeout
   )
 import Network.Wai.Handler.WarpTLS (runTLS)
+import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
+import System.Timeout (timeout)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -215,7 +223,9 @@ startProxy ProxyState{..} = do
   putStrLn $ "Health checking enabled for all upstreams"
 
   case configListen psConfig of
-    [] -> error "No listen ports configured"
+    [] -> do
+      hPutStrLn stderr "ERROR: No listen ports configured"
+      exitFailure
     listenConfigs -> do
       case psRateLimiter of
         Just _ -> putStrLn "Rate limiting enabled"
@@ -339,9 +349,9 @@ launchHTTPS port tlsConfig app = do
       tlsResult <- createTLSSettings certFile keyFile
       case tlsResult of
         Left err -> do
-          hPutStrLn stderr $ "ERROR: Failed to load TLS certificate"
+          hPutStrLn stderr "ERROR: Failed to load TLS certificate"
           hPutStrLn stderr $ "  " ++ show err
-          error "TLS configuration error"
+          exitFailure
 
         Right tlsSettings -> do
           let warpSettings = defaultSettings & setPort port
@@ -352,7 +362,9 @@ launchHTTPS port tlsConfig app = do
           putStrLn $ "  └─ Strong cipher suites enforced"
           runTLS tlsSettings warpSettings app
 
-    _ -> error "TLS configuration error: cert and key required"
+    _ -> do
+      hPutStrLn stderr "ERROR: TLS configuration requires both cert and key"
+      exitFailure
 
 -- | Launch HTTPS server with SNI support (multiple certificates)
 launchHTTPSWithSNI :: Int -> TLSConfig -> Application -> IO ()
@@ -366,9 +378,9 @@ launchHTTPSWithSNI port tlsConfig app = do
       tlsResult <- createSNISettings domainList defaultCert defaultKey
       case tlsResult of
         Left err -> do
-          hPutStrLn stderr $ "ERROR: Failed to load SNI certificates"
+          hPutStrLn stderr "ERROR: Failed to load SNI certificates"
           hPutStrLn stderr $ "  " ++ show err
-          error "SNI configuration error"
+          exitFailure
 
         Right tlsSettings -> do
           let warpSettings = defaultSettings & setPort port
@@ -381,7 +393,10 @@ launchHTTPSWithSNI port tlsConfig app = do
           putStrLn $ "  └─ Strong cipher suites enforced"
           runTLS tlsSettings warpSettings app
 
-    _ -> error "SNI configuration error: sni, default_cert, and default_key required"
+    _ -> do
+      hPutStrLn stderr
+        "ERROR: SNI requires sni, default_cert, and default_key"
+      exitFailure
 
 -- | Main proxy application (WAI)
 proxyApp :: Config -> Map Text LoadBalancer -> Manager -> Application
@@ -525,25 +540,34 @@ forwardRequest manager clientReq backendHost respond = do
         , HTTP.requestBody = streamingBody
         }
 
-  withResponse backendReq manager $ \backendResponse -> do
-    let status = HTTP.responseStatus backendResponse
-        headers = HTTP.responseHeaders backendResponse
-        bodyReader = HTTP.responseBody backendResponse
+  let upstreamMicros = tcUpstreamReadSeconds defaultTimeoutConfig
+                     * microsPerSecond
+  mResult <- timeout upstreamMicros $
+    withResponse backendReq manager $ \backendResponse -> do
+      let status = HTTP.responseStatus backendResponse
+          headers = HTTP.responseHeaders backendResponse
+          bodyReader = HTTP.responseBody backendResponse
 
-    if shouldStreamResponse headers
-      then do
-        hPutStrLn stderr "[STREAM] Streaming response detected"
-        respond $ responseStream status (filterResponseHeaders headers) $ \write flush -> do
-          let loop = do
-                chunk <- brRead bodyReader
-                unless (BS.null chunk) $ do
-                  write (byteString chunk)
-                  flush
-                  loop
-          loop
-      else do
-        body <- readFullBody bodyReader
-        respond $ responseLBS status (filterResponseHeaders headers) body
+      if shouldStreamResponse headers
+        then do
+          hPutStrLn stderr "[STREAM] Streaming response detected"
+          respond $ responseStream status (filterResponseHeaders headers) $ \write flush -> do
+            let loop = do
+                  chunk <- brRead bodyReader
+                  unless (BS.null chunk) $ do
+                    write (byteString chunk)
+                    flush
+                    loop
+            loop
+        else do
+          body <- readFullBody bodyReader
+          respond $ responseLBS status (filterResponseHeaders headers) body
+  case mResult of
+    Just rr -> return rr
+    Nothing -> respond $ responseLBS
+      status504
+      [("Content-Type", "text/plain")]
+      "504 Gateway Timeout: upstream did not respond in time"
 
 shouldStreamResponse :: [(HeaderName, BS.ByteString)] -> Bool
 shouldStreamResponse headers =

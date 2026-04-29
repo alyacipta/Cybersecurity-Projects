@@ -72,13 +72,16 @@ data Target
   | TargetUserAgent
   deriving (Eq, Show)
 
-newtype CompiledRegex = CompiledRegex { unCompiledRegex :: Regex }
+data CompiledRegex = CompiledRegex
+  { unCompiledRegex      :: !Regex
+  , compiledRegexPattern :: !ByteString
+  }
 
 instance Show CompiledRegex where
-  show _ = "<CompiledRegex>"
+  show r = "<CompiledRegex " ++ show (compiledRegexPattern r) ++ ">"
 
 instance Eq CompiledRegex where
-  _ == _ = False
+  a == b = compiledRegexPattern a == compiledRegexPattern b
 
 data Operator
   = OpRegex !CompiledRegex
@@ -115,13 +118,13 @@ compileRegex :: ByteString -> Either String CompiledRegex
 compileRegex pat =
   case compile compOpts execOpts pat of
     Left err -> Left err
-    Right r -> Right (CompiledRegex r)
+    Right r -> Right (CompiledRegex r pat)
   where
     compOpts = TDFA.defaultCompOpt { TDFA.caseSensitive = False }
     execOpts = TDFA.defaultExecOpt
 
 runRegex :: CompiledRegex -> ByteString -> Bool
-runRegex (CompiledRegex r) input =
-  case execute r input of
+runRegex cr input =
+  case execute (unCompiledRegex cr) input of
     Right (Just _) -> True
     _ -> False

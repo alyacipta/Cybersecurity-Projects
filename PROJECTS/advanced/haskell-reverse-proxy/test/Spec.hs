@@ -817,6 +817,16 @@ wafSpec = describe "WAF" $ do
     severityScore SevWarning `shouldBe` 3
     severityScore SevNotice `shouldBe` 2
 
+  it "Eq CompiledRegex is reflexive (x == x)" $
+    case compileRegex "abc" of
+      Right r -> r `shouldBe` r
+      Left err -> expectationFailure err
+
+  it "Eq CompiledRegex distinguishes different patterns" $
+    case (compileRegex "abc", compileRegex "def") of
+      (Right r1, Right r2) -> (r1 == r2) `shouldBe` False
+      _ -> expectationFailure "expected both to compile"
+
   it "default ruleset includes rules" $
     length (rsRules defaultRuleSet) `shouldSatisfy` (> 0)
 
@@ -2073,6 +2083,16 @@ mlLoaderSpec = describe "ML.Loader" $ do
         (TE.encodeUtf8
           (T.replace "leaf_value=0.5\n" "leaf_value=0.5\nbogus=1\n" mlLoaderModel))
         `shouldSatisfy` isLeft
+
+    it "rejects num_leaves above maxNumLeaves" $
+      parseEnsemble
+        (TE.encodeUtf8 (T.replace "num_leaves=1" "num_leaves=999999" mlLoaderModel))
+        `shouldSatisfy` parseFailsAt "num_leaves"
+
+    it "rejects num_leaves of 0" $
+      parseEnsemble
+        (TE.encodeUtf8 (T.replace "num_leaves=1" "num_leaves=0" mlLoaderModel))
+        `shouldSatisfy` parseFailsAt "num_leaves"
 
   describe "feature_names containing '='" $
     it "accepts feature_names with '=' in a name" $
