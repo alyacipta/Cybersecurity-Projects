@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
 
 var (

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
 
 const (

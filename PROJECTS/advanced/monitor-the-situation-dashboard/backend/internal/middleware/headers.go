@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 )
 
 func SecurityHeaders(isProduction bool) func(http.Handler) http.Handler {

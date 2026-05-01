@@ -20,9 +20,9 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
-	"github.com/carterperez-dev/templates/go-backend/internal/middleware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 )
 
 type JWTManager struct {

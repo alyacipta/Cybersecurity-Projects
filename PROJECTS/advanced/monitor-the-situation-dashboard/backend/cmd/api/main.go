@@ -14,14 +14,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/admin"
-	"github.com/carterperez-dev/templates/go-backend/internal/auth"
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
-	"github.com/carterperez-dev/templates/go-backend/internal/health"
-	"github.com/carterperez-dev/templates/go-backend/internal/middleware"
-	"github.com/carterperez-dev/templates/go-backend/internal/server"
-	"github.com/carterperez-dev/templates/go-backend/internal/user"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/admin"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/server"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/user"
 )
 
 const (

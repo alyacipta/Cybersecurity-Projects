@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
 
 type AuthService interface {

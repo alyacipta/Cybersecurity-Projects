@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/auth"
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
 
 type Service struct {

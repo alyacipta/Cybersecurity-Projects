@@ -1,4 +1,4 @@
-module github.com/carterperez-dev/templates/go-backend
+module github.com/carterperez-dev/monitor-the-situation/backend
 
 go 1.25.0
 

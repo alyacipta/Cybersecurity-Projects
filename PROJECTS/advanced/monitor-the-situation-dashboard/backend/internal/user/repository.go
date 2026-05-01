@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
 
 type Repository interface {

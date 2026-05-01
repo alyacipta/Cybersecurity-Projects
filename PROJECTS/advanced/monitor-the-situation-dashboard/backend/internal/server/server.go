@@ -14,8 +14,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
-	"github.com/carterperez-dev/templates/go-backend/internal/health"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
 )
 
 type Server struct {

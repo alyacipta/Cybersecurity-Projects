@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/core"
-	"github.com/carterperez-dev/templates/go-backend/internal/middleware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 )
 
 type Handler struct {

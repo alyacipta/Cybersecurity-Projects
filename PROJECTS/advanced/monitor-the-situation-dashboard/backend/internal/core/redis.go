@@ -10,7 +10,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 )
 
 type Redis struct {

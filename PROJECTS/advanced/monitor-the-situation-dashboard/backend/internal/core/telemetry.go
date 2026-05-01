@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/carterperez-dev/templates/go-backend/internal/config"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 )
 
 type Telemetry struct {
