@@ -1,0 +1,18 @@
+# ©AngelaMos | 2026
+# .gitignore
+
+.env
+.env.local
+.env.*.local
+
+backend/tmp/
+backend/bin/
+backend/coverage.out
+backend/coverage.html
+backend/keys/
+
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+
+docs/
