@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log/slog"
 	"os"
@@ -13,15 +14,20 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/admin"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/bus"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/heartbeat"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/server"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/snapshot"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/user"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/ws"
 )
 
 const (
@@ -117,6 +123,29 @@ func run(configPath string) error {
 		RedisPing:  redis.Ping,
 	})
 
+	snapStore := snapshot.NewStore(redis.Client)
+	snapHandler := snapshot.NewHandler(snapStore)
+
+	hub := ws.NewHub(ws.HubConfig{Logger: logger})
+	wsHandler := ws.NewHandler(hub)
+
+	eventBus := bus.New(bus.Config{
+		BufferSize:  512,
+		Persister:   snapshot.StorePersister{Store: snapStore},
+		Broadcaster: ws.HubBroadcaster{Hub: hub},
+		Logger:      logger,
+	})
+
+	beat := heartbeat.New(heartbeat.Config{
+		Interval: 5 * time.Second,
+		Emitter:  eventBus,
+	})
+
+	collectorGroup, collectorCtx := errgroup.WithContext(ctx)
+	collectorGroup.Go(func() error { return eventBus.Run(collectorCtx) })
+	collectorGroup.Go(func() error { return beat.Run(collectorCtx) })
+	logger.Info("collectors started", "count", 1)
+
 	srv := server.New(server.Config{
 		ServerConfig:  cfg.Server,
 		HealthHandler: healthHandler,
@@ -147,6 +176,12 @@ func run(configPath string) error {
 	adminOnly := middleware.RequireAdmin
 
 	router.Route("/v1", func(r chi.Router) {
+		r.Get("/healthz", healthHandler.Liveness)
+		r.Get("/readyz", healthHandler.Readiness)
+
+		r.Get("/snapshot", snapHandler.ServeHTTP)
+		r.Get("/ws", wsHandler.ServeHTTP)
+
 		authHandler.RegisterRoutes(r, authenticator)
 
 		r.Post("/users", authHandler.Register)
@@ -182,6 +217,12 @@ func run(configPath string) error {
 		if err := telemetry.Shutdown(shutdownCtx); err != nil {
 			logger.Error("telemetry shutdown error", "error", err)
 		}
+	}
+
+	if err := collectorGroup.Wait(); err != nil &&
+		!errors.Is(err, context.Canceled) &&
+		!errors.Is(err, context.DeadlineExceeded) {
+		logger.Error("collector group exit", "error", err)
 	}
 
 	if err := redis.Close(); err != nil {
