@@ -166,3 +166,46 @@ $container-lg: 32rem;
 $container-xl: 36rem;
 $container-2xl: 42rem;
 $container-full: 100%;
+
+// ============================================================================
+// ETHOS TOKENS — operator-grade dashboard surface
+//
+// Per docs/design/ethos-reference.md (also mirrored in _ethos.scss).
+// Used by /pages/dashboard/, /pages/globe/, /pages/panels/. NOT used by
+// auth pages — those keep the template's SCSS variables above.
+// ============================================================================
+
+@import 'ethos';
+
+:root {
+  // Background tiers
+  --bg:           #0a0a0a;   // very dark neutral, NOT pure black
+  --bg-panel:     #0f0f0f;   // panel surface, one tier lighter
+  --bg-row-hover: #141414;   // table-row hover, subtle (no interactive theatre)
+
+  // Text tiers (3 + 1 muted/border)
+  --fg-1: #e5e5e5;   // primary
+  --fg-2: #a3a3a3;   // secondary (labels, axes, headers)
+  --fg-3: #6b7280;   // muted (timestamps, footnotes)
+  --fg-4: #404040;   // borders / lines
+
+  // Accents — ONE green, ONE amber. That is all.
+  --ok:    #4ade80;  // live / healthy / busy
+  --amber: #f59e0b;  // stale / breached / anomaly. NEVER for decoration.
+
+  // Type
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+
+  // Density (matches the spec — small padding, tight line-height)
+  --row-py: 4px;
+  --row-px: 8px;
+  --line-height-tight: 1.25;
+  --letter-spacing-label: 0.08em;
+
+  // Sizes — intentionally smaller than SaaS defaults for operator density
+  --type-body:   13px;
+  --type-label:  11px;   // UPPERCASE labels
+  --type-num-l:  20px;   // KPI numbers
+  --type-num-xl: 28px;   // hero KPI numbers (rare; only top-of-panel)
+}
