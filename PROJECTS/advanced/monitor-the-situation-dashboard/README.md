@@ -28,6 +28,7 @@ Operator-grade real-time situational awareness dashboard. Single-binary Go backe
 | CVE velocity + EPSS            | NVD CVE 2.0 + FIRST EPSS  | 2h         | `NVD_API_KEY` (optional, raises rate limit)   |
 | CISA KEV                       | CISA KEV catalog          | 1h         | none                                          |
 | Ransomware victims             | ransomware.live           | 15m        | none                                          |
+| Live BTC + ETH ticks           | Coinbase Advanced Trade WS| persistent | none                                          |
 | IP enrichment                  | GreyNoise Community       | on-demand  | `GREYNOISE_API_KEY` (optional, free tier)     |
 
 ## Quickstart (development)
