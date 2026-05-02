@@ -24,14 +24,20 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/coinbase"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cve"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/dshield"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/gdelt"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/heartbeat"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/iss"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/kev"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/ransomware"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/state"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/swpc"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/usgs"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/wikipedia"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/redisring"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/server"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/snapshot"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/user"
@@ -235,6 +241,69 @@ func run(configPath string) error {
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
 	}
 
+	if cfg.Collectors.USGS.Enabled {
+		coll := usgs.NewCollector(usgs.CollectorConfig{
+			Interval: cfg.Collectors.USGS.Interval,
+			Fetcher:  usgs.NewClient(usgs.ClientConfig{}),
+			Repo:     usgs.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "usgs"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.SWPC.Enabled {
+		ring := redisring.New(redis.Client, redisring.Config{Retention: 24 * time.Hour})
+		coll := swpc.NewCollector(swpc.CollectorConfig{
+			FastInterval: cfg.Collectors.SWPC.FastInterval,
+			SlowInterval: cfg.Collectors.SWPC.SlowInterval,
+			Fetcher:      swpc.NewClient(swpc.ClientConfig{}),
+			Ring:         ring,
+			Emitter:      eventBus,
+			State:        collectorState,
+			Logger:       logger.With("collector", "swpc"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.Wikipedia.Enabled {
+		coll := wikipedia.NewCollector(wikipedia.CollectorConfig{
+			Interval: cfg.Collectors.Wikipedia.Interval,
+			Fetcher:  wikipedia.NewClient(wikipedia.ClientConfig{}),
+			Repo:     wikipedia.NewRepo(db.DB, redis.Client),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "wikipedia"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.GDELT.Enabled {
+		coll := gdelt.NewCollector(gdelt.CollectorConfig{
+			Interval: cfg.Collectors.GDELT.Interval,
+			Fetcher:  gdelt.NewClient(gdelt.ClientConfig{}),
+			Repo:     gdelt.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "gdelt"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.ISS.Enabled {
+		coll := iss.NewCollector(iss.CollectorConfig{
+			PositionInterval: cfg.Collectors.ISS.PositionInterval,
+			TLEInterval:      cfg.Collectors.ISS.TLEInterval,
+			Fetcher:          iss.NewClient(iss.ClientConfig{}),
+			TLEStore:         iss.NewTLEStore(redis.Client),
+			Emitter:          eventBus,
+			State:            collectorState,
+			Logger:           logger.With("collector", "iss"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
 	logger.Info("collectors started",
 		"heartbeat", true,
 		"dshield", cfg.Collectors.DShield.Enabled,
@@ -243,6 +312,11 @@ func run(configPath string) error {
 		"kev", cfg.Collectors.KEV.Enabled,
 		"ransomware", cfg.Collectors.Ransomware.Enabled,
 		"coinbase", cfg.Collectors.Coinbase.Enabled,
+		"usgs", cfg.Collectors.USGS.Enabled,
+		"swpc", cfg.Collectors.SWPC.Enabled,
+		"wikipedia", cfg.Collectors.Wikipedia.Enabled,
+		"gdelt", cfg.Collectors.GDELT.Enabled,
+		"iss", cfg.Collectors.ISS.Enabled,
 	)
 
 	srv := server.New(server.Config{
