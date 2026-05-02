@@ -11,53 +11,40 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/coinbase"
 )
 
-func TestSequencer_FirstTickIsAlwaysInOrder(t *testing.T) {
+func TestSequencer_FirstObservationIsBaseline(t *testing.T) {
 	s := coinbase.NewSequencer()
-	gap := s.Observe("BTC-USD", 100)
-	require.False(t, gap, "first sequence number must not be a gap")
+	require.False(t, s.Observe(100), "first sequence number must not be a gap")
 }
 
 func TestSequencer_ConsecutiveSequencesAreInOrder(t *testing.T) {
 	s := coinbase.NewSequencer()
 	for i := int64(50); i < 60; i++ {
-		gap := s.Observe("BTC-USD", i)
-		require.False(t, gap, "i=%d", i)
+		require.False(t, s.Observe(i), "i=%d", i)
 	}
 }
 
 func TestSequencer_GapTriggersReportSignal(t *testing.T) {
 	s := coinbase.NewSequencer()
-	require.False(t, s.Observe("BTC-USD", 50))
-	require.False(t, s.Observe("BTC-USD", 51))
-	require.True(t, s.Observe("BTC-USD", 60), "skipping 52-59 must report gap")
+	require.False(t, s.Observe(50))
+	require.False(t, s.Observe(51))
+	require.True(t, s.Observe(60), "skipping 52-59 must report gap")
 }
 
-func TestSequencer_GapsArePerProduct(t *testing.T) {
+func TestSequencer_ResetClearsBaseline(t *testing.T) {
 	s := coinbase.NewSequencer()
-	require.False(t, s.Observe("BTC-USD", 100))
-	require.False(t, s.Observe("ETH-USD", 200))
-	require.False(t, s.Observe("BTC-USD", 101))
-	require.True(t, s.Observe("ETH-USD", 250))
-	require.False(t, s.Observe("BTC-USD", 102))
-}
-
-func TestSequencer_ResetClearsAllProducts(t *testing.T) {
-	s := coinbase.NewSequencer()
-	s.Observe("BTC-USD", 100)
-	s.Observe("ETH-USD", 200)
+	s.Observe(100)
 	s.Reset()
-	require.False(t, s.Observe("BTC-USD", 9999))
-	require.False(t, s.Observe("ETH-USD", 8888))
+	require.False(t, s.Observe(9999))
 }
 
 func TestSequencer_DuplicateSequenceTreatedAsGap(t *testing.T) {
 	s := coinbase.NewSequencer()
-	require.False(t, s.Observe("BTC-USD", 100))
-	require.True(t, s.Observe("BTC-USD", 100), "replaying the same seq is a gap")
+	require.False(t, s.Observe(100))
+	require.True(t, s.Observe(100), "replaying the same seq is a gap")
 }
 
 func TestSequencer_BackwardSequenceTreatedAsGap(t *testing.T) {
 	s := coinbase.NewSequencer()
-	require.False(t, s.Observe("BTC-USD", 100))
-	require.True(t, s.Observe("BTC-USD", 90))
+	require.False(t, s.Observe(100))
+	require.True(t, s.Observe(90))
 }

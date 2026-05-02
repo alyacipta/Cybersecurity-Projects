@@ -134,10 +134,29 @@ func (c *Collector) handleConn(ctx context.Context, conn *Conn) error {
 		return nil
 	})
 
+	c.logger.Info("coinbase loop exit",
+		"err", loopErrString(loopErr),
+		"emit_count", count,
+		"agg_open", aggLen(agg),
+	)
 	if loopErr == nil || errors.Is(loopErr, ErrSequenceGap) {
 		_ = c.cfg.State.RecordSuccess(ctx, Name, count)
 	}
 	return loopErr
+}
+
+func loopErrString(err error) string {
+	if err == nil {
+		return "<nil>"
+	}
+	return err.Error()
+}
+
+func aggLen(a *Aggregator) int {
+	if a == nil {
+		return 0
+	}
+	return len(a.open)
 }
 
 func (c *Collector) shouldEmit(symbol string) bool {

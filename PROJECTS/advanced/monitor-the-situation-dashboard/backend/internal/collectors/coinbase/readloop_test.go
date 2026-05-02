@@ -50,7 +50,7 @@ func TestReadLoop_DeliversTickerFrames(t *testing.T) {
 	require.GreaterOrEqual(t, tickerFrames, 2)
 }
 
-func TestReadLoop_GapTriggersErrSequenceGap(t *testing.T) {
+func TestReadLoop_GapIsLoggedButLoopContinues(t *testing.T) {
 	fs := newFakeServer(t,
 		loadFixture(t, "subscriptions.json"),
 		[]byte(`{"channel":"ticker","sequence_num":100,"timestamp":"2026-05-01T22:30:00Z","events":[{"type":"update","tickers":[{"product_id":"BTC-USD","price":"42000.00","volume_24_h":"1.0","time":"2026-05-01T22:30:00Z"}]}]}`),
@@ -58,17 +58,22 @@ func TestReadLoop_GapTriggersErrSequenceGap(t *testing.T) {
 	)
 
 	d := coinbase.NewWSDialer(coinbase.DialerConfig{URL: fs.URL(), ProductIDs: []string{"BTC-USD"}})
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
 	defer cancel()
 	conn, err := d.Dial(ctx)
 	require.NoError(t, err)
 	defer conn.Close()
 
 	seq := coinbase.NewSequencer()
-	loopErr := coinbase.ReadLoop(ctx, conn, seq, func(context.Context, coinbase.Frame) error {
+	delivered := 0
+	loopErr := coinbase.ReadLoop(ctx, conn, seq, func(_ context.Context, f coinbase.Frame) error {
+		if f.Kind == coinbase.FrameTypeTicker {
+			delivered++
+		}
 		return nil
 	})
-	require.ErrorIs(t, loopErr, coinbase.ErrSequenceGap)
+	require.True(t, errors.Is(loopErr, context.DeadlineExceeded) || errors.Is(loopErr, context.Canceled) || loopErr == nil)
+	require.Equal(t, 2, delivered, "both ticker frames must be delivered despite the gap")
 }
 
 func TestReadLoop_SnapshotResetsSequencer(t *testing.T) {

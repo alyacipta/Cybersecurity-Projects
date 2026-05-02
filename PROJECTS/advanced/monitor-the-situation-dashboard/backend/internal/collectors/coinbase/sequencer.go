@@ -7,26 +7,30 @@ import "sync"
 
 type Sequencer struct {
 	mu   sync.Mutex
-	last map[string]int64
+	last int64
+	set  bool
 }
 
 func NewSequencer() *Sequencer {
-	return &Sequencer{last: make(map[string]int64)}
+	return &Sequencer{}
 }
 
-func (s *Sequencer) Observe(productID string, seq int64) bool {
+func (s *Sequencer) Observe(seq int64) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	prev, ok := s.last[productID]
-	s.last[productID] = seq
-	if !ok {
+	if !s.set {
+		s.last = seq
+		s.set = true
 		return false
 	}
-	return seq != prev+1
+	expected := s.last + 1
+	s.last = seq
+	return seq != expected
 }
 
 func (s *Sequencer) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.last = make(map[string]int64)
+	s.set = false
+	s.last = 0
 }

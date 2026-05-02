@@ -6,6 +6,7 @@ package coinbase
 import (
 	"context"
 	"errors"
+	"log/slog"
 )
 
 var ErrSequenceGap = errors.New("coinbase: sequence gap detected")
@@ -26,17 +27,16 @@ func ReadLoop(ctx context.Context, conn *Conn, seq *Sequencer, handler FrameHand
 		}
 
 		switch frame.Kind {
-		case FrameTypeUnknown, FrameTypeSubscriptions, FrameTypeHeartbeats:
+		case FrameTypeUnknown, FrameTypeSubscriptions:
 		case FrameTypeSnapshot:
 			seq.Reset()
-			for _, t := range frame.Tickers {
-				_ = seq.Observe(t.ProductID, frame.SequenceNum)
-			}
-		case FrameTypeTicker:
-			for _, t := range frame.Tickers {
-				if seq.Observe(t.ProductID, frame.SequenceNum) {
-					return ErrSequenceGap
-				}
+			_ = seq.Observe(frame.SequenceNum)
+		case FrameTypeTicker, FrameTypeHeartbeats:
+			if seq.Observe(frame.SequenceNum) {
+				slog.Default().Warn("coinbase seq gap (non-fatal)",
+					"channel_kind", frame.Kind,
+					"seq", frame.SequenceNum,
+				)
 			}
 		}
 
