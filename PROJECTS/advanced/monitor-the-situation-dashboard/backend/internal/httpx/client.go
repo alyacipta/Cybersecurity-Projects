@@ -52,6 +52,15 @@ type Client struct {
 	hc      *http.Client
 }
 
+type StatusError struct {
+	Code int
+	Body string
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("client error %d: %s", e.Code, e.Body)
+}
+
 func New(cfg Config) *Client {
 	if cfg.RequestTimeout <= 0 {
 		cfg.RequestTimeout = defaultRequestTimeout
@@ -122,7 +131,7 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values) (*http.
 		case r.StatusCode >= 400:
 			body, _ := io.ReadAll(io.LimitReader(r.Body, clientErrorBodyLimit))
 			drainAndClose(r)
-			return backoff.Permanent(fmt.Errorf("client error %d: %s", r.StatusCode, body))
+			return backoff.Permanent(&StatusError{Code: r.StatusCode, Body: string(body)})
 		}
 		resp = r
 		return nil
