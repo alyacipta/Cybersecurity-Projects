@@ -16,7 +16,6 @@ type CollectorState string
 const (
 	StateHealthy  CollectorState = "healthy"
 	StateDegraded CollectorState = "degraded"
-	StateDown     CollectorState = "down"
 )
 
 type Row struct {

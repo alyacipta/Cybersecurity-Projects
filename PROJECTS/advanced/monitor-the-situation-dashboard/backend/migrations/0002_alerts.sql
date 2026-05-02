@@ -1,5 +1,5 @@
 -- ©AngelaMos | 2026
--- 0001_alerts.sql
+-- 0002_alerts.sql
 
 -- +goose Up
 -- +goose StatementBegin

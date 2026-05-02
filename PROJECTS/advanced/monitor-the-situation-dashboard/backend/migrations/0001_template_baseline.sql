@@ -1,5 +1,5 @@
 -- ©AngelaMos | 2026
--- 00000_template_baseline.sql
+-- 0001_template_baseline.sql
 
 -- +goose Up
 -- +goose StatementBegin

@@ -1,5 +1,5 @@
 -- ©AngelaMos | 2026
--- 0002_panel_data.sql
+-- 0003_panel_data.sql
 
 -- +goose Up
 -- +goose StatementBegin

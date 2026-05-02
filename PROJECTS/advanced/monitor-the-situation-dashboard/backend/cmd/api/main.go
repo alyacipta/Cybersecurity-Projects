@@ -1,4 +1,4 @@
-// AngelaMos | 2026
+// ©AngelaMos | 2026
 // main.go
 
 package main

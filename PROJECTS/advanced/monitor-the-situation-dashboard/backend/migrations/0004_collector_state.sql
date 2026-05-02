@@ -1,5 +1,5 @@
 -- ©AngelaMos | 2026
--- 0003_collector_state.sql
+-- 0004_collector_state.sql
 
 -- +goose Up
 -- +goose StatementBegin

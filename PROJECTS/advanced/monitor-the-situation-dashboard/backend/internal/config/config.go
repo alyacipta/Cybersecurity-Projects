@@ -1,4 +1,4 @@
-// AngelaMos | 2026
+// ©AngelaMos | 2026
 // config.go
 
 package config
@@ -237,19 +237,19 @@ func loadDefaults(k *koanf.Koanf) error {
 		"otel.sample_rate":  0.1,
 		"otel.service_name": "go-backend",
 
-		"collectors.dshield.enabled":       true,
-		"collectors.dshield.interval":      "1h",
-		"collectors.cfradar.enabled":       true,
-		"collectors.cfradar.interval":      "5m",
+		"collectors.dshield.enabled":        true,
+		"collectors.dshield.interval":       "1h",
+		"collectors.cfradar.enabled":        true,
+		"collectors.cfradar.interval":       "5m",
 		"collectors.cfradar.min_confidence": 7,
-		"collectors.cve.enabled":           true,
-		"collectors.cve.interval":          "2h",
-		"collectors.cve.window":            "2h",
-		"collectors.kev.enabled":           true,
-		"collectors.kev.interval":          "1h",
-		"collectors.ransomware.enabled":    true,
-		"collectors.ransomware.interval":   "15m",
-		"collectors.greynoise.enabled":     true,
+		"collectors.cve.enabled":            true,
+		"collectors.cve.interval":           "2h",
+		"collectors.cve.window":             "2h",
+		"collectors.kev.enabled":            true,
+		"collectors.kev.interval":           "1h",
+		"collectors.ransomware.enabled":     true,
+		"collectors.ransomware.interval":    "15m",
+		"collectors.greynoise.enabled":      true,
 	}
 
 	for key, value := range defaults {
