@@ -68,8 +68,8 @@ type ThemeBucket struct {
 type rawTimeline struct {
 	Timeline []struct {
 		Data []struct {
-			Date  string `json:"date"`
-			Value int    `json:"value"`
+			Date  string  `json:"date"`
+			Value float64 `json:"value"`
 		} `json:"data"`
 	} `json:"timeline"`
 }
@@ -116,7 +116,7 @@ func (c *Client) FetchTheme(ctx context.Context, theme string) ([]ThemeBucket, e
 		out = append(out, ThemeBucket{
 			Theme: theme,
 			Time:  ts.UTC(),
-			Count: d.Value,
+			Count: int(d.Value),
 		})
 	}
 	return out, nil
