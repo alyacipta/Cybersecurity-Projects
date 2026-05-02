@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	keyRevID     = "state:wiki_itn:revid"
+	keyRevID      = "wiki:itn:revid"
 	sourceWikiITN = "wiki_itn"
 )
 
