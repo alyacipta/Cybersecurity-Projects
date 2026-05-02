@@ -19,17 +19,21 @@ Operator-grade real-time situational awareness dashboard. Single-binary Go backe
 | Ingress     | nginx (dev + prod), Cloudflare Tunnel (prod)               |
 | Build / run | `just` recipes, multi-stage Docker, air for live reload    |
 
-## Cyber data sources
+## Data sources
 
-| Panel                          | Source                    | Cadence    | Auth                                          |
-| ------------------------------ | ------------------------- | ---------- | --------------------------------------------- |
-| Mass-scan firehose             | DShield (SANS ISC)        | 1h         | none                                          |
-| Internet outages + BGP hijacks | Cloudflare Radar          | 5m         | `CF_RADAR_TOKEN` (Radar:Read scope)           |
-| CVE velocity + EPSS            | NVD CVE 2.0 + FIRST EPSS  | 2h         | `NVD_API_KEY` (optional, raises rate limit)   |
-| CISA KEV                       | CISA KEV catalog          | 1h         | none                                          |
-| Ransomware victims             | ransomware.live           | 15m        | none                                          |
-| Live BTC + ETH ticks           | Coinbase Advanced Trade WS| persistent | none                                          |
-| IP enrichment                  | GreyNoise Community       | on-demand  | `GREYNOISE_API_KEY` (optional, free tier)     |
+| Panel                          | Source                       | Cadence    | Auth                                          |
+| ------------------------------ | ---------------------------- | ---------- | --------------------------------------------- |
+| Mass-scan firehose             | DShield (SANS ISC)           | 1h         | none                                          |
+| Internet outages + BGP hijacks | Cloudflare Radar             | 5m         | `CF_RADAR_TOKEN` (Radar:Read scope)           |
+| CVE velocity + EPSS            | NVD CVE 2.0 + FIRST EPSS     | 2h         | `NVD_API_KEY` (optional, raises rate limit)   |
+| CISA KEV                       | CISA KEV catalog             | 1h         | none                                          |
+| Ransomware victims             | ransomware.live              | 15m        | none                                          |
+| Live BTC + ETH ticks           | Coinbase Advanced Trade WS   | persistent | none                                          |
+| Earthquakes (M2.5+)            | USGS GeoJSON feed            | 1m         | none                                          |
+| Space weather                  | NOAA SWPC (5 endpoints)      | 1m / 3h    | none                                          |
+| World events                   | Wikipedia ITN + GDELT v2 API | 5m / 15m   | none                                          |
+| ISS position                   | wheretheiss.at + CelesTrak   | 10s / 24h  | none                                          |
+| IP enrichment                  | GreyNoise Community          | on-demand  | `GREYNOISE_API_KEY` (optional, free tier)     |
 
 ## Quickstart (development)
 
