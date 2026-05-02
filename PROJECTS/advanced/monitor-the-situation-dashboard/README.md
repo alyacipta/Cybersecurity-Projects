@@ -19,6 +19,17 @@ Operator-grade real-time situational awareness dashboard. Single-binary Go backe
 | Ingress     | nginx (dev + prod), Cloudflare Tunnel (prod)               |
 | Build / run | `just` recipes, multi-stage Docker, air for live reload    |
 
+## Cyber data sources
+
+| Panel                          | Source                    | Cadence    | Auth                                          |
+| ------------------------------ | ------------------------- | ---------- | --------------------------------------------- |
+| Mass-scan firehose             | DShield (SANS ISC)        | 1h         | none                                          |
+| Internet outages + BGP hijacks | Cloudflare Radar          | 5m         | `CF_RADAR_TOKEN` (Radar:Read scope)           |
+| CVE velocity + EPSS            | NVD CVE 2.0 + FIRST EPSS  | 2h         | `NVD_API_KEY` (optional, raises rate limit)   |
+| CISA KEV                       | CISA KEV catalog          | 1h         | none                                          |
+| Ransomware victims             | ransomware.live           | 15m        | none                                          |
+| IP enrichment                  | GreyNoise Community       | on-demand  | `GREYNOISE_API_KEY` (optional, free tier)     |
+
 ## Quickstart (development)
 
 ```bash
