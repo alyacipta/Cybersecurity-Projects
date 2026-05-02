@@ -6,7 +6,6 @@ package coinbase_test
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 	"time"
 
@@ -144,5 +143,5 @@ func TestRepo_LatestTickMissingReturnsErrNoRows(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := repo.LatestTick(ctx, "DOES-NOT-EXIST")
-	require.True(t, errors.Is(err, sql.ErrNoRows))
+	require.ErrorIs(t, err, sql.ErrNoRows)
 }

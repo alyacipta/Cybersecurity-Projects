@@ -26,6 +26,7 @@ func ReadLoop(ctx context.Context, conn *Conn, seq *Sequencer, handler FrameHand
 		}
 
 		switch frame.Kind {
+		case FrameTypeUnknown, FrameTypeSubscriptions, FrameTypeHeartbeats:
 		case FrameTypeSnapshot:
 			seq.Reset()
 			for _, t := range frame.Tickers {

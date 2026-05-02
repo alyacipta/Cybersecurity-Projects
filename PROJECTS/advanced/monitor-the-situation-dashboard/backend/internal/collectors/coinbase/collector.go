@@ -102,6 +102,8 @@ func (c *Collector) handleConn(ctx context.Context, conn *Conn) error {
 
 	loopErr := ReadLoop(ctx, conn, seq, func(hctx context.Context, f Frame) error {
 		switch f.Kind {
+		case FrameTypeUnknown, FrameTypeSubscriptions, FrameTypeHeartbeats:
+			return nil
 		case FrameTypeTicker, FrameTypeSnapshot:
 			ts := f.Timestamp.UTC()
 			if ts.IsZero() {

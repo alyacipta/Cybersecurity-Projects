@@ -153,7 +153,7 @@ func (c *Conn) ReadFrame(ctx context.Context) (Frame, error) {
 func decodeFrame(msg []byte) (Frame, error) {
 	var env rawEnvelope
 	if err := json.Unmarshal(msg, &env); err != nil {
-		return Frame{}, fmt.Errorf("%w: %v", ErrFrameMalformed, err)
+		return Frame{}, fmt.Errorf("%w: %w", ErrFrameMalformed, err)
 	}
 
 	frame := Frame{
