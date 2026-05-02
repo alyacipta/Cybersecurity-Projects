@@ -15,15 +15,49 @@ import (
 )
 
 type Config struct {
-	App       AppConfig       `koanf:"app"`
-	Server    ServerConfig    `koanf:"server"`
-	Database  DatabaseConfig  `koanf:"database"`
-	Redis     RedisConfig     `koanf:"redis"`
-	JWT       JWTConfig       `koanf:"jwt"`
-	RateLimit RateLimitConfig `koanf:"rate_limit"`
-	CORS      CORSConfig      `koanf:"cors"`
-	Log       LogConfig       `koanf:"log"`
-	Otel      OtelConfig      `koanf:"otel"`
+	App        AppConfig        `koanf:"app"`
+	Server     ServerConfig     `koanf:"server"`
+	Database   DatabaseConfig   `koanf:"database"`
+	Redis      RedisConfig      `koanf:"redis"`
+	JWT        JWTConfig        `koanf:"jwt"`
+	RateLimit  RateLimitConfig  `koanf:"rate_limit"`
+	CORS       CORSConfig       `koanf:"cors"`
+	Log        LogConfig        `koanf:"log"`
+	Otel       OtelConfig       `koanf:"otel"`
+	Collectors CollectorsConfig `koanf:"collectors"`
+}
+
+type CollectorsConfig struct {
+	DShield    SourceConfig    `koanf:"dshield"`
+	CFRadar    CFRadarConfig   `koanf:"cfradar"`
+	CVE        CVEConfig       `koanf:"cve"`
+	KEV        SourceConfig    `koanf:"kev"`
+	Ransomware SourceConfig    `koanf:"ransomware"`
+	GreyNoise  GreyNoiseConfig `koanf:"greynoise"`
+}
+
+type SourceConfig struct {
+	Enabled  bool          `koanf:"enabled"`
+	Interval time.Duration `koanf:"interval"`
+}
+
+type CFRadarConfig struct {
+	Enabled       bool          `koanf:"enabled"`
+	Interval      time.Duration `koanf:"interval"`
+	BearerToken   string        `koanf:"bearer_token"`
+	MinConfidence int           `koanf:"min_confidence"`
+}
+
+type CVEConfig struct {
+	Enabled   bool          `koanf:"enabled"`
+	Interval  time.Duration `koanf:"interval"`
+	Window    time.Duration `koanf:"window"`
+	NVDAPIKey string        `koanf:"nvd_api_key"`
+}
+
+type GreyNoiseConfig struct {
+	Enabled bool   `koanf:"enabled"`
+	APIKey  string `koanf:"api_key"`
 }
 
 type AppConfig struct {
@@ -202,6 +236,20 @@ func loadDefaults(k *koanf.Koanf) error {
 		"otel.insecure":     true,
 		"otel.sample_rate":  0.1,
 		"otel.service_name": "go-backend",
+
+		"collectors.dshield.enabled":       true,
+		"collectors.dshield.interval":      "1h",
+		"collectors.cfradar.enabled":       true,
+		"collectors.cfradar.interval":      "5m",
+		"collectors.cfradar.min_confidence": 7,
+		"collectors.cve.enabled":           true,
+		"collectors.cve.interval":          "2h",
+		"collectors.cve.window":            "2h",
+		"collectors.kev.enabled":           true,
+		"collectors.kev.interval":          "1h",
+		"collectors.ransomware.enabled":    true,
+		"collectors.ransomware.interval":   "15m",
+		"collectors.greynoise.enabled":     true,
 	}
 
 	for key, value := range defaults {
@@ -236,6 +284,9 @@ var envKeyMap = map[string]string{
 	"OTEL_ENABLED":                "otel.enabled",
 	"OTEL_INSECURE":               "otel.insecure",
 	"OTEL_SAMPLE_RATE":            "otel.sample_rate",
+	"NVD_API_KEY":                 "collectors.cve.nvd_api_key",
+	"CF_RADAR_TOKEN":              "collectors.cfradar.bearer_token",
+	"GREYNOISE_API_KEY":           "collectors.greynoise.api_key",
 }
 
 func envKeyReplacer(s string) string {
