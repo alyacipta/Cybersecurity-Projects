@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	Name                  = "ransomware"
-	defaultRansomCadence  = 15 * time.Minute
+	Name                 = "ransomware"
+	defaultRansomCadence = 15 * time.Minute
 )
 
 type Fetcher interface {

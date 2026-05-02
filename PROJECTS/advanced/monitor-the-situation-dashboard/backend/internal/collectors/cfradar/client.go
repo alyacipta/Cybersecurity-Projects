@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	defaultCFBaseURL  = "https://api.cloudflare.com"
-	defaultCFRate     = 250 * time.Millisecond
-	defaultCFBurst    = 5
-	defaultCFBudget   = 5
-	defaultCFBreaker  = 60 * time.Second
-	pathRadarOutages  = "/client/v4/radar/annotations/outages"
-	pathRadarHijacks  = "/client/v4/radar/bgp/hijacks/events"
-	defaultDateRange  = "1d"
+	defaultCFBaseURL = "https://api.cloudflare.com"
+	defaultCFRate    = 250 * time.Millisecond
+	defaultCFBurst   = 5
+	defaultCFBudget  = 5
+	defaultCFBreaker = 60 * time.Second
+	pathRadarOutages = "/client/v4/radar/annotations/outages"
+	pathRadarHijacks = "/client/v4/radar/bgp/hijacks/events"
+	defaultDateRange = "1d"
 )
 
 type ClientConfig struct {

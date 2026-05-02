@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	Name                    = "cve"
-	defaultCVEInterval      = 2 * time.Hour
-	defaultCVEWindow        = 2 * time.Hour
+	Name               = "cve"
+	defaultCVEInterval = 2 * time.Hour
+	defaultCVEWindow   = 2 * time.Hour
 )
 
 type NVDFetcher interface {

@@ -17,7 +17,6 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/httpx"
 )
 
-
 const (
 	defaultGNBaseURL    = "https://api.greynoise.io"
 	pathCommunityLookup = "/v3/community/"
