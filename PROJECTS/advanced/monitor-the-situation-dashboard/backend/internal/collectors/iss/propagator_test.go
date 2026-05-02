@@ -29,7 +29,7 @@ func TestPropagator_PositionWithinReasonableBounds(t *testing.T) {
 	require.NoError(t, err)
 
 	when := time.Date(2026, 5, 2, 3, 0, 0, 0, time.UTC)
-	lat, lon, alt := iss.Position(sat, when)
+	lat, lon, alt := iss.Propagate(sat, when)
 
 	require.True(t, lat >= -90 && lat <= 90, "lat=%f", lat)
 	require.True(t, lon >= -180 && lon <= 180, "lon=%f", lon)

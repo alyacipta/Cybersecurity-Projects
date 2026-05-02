@@ -27,7 +27,7 @@ func LoadTLE(line1, line2 string) (Sat, error) {
 	return Sat{inner: s}, nil
 }
 
-func Position(s Sat, t time.Time) (lat, lon, altKm float64) {
+func Propagate(s Sat, t time.Time) (lat, lon, altKm float64) {
 	t = t.UTC()
 	pos, _ := satellite.Propagate(s.inner, t.Year(), int(t.Month()), t.Day(), t.Hour(), t.Minute(), t.Second())
 	gmst := satellite.GSTimeFromDate(t.Year(), int(t.Month()), t.Day(), t.Hour(), t.Minute(), t.Second())
