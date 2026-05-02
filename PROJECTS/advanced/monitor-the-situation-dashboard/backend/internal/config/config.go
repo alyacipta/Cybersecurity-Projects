@@ -35,6 +35,11 @@ type CollectorsConfig struct {
 	Ransomware SourceConfig    `koanf:"ransomware"`
 	GreyNoise  GreyNoiseConfig `koanf:"greynoise"`
 	Coinbase   CoinbaseConfig  `koanf:"coinbase"`
+	USGS       SourceConfig    `koanf:"usgs"`
+	SWPC       SWPCConfig      `koanf:"swpc"`
+	Wikipedia  SourceConfig    `koanf:"wikipedia"`
+	GDELT      SourceConfig    `koanf:"gdelt"`
+	ISS        ISSConfig       `koanf:"iss"`
 }
 
 type SourceConfig struct {
@@ -66,6 +71,18 @@ type CoinbaseConfig struct {
 	URL        string        `koanf:"url"`
 	ProductIDs []string      `koanf:"product_ids"`
 	Throttle   time.Duration `koanf:"throttle"`
+}
+
+type SWPCConfig struct {
+	Enabled      bool          `koanf:"enabled"`
+	FastInterval time.Duration `koanf:"fast_interval"`
+	SlowInterval time.Duration `koanf:"slow_interval"`
+}
+
+type ISSConfig struct {
+	Enabled          bool          `koanf:"enabled"`
+	PositionInterval time.Duration `koanf:"position_interval"`
+	TLEInterval      time.Duration `koanf:"tle_interval"`
 }
 
 type AppConfig struct {
@@ -262,6 +279,18 @@ func loadDefaults(k *koanf.Koanf) error {
 		"collectors.coinbase.url":           "wss://advanced-trade-ws.coinbase.com",
 		"collectors.coinbase.product_ids":   []string{"BTC-USD", "ETH-USD"},
 		"collectors.coinbase.throttle":      "250ms",
+		"collectors.usgs.enabled":           true,
+		"collectors.usgs.interval":          "1m",
+		"collectors.swpc.enabled":           true,
+		"collectors.swpc.fast_interval":     "1m",
+		"collectors.swpc.slow_interval":     "3h",
+		"collectors.wikipedia.enabled":      true,
+		"collectors.wikipedia.interval":     "5m",
+		"collectors.gdelt.enabled":          true,
+		"collectors.gdelt.interval":         "15m",
+		"collectors.iss.enabled":            true,
+		"collectors.iss.position_interval":  "10s",
+		"collectors.iss.tle_interval":       "24h",
 	}
 
 	for key, value := range defaults {
