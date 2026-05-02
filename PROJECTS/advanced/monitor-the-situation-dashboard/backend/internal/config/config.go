@@ -34,6 +34,7 @@ type CollectorsConfig struct {
 	KEV        SourceConfig    `koanf:"kev"`
 	Ransomware SourceConfig    `koanf:"ransomware"`
 	GreyNoise  GreyNoiseConfig `koanf:"greynoise"`
+	Coinbase   CoinbaseConfig  `koanf:"coinbase"`
 }
 
 type SourceConfig struct {
@@ -58,6 +59,13 @@ type CVEConfig struct {
 type GreyNoiseConfig struct {
 	Enabled bool   `koanf:"enabled"`
 	APIKey  string `koanf:"api_key"`
+}
+
+type CoinbaseConfig struct {
+	Enabled    bool          `koanf:"enabled"`
+	URL        string        `koanf:"url"`
+	ProductIDs []string      `koanf:"product_ids"`
+	Throttle   time.Duration `koanf:"throttle"`
 }
 
 type AppConfig struct {
@@ -250,6 +258,10 @@ func loadDefaults(k *koanf.Koanf) error {
 		"collectors.ransomware.enabled":     true,
 		"collectors.ransomware.interval":    "15m",
 		"collectors.greynoise.enabled":      true,
+		"collectors.coinbase.enabled":       true,
+		"collectors.coinbase.url":           "wss://advanced-trade-ws.coinbase.com",
+		"collectors.coinbase.product_ids":   []string{"BTC-USD", "ETH-USD"},
+		"collectors.coinbase.throttle":      "250ms",
 	}
 
 	for key, value := range defaults {
