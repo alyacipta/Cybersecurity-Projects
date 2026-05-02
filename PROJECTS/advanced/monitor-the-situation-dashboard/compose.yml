@@ -10,7 +10,7 @@ services:
       dockerfile: conf/docker/prod/vite.docker
     container_name: ${APP_NAME:-monitor}-nginx
     ports:
-      - "${NGINX_HOST_PORT:-8430}:80"
+      - "${NGINX_HOST_PORT:-8432}:80"
     depends_on:
       backend:
         condition: service_healthy

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -96,6 +97,10 @@ func run(configPath string) error {
 	logger.Info("redis connected",
 		"pool_size", cfg.Redis.PoolSize,
 	)
+
+	if err := ensureJWTKeys(cfg.JWT, logger); err != nil {
+		return err
+	}
 
 	jwtManager, err := auth.NewJWTManager(cfg.JWT)
 	if err != nil {
@@ -235,6 +240,31 @@ func run(configPath string) error {
 
 	logger.Info("application stopped")
 	return nil
+}
+
+func ensureJWTKeys(cfg config.JWTConfig, logger *slog.Logger) error {
+	if _, err := os.Stat(cfg.PrivateKeyPath); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	if dir := filepath.Dir(cfg.PrivateKeyPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	if dir := filepath.Dir(cfg.PublicKeyPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
+
+	logger.Warn("JWT keys missing, generating",
+		"private", cfg.PrivateKeyPath,
+		"public", cfg.PublicKeyPath,
+	)
+	return auth.GenerateKeyPair(cfg.PrivateKeyPath, cfg.PublicKeyPath)
 }
 
 func setupLogger(cfg config.LogConfig) *slog.Logger {

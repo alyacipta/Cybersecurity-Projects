@@ -14,5 +14,6 @@ backend/keys/
 frontend/dist/
 frontend/node_modules/
 frontend/.vite/
+frontend/.pnpm-store/
 
 docs/
