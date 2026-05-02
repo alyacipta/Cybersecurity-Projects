@@ -21,6 +21,7 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/bus"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cfradar"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/coinbase"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cve"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/dshield"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/heartbeat"
@@ -221,6 +222,19 @@ func run(configPath string) error {
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
 	}
 
+	if cfg.Collectors.Coinbase.Enabled {
+		coll := coinbase.NewCollector(coinbase.CollectorConfig{
+			URL:        cfg.Collectors.Coinbase.URL,
+			ProductIDs: cfg.Collectors.Coinbase.ProductIDs,
+			Repo:       coinbase.NewRepo(db.DB),
+			Emitter:    eventBus,
+			State:      collectorState,
+			Throttle:   cfg.Collectors.Coinbase.Throttle,
+			Logger:     logger.With("collector", "coinbase"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
 	logger.Info("collectors started",
 		"heartbeat", true,
 		"dshield", cfg.Collectors.DShield.Enabled,
@@ -228,6 +242,7 @@ func run(configPath string) error {
 		"cve", cfg.Collectors.CVE.Enabled,
 		"kev", cfg.Collectors.KEV.Enabled,
 		"ransomware", cfg.Collectors.Ransomware.Enabled,
+		"coinbase", cfg.Collectors.Coinbase.Enabled,
 	)
 
 	srv := server.New(server.Config{
