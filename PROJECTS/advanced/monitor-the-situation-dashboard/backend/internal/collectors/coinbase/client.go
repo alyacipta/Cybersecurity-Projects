@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -137,7 +138,23 @@ type rawEnvelope struct {
 type rawEnvelopeEv struct {
 	Type        string        `json:"type"`
 	Tickers     []TickerEntry `json:"tickers,omitempty"`
-	CurrentTime time.Time     `json:"current_time,omitempty"`
+	CurrentTime string        `json:"current_time,omitempty"`
+}
+
+func parseCoinbaseTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t
+	}
+	if idx := strings.Index(s, " m=+"); idx > 0 {
+		s = s[:idx]
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", s); err == nil {
+		return t
+	}
+	return time.Time{}
 }
 
 var ErrFrameMalformed = errors.New("coinbase: malformed frame")
@@ -169,7 +186,7 @@ func decodeFrame(msg []byte) (Frame, error) {
 	case channelHeartbeats:
 		frame.Kind = FrameTypeHeartbeats
 		if len(env.Events) > 0 {
-			frame.HeartbeatTime = env.Events[0].CurrentTime
+			frame.HeartbeatTime = parseCoinbaseTime(env.Events[0].CurrentTime)
 		}
 		return frame, nil
 
