@@ -103,10 +103,14 @@ func (c *Collector) handleConn(ctx context.Context, conn *Conn) error {
 	loopErr := ReadLoop(ctx, conn, seq, func(hctx context.Context, f Frame) error {
 		switch f.Kind {
 		case FrameTypeTicker, FrameTypeSnapshot:
+			ts := f.Timestamp.UTC()
+			if ts.IsZero() {
+				ts = time.Now().UTC()
+			}
 			for _, tk := range f.Tickers {
 				tick := Tick{
 					Symbol:    tk.ProductID,
-					TS:        tk.Time.UTC(),
+					TS:        ts,
 					Price:     tk.Price,
 					Volume24h: tk.Volume24h,
 				}
