@@ -20,7 +20,13 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/admin"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/bus"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cfradar"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cve"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/dshield"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/heartbeat"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/kev"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/ransomware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/state"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
@@ -146,10 +152,83 @@ func run(configPath string) error {
 		Emitter:  eventBus,
 	})
 
+	collectorState := state.NewRepo(db.DB)
+
 	collectorGroup, collectorCtx := errgroup.WithContext(ctx)
 	collectorGroup.Go(func() error { return eventBus.Run(collectorCtx) })
 	collectorGroup.Go(func() error { return beat.Run(collectorCtx) })
-	logger.Info("collectors started", "count", 1)
+
+	if cfg.Collectors.DShield.Enabled {
+		coll := dshield.NewCollector(dshield.CollectorConfig{
+			Interval:  cfg.Collectors.DShield.Interval,
+			Fetcher:   dshield.NewClient(dshield.ClientConfig{}),
+			Persister: dshield.NewRepo(db.DB),
+			Emitter:   eventBus,
+			State:     collectorState,
+			Logger:    logger.With("collector", "dshield"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.CFRadar.Enabled {
+		coll := cfradar.NewCollector(cfradar.CollectorConfig{
+			Interval:      cfg.Collectors.CFRadar.Interval,
+			MinConfidence: cfg.Collectors.CFRadar.MinConfidence,
+			Fetcher:       cfradar.NewClient(cfradar.ClientConfig{BearerToken: cfg.Collectors.CFRadar.BearerToken}),
+			Repo:          cfradar.NewRepo(db.DB),
+			Emitter:       eventBus,
+			State:         collectorState,
+			Logger:        logger.With("collector", "cfradar"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.CVE.Enabled {
+		coll := cve.NewCollector(cve.CollectorConfig{
+			Interval: cfg.Collectors.CVE.Interval,
+			Window:   cfg.Collectors.CVE.Window,
+			NVD:      cve.NewNVDClient(cve.NVDClientConfig{APIKey: cfg.Collectors.CVE.NVDAPIKey}),
+			EPSS:     cve.NewEPSSClient(cve.EPSSClientConfig{}),
+			Repo:     cve.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "cve"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.KEV.Enabled {
+		coll := kev.NewCollector(kev.CollectorConfig{
+			Interval: cfg.Collectors.KEV.Interval,
+			Fetcher:  kev.NewClient(kev.ClientConfig{}),
+			Repo:     kev.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "kev"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	if cfg.Collectors.Ransomware.Enabled {
+		coll := ransomware.NewCollector(ransomware.CollectorConfig{
+			Interval: cfg.Collectors.Ransomware.Interval,
+			Fetcher:  ransomware.NewClient(ransomware.ClientConfig{}),
+			Repo:     ransomware.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Logger:   logger.With("collector", "ransomware"),
+		})
+		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
+	}
+
+	logger.Info("collectors started",
+		"heartbeat", true,
+		"dshield", cfg.Collectors.DShield.Enabled,
+		"cfradar", cfg.Collectors.CFRadar.Enabled,
+		"cve", cfg.Collectors.CVE.Enabled,
+		"kev", cfg.Collectors.KEV.Enabled,
+		"ransomware", cfg.Collectors.Ransomware.Enabled,
+	)
 
 	srv := server.New(server.Config{
 		ServerConfig:  cfg.Server,
