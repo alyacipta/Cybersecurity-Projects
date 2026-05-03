@@ -1,7 +1,8 @@
 // ©AngelaMos | 2026
 // DShieldPanel.tsx
 
-import { useSnapshot } from '@/api/snapshot'
+import { type DShieldDailySummary, type DShieldPort } from '@/api/types'
+import { useDShieldData } from '@/api/hooks'
 import styles from './DShieldPanel.module.scss'
 import { Panel } from './Panel'
 
@@ -10,39 +11,11 @@ const SOURCE_ROW_LIMIT = 8
 const THOUSAND = 1_000
 const MILLION = 1_000_000
 
-interface DShieldPort {
-  rank: number
-  targetport: number
-  records: number
-  targets: number
-  sources: number
-}
-
-interface DShieldSource {
-  rank: number
-  source: string
-  reports: number
-  targets: number
-}
-
-interface DShieldDailySummary {
-  date: string
-  records: number
-  sources: number
-  targets: number
-}
-
-interface DShieldData {
-  topports?: Record<string, DShieldPort> | DShieldPort[]
-  topips?: DShieldSource[]
-  dailysummary?: DShieldDailySummary[]
-}
-
 export function DShieldPanel(): React.ReactElement {
-  const { data } = useSnapshot()
-  const ds = (data?.scan_firehose as DShieldData | undefined) ?? {}
+  const ds = useDShieldData()
 
   const ports = toArray(ds.topports)
+    .filter(isPort)
     .slice()
     .sort((a, b) => a.rank - b.rank)
     .slice(0, PORT_ROW_LIMIT)
@@ -117,6 +90,17 @@ function toArray<T>(v: Record<string, T> | T[] | undefined): T[] {
   if (!v) return []
   if (Array.isArray(v)) return v
   return Object.values(v)
+}
+
+function isPort(v: unknown): v is DShieldPort {
+  if (!v || typeof v !== 'object') return false
+  const p = v as Record<string, unknown>
+  return (
+    typeof p.targetport === 'number' &&
+    typeof p.records === 'number' &&
+    typeof p.sources === 'number' &&
+    typeof p.rank === 'number'
+  )
 }
 
 function pickLatestSummary(

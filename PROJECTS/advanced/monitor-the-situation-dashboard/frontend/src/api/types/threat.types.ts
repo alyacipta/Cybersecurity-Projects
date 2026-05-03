@@ -1,0 +1,67 @@
+// ©AngelaMos | 2026
+// threat.types.ts
+
+import { z } from 'zod'
+
+export const ransomwareVictimSchema = z.object({
+  post_title: z.string(),
+  group_name: z.string(),
+  discovered: z.string(),
+  country: z.string().optional(),
+  activity: z.string().optional(),
+  website: z.string().optional(),
+  description: z.string().optional(),
+})
+
+export type RansomwareVictim = z.infer<typeof ransomwareVictimSchema>
+
+export const dshieldPortSchema = z.object({
+  rank: z.number(),
+  targetport: z.number(),
+  records: z.number(),
+  targets: z.number(),
+  sources: z.number(),
+})
+
+export type DShieldPort = z.infer<typeof dshieldPortSchema>
+
+export const dshieldSourceSchema = z.object({
+  rank: z.number(),
+  source: z.string(),
+  reports: z.number(),
+  targets: z.number(),
+})
+
+export type DShieldSource = z.infer<typeof dshieldSourceSchema>
+
+export const dshieldDailySummarySchema = z.object({
+  date: z.string(),
+  records: z.number(),
+  sources: z.number(),
+  targets: z.number(),
+})
+
+export type DShieldDailySummary = z.infer<typeof dshieldDailySummarySchema>
+
+export const dshieldDataSchema = z.object({
+  topports: z
+    .union([z.record(z.string(), z.unknown()), z.array(z.unknown())])
+    .optional(),
+  topips: z.array(dshieldSourceSchema).optional(),
+  dailysummary: z.array(dshieldDailySummarySchema).optional(),
+  ts: z.string().optional(),
+})
+
+export type DShieldData = z.infer<typeof dshieldDataSchema>
+
+export const isValidRansomwareVictim = (
+  data: unknown
+): data is RansomwareVictim => {
+  if (data === null || data === undefined || typeof data !== 'object') return false
+  return ransomwareVictimSchema.safeParse(data).success
+}
+
+export const isValidDShieldData = (data: unknown): data is DShieldData => {
+  if (data === null || data === undefined || typeof data !== 'object') return false
+  return dshieldDataSchema.safeParse(data).success
+}
