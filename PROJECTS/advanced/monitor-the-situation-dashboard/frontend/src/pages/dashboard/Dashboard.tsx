@@ -2,6 +2,7 @@
 // Dashboard.tsx
 
 import { Globe } from '@/pages/globe/Globe'
+import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
 import { useUIStore } from '@/stores/ui'
 import { AlertBanner } from './AlertBanner'
@@ -28,6 +29,7 @@ export function Dashboard(): React.ReactElement {
           <Globe />
         </section>
         <aside className={styles.right}>
+          <CVEVelocityPanel />
           <DShieldPanel />
         </aside>
       </main>
