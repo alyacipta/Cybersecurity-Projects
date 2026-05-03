@@ -22,10 +22,12 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.0",
     "react-error-boundary": "^6.0.0",
+    "react-globe.gl": "^2.37.1",
     "react-icon": "^1.0.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.1.1",
     "sonner": "^2.0.7",
+    "three": "^0.184.0",
     "zod": "^4.1.13",
     "zustand": "^5.0.9"
   },

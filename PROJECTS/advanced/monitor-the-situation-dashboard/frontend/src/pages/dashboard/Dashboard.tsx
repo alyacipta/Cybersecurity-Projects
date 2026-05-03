@@ -1,6 +1,7 @@
 // ©AngelaMos | 2026
 // Dashboard.tsx
 
+import { Globe } from '@/pages/globe/Globe'
 import { useUIStore } from '@/stores/ui'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
@@ -22,7 +23,9 @@ export function Dashboard(): React.ReactElement {
       <AlertBanner />
       <main className={styles.grid}>
         <aside className={styles.left} />
-        <section className={styles.center} />
+        <section className={styles.center}>
+          <Globe />
+        </section>
         <aside className={styles.right} />
       </main>
       <BottomTicker />
