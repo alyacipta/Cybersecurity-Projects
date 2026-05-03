@@ -1,0 +1,60 @@
+// ©AngelaMos | 2026
+// Panel.module.scss
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--fg-4);
+  min-height: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--fg-4);
+}
+
+.title {
+  font-size: var(--type-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.subtitle {
+  color: var(--fg-3);
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-3);
+}
+
+.rawLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-3);
+
+  &:hover {
+    color: var(--fg-1);
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--fg-2);
+    outline-offset: 1px;
+  }
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+  min-height: 0;
+}
