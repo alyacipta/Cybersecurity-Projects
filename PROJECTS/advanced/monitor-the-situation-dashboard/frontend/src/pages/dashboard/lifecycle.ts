@@ -6,11 +6,16 @@ import { useEffect, useRef } from 'react'
 import { SNAPSHOT_KEY, type Snapshot, useSnapshot } from '@/api/snapshot'
 import { browserDriver, createDashboardWS, type WSEvent } from '@/api/ws'
 import { unlockOnFirstGesture } from '@/lib/audio'
+import { getCentroid } from '@/lib/countryCentroids'
 import { type CveEvent, useCveStore } from '@/stores/cve'
 import { useGlobeEvents } from '@/stores/globeEvents'
 import { type KevEntry, useKevStore } from '@/stores/kev'
 import { usePrices } from '@/stores/prices'
-import { type RansomwareVictim, useRansomwareStore } from '@/stores/ransomware'
+import {
+  type RansomwareVictim,
+  useRansomwareStore,
+  victimKey,
+} from '@/stores/ransomware'
 import { useTicker } from '@/stores/ticker'
 
 const ALL_TOPICS: readonly string[] = [
@@ -65,6 +70,16 @@ interface GdeltSpikePayload {
   time: string
   count: number
   zscore: number
+}
+
+interface OutagePayload {
+  id: string
+  startDate?: string
+  endDate?: string | null
+  locations?: string[]
+  asns?: number[]
+  reason?: string
+  outageType?: string
 }
 
 export function useDashboardLifecycle(): void {
@@ -140,8 +155,10 @@ function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
     case 'gdelt_spike':
       handleGdelt(data as GdeltSpikePayload)
       break
-    case 'space_weather':
     case 'internet_outage':
+      handleOutage(data as OutagePayload, queryClient)
+      break
+    case 'space_weather':
     case 'bgp_hijack':
     case 'scan_firehose':
       mergeIntoSnapshot(queryClient, ev.topic, data)
@@ -164,6 +181,43 @@ function handleKev(p: KevEntry): void {
 function handleRansomware(p: RansomwareVictim): void {
   if (!p.post_title) return
   useRansomwareStore.getState().push(p)
+  pushRansomwarePoint(p)
+}
+
+function pushRansomwarePoint(p: RansomwareVictim): void {
+  if (!p.country) return
+  const c = getCentroid(p.country)
+  if (!c) return
+  useGlobeEvents.getState().pushPoint({
+    id: `rw-${victimKey(p)}`,
+    type: 'ransomware',
+    lat: c.lat,
+    lng: c.lng,
+    emittedAt: Date.now(),
+    meta: { group_name: p.group_name, post_title: p.post_title },
+  })
+}
+
+function handleOutage(p: OutagePayload, queryClient: QueryClient): void {
+  pushOutagePoints(p)
+  mergeIntoSnapshot(queryClient, 'internet_outage', p)
+}
+
+function pushOutagePoints(p: OutagePayload): void {
+  if (!p.id || !Array.isArray(p.locations)) return
+  const now = Date.now()
+  for (const loc of p.locations) {
+    const c = getCentroid(loc)
+    if (!c) continue
+    useGlobeEvents.getState().pushPoint({
+      id: `outage-${p.id}-${loc}`,
+      type: 'outage',
+      lat: c.lat,
+      lng: c.lng,
+      emittedAt: now,
+      meta: { reason: p.reason, type: p.outageType },
+    })
+  }
 }
 
 function handleCoinbase(p: CoinbaseTickPayload): void {
@@ -278,4 +332,10 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
       emittedAt: Date.now(),
     })
   }
+
+  const rw = snap.ransomware_victim as RansomwareVictim | undefined
+  if (rw) pushRansomwarePoint(rw)
+
+  const outage = snap.internet_outage as OutagePayload | undefined
+  if (outage) pushOutagePoints(outage)
 }
