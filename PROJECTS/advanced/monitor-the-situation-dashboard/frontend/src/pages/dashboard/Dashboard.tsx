@@ -5,6 +5,7 @@ import { Globe } from '@/pages/globe/Globe'
 import { BTCPanel } from '@/pages/panels/BTCPanel'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
+import { ETHPanel } from '@/pages/panels/ETHPanel'
 import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
 import { useUIStore } from '@/stores/ui'
@@ -29,6 +30,7 @@ export function Dashboard(): React.ReactElement {
       <main className={styles.grid}>
         <aside className={styles.left}>
           <BTCPanel />
+          <ETHPanel />
         </aside>
         <section className={styles.center}>
           <Globe />
