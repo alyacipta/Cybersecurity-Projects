@@ -2,6 +2,7 @@
 // Dashboard.tsx
 
 import { Globe } from '@/pages/globe/Globe'
+import { BGPHijackPanel } from '@/pages/panels/BGPHijackPanel'
 import { BTCPanel } from '@/pages/panels/BTCPanel'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
@@ -38,12 +39,13 @@ export function Dashboard(): React.ReactElement {
           <ETHPanel />
           <SpaceWeatherPanel />
           <ISSPanel />
+          <CVEVelocityPanel />
         </aside>
         <section className={styles.center}>
           <Globe />
         </section>
         <aside className={styles.right}>
-          <CVEVelocityPanel />
+          <BGPHijackPanel />
           <KEVPanel />
           <RansomwarePanel />
           <DShieldPanel />
