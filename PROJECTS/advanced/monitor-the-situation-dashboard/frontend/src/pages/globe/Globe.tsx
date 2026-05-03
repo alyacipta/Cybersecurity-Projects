@@ -14,15 +14,48 @@ const RING_COLOR = '#e5e5e5'
 const RING_MAX_RADIUS = 4
 const RING_PROPAGATION_SPEED = 4
 const RING_REPEAT_PERIOD = 0
+const COUNTRIES_URL = '/world-countries-110m.geo.json'
+const COUNTRY_OUTLINE_COLOR = '#404040'
+const COUNTRY_FILL_TRANSPARENT = 'rgba(0,0,0,0)'
+const COUNTRY_ALTITUDE = 0.005
+
+interface CountryFeature {
+  type: 'Feature'
+  properties: Record<string, unknown>
+  geometry: {
+    type: string
+    coordinates: unknown
+  }
+}
+
+interface CountriesData {
+  type: 'FeatureCollection'
+  features: CountryFeature[]
+}
 
 export const Globe = memo(function Globe(): React.ReactElement {
   const wrapRef = useRef<HTMLDivElement>(null)
   const globeRef = useRef<GlobeMethods | undefined>(undefined)
   const [size, setSize] = useState({ w: 0, h: 0 })
+  const [countries, setCountries] = useState<CountryFeature[]>([])
 
   const points = useGlobePoints()
   const rings = useGlobeRings()
   const focusEvent = useGlobeEvents((s) => s.focusEvent)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(COUNTRIES_URL)
+      .then((res) => res.json() as Promise<CountriesData>)
+      .then((fc) => {
+        if (cancelled) return
+        setCountries(fc.features)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const wrap = wrapRef.current
@@ -58,6 +91,12 @@ export const Globe = memo(function Globe(): React.ReactElement {
           ref={globeRef}
           width={size.w}
           height={size.h}
+          polygonsData={countries}
+          polygonAltitude={COUNTRY_ALTITUDE}
+          polygonCapColor={() => COUNTRY_FILL_TRANSPARENT}
+          polygonSideColor={() => COUNTRY_FILL_TRANSPARENT}
+          polygonStrokeColor={() => COUNTRY_OUTLINE_COLOR}
+          polygonsTransitionDuration={0}
           pointsData={points}
           pointsMerge
           pointLat="lat"
