@@ -36,29 +36,6 @@ export const internetOutageSchema = z.object({
 
 export type InternetOutage = z.infer<typeof internetOutageSchema>
 
-export const bgpEnrichmentSchema = z.object({
-  country: z.string().optional(),
-  abuse_confidence: z.number().optional(),
-  isp: z.string().optional(),
-  checked_ip: z.string().optional(),
-})
-
-export type BgpEnrichment = z.infer<typeof bgpEnrichmentSchema>
-
-export const bgpHijackSchema = z.object({
-  id: z.number(),
-  detectedAt: z.string().optional(),
-  startedAt: z.string().optional(),
-  duration: z.number().optional(),
-  confidenceScore: z.number().optional(),
-  hijackerAsn: z.number().optional(),
-  victimAsns: z.array(z.number()).nullable().optional(),
-  prefixes: z.array(z.string()).optional(),
-  enrichment: bgpEnrichmentSchema.optional(),
-})
-
-export type BgpHijack = z.infer<typeof bgpHijackSchema>
-
 export const isValidIssPosition = (data: unknown): data is IssPosition => {
   if (data === null || data === undefined || typeof data !== 'object') return false
   return issPositionSchema.safeParse(data).success
@@ -74,9 +51,4 @@ export const isValidEarthquakePayload = (
 export const isValidInternetOutage = (data: unknown): data is InternetOutage => {
   if (data === null || data === undefined || typeof data !== 'object') return false
   return internetOutageSchema.safeParse(data).success
-}
-
-export const isValidBgpHijack = (data: unknown): data is BgpHijack => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
-  return bgpHijackSchema.safeParse(data).success
 }

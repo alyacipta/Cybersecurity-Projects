@@ -30,6 +30,7 @@ export const dshieldSourceSchema = z.object({
   source: z.string(),
   reports: z.number(),
   targets: z.number(),
+  country: z.string().optional(),
 })
 
 export type DShieldSource = z.infer<typeof dshieldSourceSchema>
@@ -64,4 +65,30 @@ export const isValidRansomwareVictim = (
 export const isValidDShieldData = (data: unknown): data is DShieldData => {
   if (data === null || data === undefined || typeof data !== 'object') return false
   return dshieldDataSchema.safeParse(data).success
+}
+
+const bgpHijackEnrichmentSchema = z.object({
+  country: z.string().optional(),
+  abuse_confidence: z.number().optional(),
+  isp: z.string().optional(),
+  checked_ip: z.string().optional(),
+})
+
+export const bgpHijackSchema = z.object({
+  id: z.number(),
+  detectedAt: z.string().optional(),
+  startedAt: z.string().optional(),
+  duration: z.number().optional(),
+  confidenceScore: z.number().optional(),
+  hijackerAsn: z.number().optional(),
+  victimAsns: z.array(z.number()).nullable().optional(),
+  prefixes: z.array(z.string()).optional(),
+  enrichment: bgpHijackEnrichmentSchema.optional(),
+})
+
+export type BgpHijack = z.infer<typeof bgpHijackSchema>
+
+export const isValidBgpHijack = (data: unknown): data is BgpHijack => {
+  if (data === null || data === undefined || typeof data !== 'object') return false
+  return bgpHijackSchema.safeParse(data).success
 }

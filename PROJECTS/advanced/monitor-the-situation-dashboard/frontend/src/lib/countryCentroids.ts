@@ -10,6 +10,39 @@ const ISO_ALIASES: Record<string, string> = {
   UK: 'GB',
 }
 
+const SUPPLEMENTARY_CENTROIDS: Record<string, Centroid> = {
+  HK: { lat: 22.3193, lng: 114.1694 },
+  MO: { lat: 22.1987, lng: 113.5439 },
+  SG: { lat: 1.3521, lng: 103.8198 },
+  BH: { lat: 26.0667, lng: 50.5577 },
+  MT: { lat: 35.9375, lng: 14.3754 },
+  LI: { lat: 47.166, lng: 9.555 },
+  AD: { lat: 42.5063, lng: 1.5218 },
+  MC: { lat: 43.7384, lng: 7.4246 },
+  SM: { lat: 43.9424, lng: 12.4578 },
+  VA: { lat: 41.9029, lng: 12.4534 },
+  MV: { lat: 3.2028, lng: 73.2207 },
+  BB: { lat: 13.1939, lng: -59.5432 },
+  BS: { lat: 25.0343, lng: -77.3963 },
+  BM: { lat: 32.3078, lng: -64.7505 },
+  KY: { lat: 19.3133, lng: -81.2546 },
+  JM: { lat: 18.1096, lng: -77.2975 },
+  AW: { lat: 12.5211, lng: -69.9683 },
+  CW: { lat: 12.1696, lng: -68.99 },
+  AG: { lat: 17.0608, lng: -61.7964 },
+  TT: { lat: 10.6918, lng: -61.2225 },
+  MU: { lat: -20.3484, lng: 57.5522 },
+  SC: { lat: -4.6796, lng: 55.492 },
+  CV: { lat: 16.5388, lng: -23.0418 },
+  ST: { lat: 0.1864, lng: 6.6131 },
+  KM: { lat: -11.6455, lng: 43.3333 },
+  GD: { lat: 12.1165, lng: -61.679 },
+  LC: { lat: 13.9094, lng: -60.9789 },
+  VC: { lat: 13.2528, lng: -61.197 },
+  KN: { lat: 17.3578, lng: -62.783 },
+  DM: { lat: 15.415, lng: -61.371 },
+}
+
 export const COUNTRY_CENTROIDS: Record<string, Centroid> = {
   AE: { lat: 24.2762, lng: 53.9882 },
   AF: { lat: 33.9024, lng: 67.8432 },
@@ -190,5 +223,5 @@ export const COUNTRY_CENTROIDS: Record<string, Centroid> = {
 export function getCentroid(iso2: string): Centroid | null {
   if (!iso2) return null
   const code = ISO_ALIASES[iso2] ?? iso2
-  return COUNTRY_CENTROIDS[code] ?? null
+  return COUNTRY_CENTROIDS[code] ?? SUPPLEMENTARY_CENTROIDS[code] ?? null
 }
