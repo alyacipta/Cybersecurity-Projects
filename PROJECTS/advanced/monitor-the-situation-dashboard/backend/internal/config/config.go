@@ -34,6 +34,7 @@ type CollectorsConfig struct {
 	KEV        SourceConfig    `koanf:"kev"`
 	Ransomware SourceConfig    `koanf:"ransomware"`
 	GreyNoise  GreyNoiseConfig `koanf:"greynoise"`
+	AbuseIPDB  AbuseIPDBConfig `koanf:"abuseipdb"`
 	Coinbase   CoinbaseConfig  `koanf:"coinbase"`
 	USGS       SourceConfig    `koanf:"usgs"`
 	SWPC       SWPCConfig      `koanf:"swpc"`
@@ -62,6 +63,11 @@ type CVEConfig struct {
 }
 
 type GreyNoiseConfig struct {
+	Enabled bool   `koanf:"enabled"`
+	APIKey  string `koanf:"api_key"`
+}
+
+type AbuseIPDBConfig struct {
 	Enabled bool   `koanf:"enabled"`
 	APIKey  string `koanf:"api_key"`
 }
@@ -275,6 +281,7 @@ func loadDefaults(k *koanf.Koanf) error {
 		"collectors.ransomware.enabled":     true,
 		"collectors.ransomware.interval":    "15m",
 		"collectors.greynoise.enabled":      true,
+		"collectors.abuseipdb.enabled":      true,
 		"collectors.coinbase.enabled":       true,
 		"collectors.coinbase.url":           "wss://advanced-trade-ws.coinbase.com",
 		"collectors.coinbase.product_ids":   []string{"BTC-USD", "ETH-USD"},
@@ -328,6 +335,7 @@ var envKeyMap = map[string]string{
 	"NVD_API_KEY":                 "collectors.cve.nvd_api_key",
 	"CF_RADAR_TOKEN":              "collectors.cfradar.bearer_token",
 	"GREYNOISE_API_KEY":           "collectors.greynoise.api_key",
+	"ABUSEIPDB_API_KEY":           "collectors.abuseipdb.api_key",
 }
 
 func envKeyReplacer(s string) string {

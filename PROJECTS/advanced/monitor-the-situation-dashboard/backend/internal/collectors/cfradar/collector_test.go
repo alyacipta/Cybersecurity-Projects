@@ -95,6 +95,22 @@ type noopState struct{}
 func (noopState) RecordSuccess(context.Context, string, int64) error { return nil }
 func (noopState) RecordError(context.Context, string, string) error  { return nil }
 
+type fakeEnricher struct {
+	calls    int
+	verdict  cfradar.Enrichment
+	lastIP   string
+	returnFn func(ip string) (cfradar.Enrichment, error)
+}
+
+func (e *fakeEnricher) Lookup(_ context.Context, ip string) (cfradar.Enrichment, error) {
+	e.calls++
+	e.lastIP = ip
+	if e.returnFn != nil {
+		return e.returnFn(ip)
+	}
+	return e.verdict, nil
+}
+
 func TestCollector_OnlyEmitsNetNew(t *testing.T) {
 	now := time.Now().UTC()
 	ftch := &fakeFetcher{
@@ -144,6 +160,91 @@ func TestCollector_OnlyEmitsNetNew(t *testing.T) {
 	}
 	require.GreaterOrEqual(t, outageEvents, 1)
 	require.GreaterOrEqual(t, hijackEvents, 1)
+}
+
+func TestCollector_EnrichesHijackPayloadWhenEnricherProvided(t *testing.T) {
+	now := time.Now().UTC()
+	ftch := &fakeFetcher{
+		hijacks: cfradar.HijackBody{Events: []cfradar.HijackEvent{
+			{
+				ID:          501,
+				DetectedAt:  now,
+				StartedAt:   now,
+				Confidence:  9,
+				HijackerASN: 4242,
+				Prefixes:    []string{"203.0.113.0/24"},
+			},
+		}},
+	}
+	repo := &fakeRepo{knownHijacks: map[int64]bool{}}
+	emt := &fakeEmitter{}
+	enr := &fakeEnricher{verdict: cfradar.Enrichment{
+		Country:         "RU",
+		AbuseConfidence: 95,
+		ISP:             "ExampleNet",
+	}}
+
+	c := cfradar.NewCollector(cfradar.CollectorConfig{
+		Interval:      30 * time.Millisecond,
+		MinConfidence: 7,
+		Fetcher:       ftch,
+		Repo:          repo,
+		Emitter:       emt,
+		State:         noopState{},
+		Enricher:      enr,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_ = c.Run(ctx)
+
+	require.GreaterOrEqual(t, enr.calls, 1)
+	require.Equal(t, "203.0.113.0", enr.lastIP)
+
+	var found bool
+	for _, ev := range emt.Events() {
+		if ev.Topic != events.TopicBGPHijack {
+			continue
+		}
+		body, _ := json.Marshal(ev.Payload)
+		require.Contains(t, string(body), `"country":"RU"`)
+		require.Contains(t, string(body), `"abuse_confidence":95`)
+		require.Contains(t, string(body), `"checked_ip":"203.0.113.0"`)
+		found = true
+	}
+	require.True(t, found, "expected at least one hijack event with enrichment")
+}
+
+func TestCollector_HijackEmitsRawWhenNoEnricher(t *testing.T) {
+	now := time.Now().UTC()
+	ftch := &fakeFetcher{
+		hijacks: cfradar.HijackBody{Events: []cfradar.HijackEvent{
+			{ID: 777, DetectedAt: now, StartedAt: now, Confidence: 9, Prefixes: []string{"198.51.100.0/24"}},
+		}},
+	}
+	repo := &fakeRepo{knownHijacks: map[int64]bool{}}
+	emt := &fakeEmitter{}
+
+	c := cfradar.NewCollector(cfradar.CollectorConfig{
+		Interval:      30 * time.Millisecond,
+		MinConfidence: 7,
+		Fetcher:       ftch,
+		Repo:          repo,
+		Emitter:       emt,
+		State:         noopState{},
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_ = c.Run(ctx)
+
+	for _, ev := range emt.Events() {
+		if ev.Topic != events.TopicBGPHijack {
+			continue
+		}
+		body, _ := json.Marshal(ev.Payload)
+		require.NotContains(t, string(body), `"enrichment"`)
+	}
 }
 
 func TestCollector_RepeatedTickIsIdempotent(t *testing.T) {

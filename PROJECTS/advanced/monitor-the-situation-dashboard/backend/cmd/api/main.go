@@ -35,6 +35,7 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/wikipedia"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/enrich/abuseipdb"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/redisring"
@@ -47,6 +48,22 @@ import (
 const (
 	drainDelay = 5 * time.Second
 )
+
+type abuseipdbEnricher struct {
+	client *abuseipdb.Client
+}
+
+func (a abuseipdbEnricher) Lookup(ctx context.Context, ip string) (cfradar.Enrichment, error) {
+	v, err := a.client.Lookup(ctx, ip)
+	if err != nil {
+		return cfradar.Enrichment{}, err
+	}
+	return cfradar.Enrichment{
+		Country:         v.CountryCode,
+		AbuseConfidence: v.AbuseConfidenceScore,
+		ISP:             v.ISP,
+	}, nil
+}
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
@@ -178,6 +195,12 @@ func run(configPath string) error {
 	}
 
 	if cfg.Collectors.CFRadar.Enabled {
+		var enricher cfradar.Enricher
+		if cfg.Collectors.AbuseIPDB.Enabled && cfg.Collectors.AbuseIPDB.APIKey != "" {
+			enricher = abuseipdbEnricher{
+				client: abuseipdb.NewClient(abuseipdb.ClientConfig{APIKey: cfg.Collectors.AbuseIPDB.APIKey}),
+			}
+		}
 		coll := cfradar.NewCollector(cfradar.CollectorConfig{
 			Interval:      cfg.Collectors.CFRadar.Interval,
 			MinConfidence: cfg.Collectors.CFRadar.MinConfidence,
@@ -185,6 +208,7 @@ func run(configPath string) error {
 			Repo:          cfradar.NewRepo(db.DB),
 			Emitter:       eventBus,
 			State:         collectorState,
+			Enricher:      enricher,
 			Logger:        logger.With("collector", "cfradar"),
 		})
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })

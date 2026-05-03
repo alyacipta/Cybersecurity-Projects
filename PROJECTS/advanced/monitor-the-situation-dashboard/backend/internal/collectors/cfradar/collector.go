@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/netip"
 	"time"
 
 	"github.com/lib/pq"
@@ -41,6 +42,22 @@ type StateRecorder interface {
 	RecordError(ctx context.Context, name, errMsg string) error
 }
 
+type Enricher interface {
+	Lookup(ctx context.Context, ip string) (Enrichment, error)
+}
+
+type Enrichment struct {
+	Country         string `json:"country,omitempty"`
+	AbuseConfidence int    `json:"abuse_confidence,omitempty"`
+	ISP             string `json:"isp,omitempty"`
+	CheckedIP       string `json:"checked_ip,omitempty"`
+}
+
+type EnrichedHijack struct {
+	HijackEvent
+	Enrichment *Enrichment `json:"enrichment,omitempty"`
+}
+
 type CollectorConfig struct {
 	Interval      time.Duration
 	MinConfidence int
@@ -48,6 +65,7 @@ type CollectorConfig struct {
 	Repo          Repository
 	Emitter       Emitter
 	State         StateRecorder
+	Enricher      Enricher
 	Logger        *slog.Logger
 }
 
@@ -183,7 +201,20 @@ func (c *Collector) tickHijacks(ctx context.Context) (int64, error) {
 		if known[e.ID] {
 			continue
 		}
-		rawBytes, _ := json.Marshal(e)
+		enriched := EnrichedHijack{HijackEvent: e}
+		if c.cfg.Enricher != nil && len(e.Prefixes) > 0 {
+			if ip, ok := representativeIP(e.Prefixes[0]); ok {
+				if v, lerr := c.cfg.Enricher.Lookup(ctx, ip); lerr == nil {
+					enriched.Enrichment = &Enrichment{
+						Country:         v.Country,
+						AbuseConfidence: v.AbuseConfidence,
+						ISP:             v.ISP,
+						CheckedIP:       ip,
+					}
+				}
+			}
+		}
+		rawBytes, _ := json.Marshal(enriched)
 		raw := json.RawMessage(rawBytes)
 		row := HijackRow{
 			ID:          e.ID,
@@ -209,4 +240,12 @@ func (c *Collector) tickHijacks(ctx context.Context) (int64, error) {
 		emitted++
 	}
 	return emitted, nil
+}
+
+func representativeIP(cidr string) (string, bool) {
+	p, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return "", false
+	}
+	return p.Addr().String(), true
 }

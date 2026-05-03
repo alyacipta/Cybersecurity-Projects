@@ -33,7 +33,7 @@ Operator-grade real-time situational awareness dashboard. Single-binary Go backe
 | Space weather                  | NOAA SWPC (5 endpoints)      | 1m / 3h    | none                                          |
 | World events                   | Wikipedia ITN + GDELT v2 API | 5m / 15m   | none                                          |
 | ISS position                   | wheretheiss.at + CelesTrak   | 10s / 24h  | none                                          |
-| IP enrichment                  | GreyNoise Community          | on-demand  | `GREYNOISE_API_KEY` (optional, free tier)     |
+| IP enrichment (BGP hijacks)    | AbuseIPDB                    | on-demand  | `ABUSEIPDB_API_KEY` (optional, free tier 1k/day) |
 
 ## Quickstart (development)
 
