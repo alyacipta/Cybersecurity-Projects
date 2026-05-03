@@ -6,9 +6,11 @@ import { BGPHijackPanel } from '@/pages/panels/BGPHijackPanel'
 import { BTCPanel } from '@/pages/panels/BTCPanel'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
+import { EarthquakePanel } from '@/pages/panels/EarthquakePanel'
 import { ETHPanel } from '@/pages/panels/ETHPanel'
 import { ISSPanel } from '@/pages/panels/ISSPanel'
 import { KEVPanel } from '@/pages/panels/KEVPanel'
+import { OutagePanel } from '@/pages/panels/OutagePanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
 import { SpaceWeatherPanel } from '@/pages/panels/SpaceWeatherPanel'
 import { useUIStore } from '@/stores/ui'
@@ -39,6 +41,7 @@ export function Dashboard(): React.ReactElement {
           <ETHPanel />
           <SpaceWeatherPanel />
           <ISSPanel />
+          <EarthquakePanel />
           <CVEVelocityPanel />
         </aside>
         <section className={styles.center}>
@@ -46,6 +49,7 @@ export function Dashboard(): React.ReactElement {
         </section>
         <aside className={styles.right}>
           <BGPHijackPanel />
+          <OutagePanel />
           <KEVPanel />
           <RansomwarePanel />
           <DShieldPanel />

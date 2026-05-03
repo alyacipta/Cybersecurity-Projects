@@ -8,6 +8,7 @@ import {
   isValidBgpHijack,
   isValidCoinbaseTick,
   isValidCveEvent,
+  isValidDShieldData,
   isValidEarthquakePayload,
   isValidGdeltSpike,
   isValidInternetOutage,
@@ -17,6 +18,7 @@ import {
   isValidWikiItn,
   type BgpHijack,
   type CveEvent,
+  type DShieldData,
   type EarthquakePayload,
   type GdeltSpike,
   type InternetOutage,
@@ -30,8 +32,10 @@ import { unlockOnFirstGesture } from '@/lib/audio'
 import { getCentroid } from '@/lib/countryCentroids'
 import { useBgpHijackStore } from '@/stores/bgpHijack'
 import { useCveStore } from '@/stores/cve'
+import { useEarthquakeStore } from '@/stores/earthquake'
 import { useGlobeEvents } from '@/stores/globeEvents'
 import { useKevStore } from '@/stores/kev'
+import { useOutageStore } from '@/stores/outage'
 import { usePrices } from '@/stores/prices'
 import { useRansomwareStore, victimKey } from '@/stores/ransomware'
 import { useTicker } from '@/stores/ticker'
@@ -101,10 +105,10 @@ export function useDashboardLifecycle(): void {
 }
 
 function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
-  const data = ev.payload
+  const data = ev.data
   if (data === undefined || data === null) return
 
-  switch (ev.topic) {
+  switch (ev.ch) {
     case 'cve_new':
       if (isValidCveEvent(data)) handleCve(data)
       break
@@ -135,9 +139,11 @@ function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
     case 'bgp_hijack':
       if (isValidBgpHijack(data)) handleHijack(data, queryClient)
       break
-    case 'space_weather':
     case 'scan_firehose':
-      mergeIntoSnapshot(queryClient, ev.topic, data)
+      if (isValidDShieldData(data)) handleScanFirehose(data, queryClient)
+      break
+    case 'space_weather':
+      mergeIntoSnapshot(queryClient, ev.ch, data)
       break
     default:
       break
@@ -172,6 +178,7 @@ function pushRansomwarePoint(p: RansomwareVictim): void {
 }
 
 function handleOutage(p: InternetOutage, queryClient: QueryClient): void {
+  useOutageStore.getState().push(p)
   pushOutagePoints(p)
   mergeIntoSnapshot(queryClient, 'internet_outage', p)
 }
@@ -218,6 +225,28 @@ function pushHijackPoint(p: BgpHijack): void {
   })
 }
 
+function handleScanFirehose(p: DShieldData, queryClient: QueryClient): void {
+  pushScanPoints(p)
+  mergeIntoSnapshot(queryClient, 'scan_firehose', p)
+}
+
+function pushScanPoints(p: DShieldData): void {
+  const now = Date.now()
+  for (const src of p.topips ?? []) {
+    if (!src.country) continue
+    const c = getCentroid(src.country)
+    if (!c) continue
+    useGlobeEvents.getState().pushPoint({
+      id: `scan-${src.source}`,
+      type: 'scan',
+      lat: c.lat,
+      lng: c.lng,
+      emittedAt: now,
+      meta: { source: src.source, reports: src.reports },
+    })
+  }
+}
+
 function handleCoinbase(p: { symbol: string; ts: string; price: string; volume_24h?: string }): void {
   usePrices.getState().pushTick({
     symbol: p.symbol,
@@ -228,6 +257,7 @@ function handleCoinbase(p: { symbol: string; ts: string; price: string; volume_2
 }
 
 function handleEarthquake(p: EarthquakePayload): void {
+  useEarthquakeStore.getState().push(p)
   const coords = p.geometry?.coordinates
   if (!Array.isArray(coords)) return
   const lng = coords[0]
@@ -296,6 +326,7 @@ function mergeIntoSnapshot(
 function seedGlobeFromSnapshot(snap: Snapshot): void {
   const eq = snap.earthquake
   if (isValidEarthquakePayload(eq)) {
+    useEarthquakeStore.getState().push(eq)
     const coords = eq.geometry?.coordinates
     if (Array.isArray(coords)) {
       const lng = coords[0]
@@ -328,11 +359,17 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
   if (isValidRansomwareVictim(rw)) pushRansomwarePoint(rw)
 
   const outage = snap.internet_outage
-  if (isValidInternetOutage(outage)) pushOutagePoints(outage)
+  if (isValidInternetOutage(outage)) {
+    useOutageStore.getState().push(outage)
+    pushOutagePoints(outage)
+  }
 
   const hijack = snap.bgp_hijack
   if (isValidBgpHijack(hijack)) {
     useBgpHijackStore.getState().push(hijack)
     pushHijackPoint(hijack)
   }
+
+  const scan = snap.scan_firehose
+  if (isValidDShieldData(scan)) pushScanPoints(scan)
 }

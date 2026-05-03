@@ -14,12 +14,25 @@ export const issPositionSchema = z.object({
 
 export type IssPosition = z.infer<typeof issPositionSchema>
 
+export const earthquakePropertiesSchema = z.object({
+  mag: z.number().nullable().optional(),
+  place: z.string().nullable().optional(),
+  time: z.number().optional(),
+  updated: z.number().optional(),
+  alert: z.string().nullable().optional(),
+  tsunami: z.number().optional(),
+  url: z.string().optional(),
+  type: z.string().optional(),
+})
+
+export type EarthquakeProperties = z.infer<typeof earthquakePropertiesSchema>
+
 export const earthquakePayloadSchema = z.object({
   id: z.string(),
   geometry: z
     .object({ coordinates: z.array(z.number()).optional() })
     .optional(),
-  properties: z.record(z.string(), z.unknown()).optional(),
+  properties: earthquakePropertiesSchema.optional(),
 })
 
 export type EarthquakePayload = z.infer<typeof earthquakePayloadSchema>
