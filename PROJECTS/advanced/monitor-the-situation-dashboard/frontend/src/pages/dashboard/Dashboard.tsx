@@ -2,6 +2,7 @@
 // Dashboard.tsx
 
 import { Globe } from '@/pages/globe/Globe'
+import { DShieldPanel } from '@/pages/panels/DShieldPanel'
 import { useUIStore } from '@/stores/ui'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
@@ -26,7 +27,9 @@ export function Dashboard(): React.ReactElement {
         <section className={styles.center}>
           <Globe />
         </section>
-        <aside className={styles.right} />
+        <aside className={styles.right}>
+          <DShieldPanel />
+        </aside>
       </main>
       <BottomTicker />
     </div>
