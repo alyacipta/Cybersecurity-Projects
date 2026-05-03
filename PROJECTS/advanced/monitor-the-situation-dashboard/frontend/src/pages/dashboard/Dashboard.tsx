@@ -4,6 +4,7 @@
 import { Globe } from '@/pages/globe/Globe'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
+import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { useUIStore } from '@/stores/ui'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
@@ -30,6 +31,7 @@ export function Dashboard(): React.ReactElement {
         </section>
         <aside className={styles.right}>
           <CVEVelocityPanel />
+          <KEVPanel />
           <DShieldPanel />
         </aside>
       </main>
