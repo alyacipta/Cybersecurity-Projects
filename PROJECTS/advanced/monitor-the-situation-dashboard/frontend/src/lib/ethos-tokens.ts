@@ -21,7 +21,7 @@ export const density = {
 } as const;
 
 export const typeSizes = {
-  body: 13,
+  body: 12,
   label: 11,
   numL: 20,
   numXL: 28,
