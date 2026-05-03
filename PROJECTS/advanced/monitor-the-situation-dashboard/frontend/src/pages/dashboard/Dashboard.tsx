@@ -15,10 +15,12 @@ import { About } from './About'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
 import styles from './Dashboard.module.scss'
+import { useDashboardLifecycle } from './lifecycle'
 import { presentationMode } from './presentationMode'
 import { TopStrip } from './TopStrip'
 
 export function Dashboard(): React.ReactElement {
+  useDashboardLifecycle()
   presentationMode.useGlobalShortcut()
   const isPresentation = useUIStore((s) => s.presentationMode)
 

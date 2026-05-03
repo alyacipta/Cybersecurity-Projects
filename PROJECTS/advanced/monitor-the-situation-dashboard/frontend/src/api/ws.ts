@@ -121,7 +121,7 @@ export function browserDriver(url: string, topics: string[]): WSDriver {
     onMessage: null,
     onClose: null,
     send(s) {
-      sock.send(s)
+      if (sock.readyState === WebSocket.OPEN) sock.send(s)
     },
     close() {
       sock.close()
