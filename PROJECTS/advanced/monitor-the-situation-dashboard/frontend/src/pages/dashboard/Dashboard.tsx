@@ -11,6 +11,7 @@ import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
 import { SpaceWeatherPanel } from '@/pages/panels/SpaceWeatherPanel'
 import { useUIStore } from '@/stores/ui'
+import { About } from './About'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
 import styles from './Dashboard.module.scss'
@@ -47,6 +48,7 @@ export function Dashboard(): React.ReactElement {
         </aside>
       </main>
       <BottomTicker />
+      <About />
     </div>
   )
 }
