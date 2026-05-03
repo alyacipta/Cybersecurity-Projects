@@ -11,24 +11,29 @@ const THOUSAND = 1_000
 const MILLION = 1_000_000
 
 interface DShieldPort {
-  port: number
+  rank: number
+  targetport: number
   records: number
+  targets: number
+  sources: number
 }
 
 interface DShieldSource {
-  ip: string
-  country?: string
-  records: number
+  rank: number
+  source: string
+  reports: number
+  targets: number
 }
 
 interface DShieldDailySummary {
+  date: string
   records: number
   sources: number
   targets: number
 }
 
 interface DShieldData {
-  topports?: DShieldPort[]
+  topports?: Record<string, DShieldPort> | DShieldPort[]
   topips?: DShieldSource[]
   dailysummary?: DShieldDailySummary[]
 }
@@ -36,7 +41,18 @@ interface DShieldData {
 export function DShieldPanel(): React.ReactElement {
   const { data } = useSnapshot()
   const ds = (data?.scan_firehose as DShieldData | undefined) ?? {}
-  const summary = ds.dailysummary?.[0]
+
+  const ports = toArray(ds.topports)
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, PORT_ROW_LIMIT)
+
+  const sources = (ds.topips ?? [])
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, SOURCE_ROW_LIMIT)
+
+  const summary = pickLatestSummary(ds.dailysummary)
 
   return (
     <Panel
@@ -50,14 +66,16 @@ export function DShieldPanel(): React.ReactElement {
           <thead>
             <tr>
               <th>Port</th>
-              <th>Hits / 24h</th>
+              <th>Hits</th>
+              <th>Src</th>
             </tr>
           </thead>
           <tbody>
-            {(ds.topports ?? []).slice(0, PORT_ROW_LIMIT).map((p) => (
-              <tr key={p.port}>
-                <td className={styles.mono}>{p.port}</td>
-                <td className={styles.mono}>{p.records.toLocaleString()}</td>
+            {ports.map((p) => (
+              <tr key={p.targetport}>
+                <td className={styles.mono}>{p.targetport}</td>
+                <td className={styles.mono}>{fmtN(p.records)}</td>
+                <td className={styles.mono}>{fmtN(p.sources)}</td>
               </tr>
             ))}
           </tbody>
@@ -67,16 +85,16 @@ export function DShieldPanel(): React.ReactElement {
           <thead>
             <tr>
               <th>Source IP</th>
-              <th>CC</th>
-              <th>Hits</th>
+              <th>Reports</th>
+              <th>Tgt</th>
             </tr>
           </thead>
           <tbody>
-            {(ds.topips ?? []).slice(0, SOURCE_ROW_LIMIT).map((s) => (
-              <tr key={s.ip}>
-                <td className={styles.mono}>{s.ip}</td>
-                <td>{s.country ?? '—'}</td>
-                <td className={styles.mono}>{s.records.toLocaleString()}</td>
+            {sources.map((s) => (
+              <tr key={s.source}>
+                <td className={styles.mono}>{s.source}</td>
+                <td className={styles.mono}>{fmtN(s.reports)}</td>
+                <td className={styles.mono}>{fmtN(s.targets)}</td>
               </tr>
             ))}
           </tbody>
@@ -86,7 +104,7 @@ export function DShieldPanel(): React.ReactElement {
       {summary && (
         <p className={styles.summary}>
           {fmtN(summary.records)} records · {fmtN(summary.sources)} sources ·{' '}
-          {fmtN(summary.targets)} targets — last 24h
+          {fmtN(summary.targets)} targets — {summary.date}
         </p>
       )}
     </Panel>
@@ -94,6 +112,21 @@ export function DShieldPanel(): React.ReactElement {
 }
 
 DShieldPanel.displayName = 'DShieldPanel'
+
+function toArray<T>(v: Record<string, T> | T[] | undefined): T[] {
+  if (!v) return []
+  if (Array.isArray(v)) return v
+  return Object.values(v)
+}
+
+function pickLatestSummary(
+  list: DShieldDailySummary[] | undefined
+): DShieldDailySummary | undefined {
+  if (!list || list.length === 0) return undefined
+  return list.reduce((latest, entry) =>
+    entry.date > latest.date ? entry : latest
+  )
+}
 
 function fmtN(n: number): string {
   if (n >= MILLION) return `${(n / MILLION).toFixed(1)}M`
