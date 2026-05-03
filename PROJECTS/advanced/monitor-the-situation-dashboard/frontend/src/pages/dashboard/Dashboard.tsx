@@ -2,6 +2,7 @@
 // Dashboard.tsx
 
 import { Globe } from '@/pages/globe/Globe'
+import { BTCPanel } from '@/pages/panels/BTCPanel'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
 import { KEVPanel } from '@/pages/panels/KEVPanel'
@@ -26,7 +27,9 @@ export function Dashboard(): React.ReactElement {
       <TopStrip />
       <AlertBanner />
       <main className={styles.grid}>
-        <aside className={styles.left} />
+        <aside className={styles.left}>
+          <BTCPanel />
+        </aside>
         <section className={styles.center}>
           <Globe />
         </section>
