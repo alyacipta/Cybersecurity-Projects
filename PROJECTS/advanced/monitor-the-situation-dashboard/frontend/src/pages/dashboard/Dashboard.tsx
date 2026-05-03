@@ -8,6 +8,7 @@ import { DShieldPanel } from '@/pages/panels/DShieldPanel'
 import { ETHPanel } from '@/pages/panels/ETHPanel'
 import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
+import { SpaceWeatherPanel } from '@/pages/panels/SpaceWeatherPanel'
 import { useUIStore } from '@/stores/ui'
 import { AlertBanner } from './AlertBanner'
 import { BottomTicker } from './BottomTicker'
@@ -31,6 +32,7 @@ export function Dashboard(): React.ReactElement {
         <aside className={styles.left}>
           <BTCPanel />
           <ETHPanel />
+          <SpaceWeatherPanel />
         </aside>
         <section className={styles.center}>
           <Globe />
