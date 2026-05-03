@@ -77,7 +77,7 @@ type rawTimeline struct {
 func (c *Client) FetchTheme(ctx context.Context, theme string) ([]ThemeBucket, error) {
 	q := url.Values{}
 	q.Set("query", "theme:"+theme)
-	q.Set("mode", "timelinevolinfo")
+	q.Set("mode", "timelinevol")
 	q.Set("TIMELINESMOOTH", "5")
 	q.Set("format", "json")
 	q.Set("timespan", "1d")
