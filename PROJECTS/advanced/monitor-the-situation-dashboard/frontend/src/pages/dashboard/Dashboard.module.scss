@@ -41,3 +41,17 @@
   overflow-y: auto;
   border-left: 1px solid var(--fg-4);
 }
+
+.root.presentation {
+  .grid {
+    grid-template-columns: 280px 1fr 280px;
+  }
+
+  .left {
+    border-right: 0;
+  }
+
+  .right {
+    border-left: 0;
+  }
+}

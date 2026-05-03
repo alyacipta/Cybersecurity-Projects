@@ -11,16 +11,19 @@ import styles from './TopStrip.module.scss'
 
 const CLOCK_TICK_MS = 1000
 
-export function TopStrip(): React.ReactElement {
+export function TopStrip(): React.ReactElement | null {
   const [now, setNow] = useState(() => new Date())
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAbout = useUIStore((s) => s.openAbout)
+  const isPresentation = useUIStore((s) => s.presentationMode)
   const navigate = useNavigate()
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), CLOCK_TICK_MS)
     return () => clearInterval(id)
   }, [])
+
+  if (isPresentation) return null
 
   return (
     <header className={styles.strip}>

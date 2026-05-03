@@ -69,6 +69,7 @@ export const ROUTES = {
 export const STORAGE_KEYS = {
   AUTH: 'auth-storage',
   UI: 'ui-storage',
+  PRESENTATION_MODE: 'monitor:presentation-mode',
 } as const
 
 export const QUERY_CONFIG = {

@@ -2,14 +2,17 @@
 // BottomTicker.tsx
 
 import { useTicker } from '@/stores/ticker'
+import { useUIStore } from '@/stores/ui'
 import styles from './BottomTicker.module.scss'
 
 const MS_PER_SECOND = 1000
 const SECONDS_PER_MINUTE = 60
 const SECONDS_PER_HOUR = 3600
 
-export function BottomTicker(): React.ReactElement {
+export function BottomTicker(): React.ReactElement | null {
   const items = useTicker((s) => s.items)
+  const isPresentation = useUIStore((s) => s.presentationMode)
+  if (isPresentation) return null
   return (
     <div className={styles.ticker}>
       {items.length > 0 && (
