@@ -6,6 +6,7 @@ import { BTCPanel } from '@/pages/panels/BTCPanel'
 import { CVEVelocityPanel } from '@/pages/panels/CVEVelocityPanel'
 import { DShieldPanel } from '@/pages/panels/DShieldPanel'
 import { ETHPanel } from '@/pages/panels/ETHPanel'
+import { ISSPanel } from '@/pages/panels/ISSPanel'
 import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
 import { SpaceWeatherPanel } from '@/pages/panels/SpaceWeatherPanel'
@@ -33,6 +34,7 @@ export function Dashboard(): React.ReactElement {
           <BTCPanel />
           <ETHPanel />
           <SpaceWeatherPanel />
+          <ISSPanel />
         </aside>
         <section className={styles.center}>
           <Globe />
