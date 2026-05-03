@@ -4,18 +4,36 @@
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { SNAPSHOT_KEY, type Snapshot, useSnapshot } from '@/api/snapshot'
+import {
+  isValidBgpHijack,
+  isValidCoinbaseTick,
+  isValidCveEvent,
+  isValidEarthquakePayload,
+  isValidGdeltSpike,
+  isValidInternetOutage,
+  isValidIssPosition,
+  isValidKevEntry,
+  isValidRansomwareVictim,
+  isValidWikiItn,
+  type BgpHijack,
+  type CveEvent,
+  type EarthquakePayload,
+  type GdeltSpike,
+  type InternetOutage,
+  type IssPosition,
+  type KevEntry,
+  type RansomwareVictim,
+  type WikiItn,
+} from '@/api/types'
 import { browserDriver, createDashboardWS, type WSEvent } from '@/api/ws'
 import { unlockOnFirstGesture } from '@/lib/audio'
 import { getCentroid } from '@/lib/countryCentroids'
-import { type CveEvent, useCveStore } from '@/stores/cve'
+import { useBgpHijackStore } from '@/stores/bgpHijack'
+import { useCveStore } from '@/stores/cve'
 import { useGlobeEvents } from '@/stores/globeEvents'
-import { type KevEntry, useKevStore } from '@/stores/kev'
+import { useKevStore } from '@/stores/kev'
 import { usePrices } from '@/stores/prices'
-import {
-  type RansomwareVictim,
-  useRansomwareStore,
-  victimKey,
-} from '@/stores/ransomware'
+import { useRansomwareStore, victimKey } from '@/stores/ransomware'
 import { useTicker } from '@/stores/ticker'
 
 const ALL_TOPICS: readonly string[] = [
@@ -37,50 +55,6 @@ const ALL_TOPICS: readonly string[] = [
 const WS_URL = '/api/v1/ws'
 const GLOBE_RING_TTL_MS = 4_000
 const GLOBE_EVICT_INTERVAL_MS = 5 * 60_000
-
-interface CoinbaseTickPayload {
-  symbol: string
-  ts: string
-  price: string
-  volume_24h?: string
-}
-
-interface IssPositionPayload {
-  latitude: number
-  longitude: number
-  altitude: number
-  velocity: number
-  timestamp: number
-  fetched_at?: string
-}
-
-interface EarthquakePayload {
-  id: string
-  geometry?: { coordinates?: number[] }
-  properties?: Record<string, unknown>
-}
-
-interface WikiItnPayload {
-  text: string
-  slug: string
-}
-
-interface GdeltSpikePayload {
-  theme: string
-  time: string
-  count: number
-  zscore: number
-}
-
-interface OutagePayload {
-  id: string
-  startDate?: string
-  endDate?: string | null
-  locations?: string[]
-  asns?: number[]
-  reason?: string
-  outageType?: string
-}
 
 export function useDashboardLifecycle(): void {
   const { data: snapshot, isSuccess } = useSnapshot()
@@ -132,34 +106,36 @@ function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
 
   switch (ev.topic) {
     case 'cve_new':
-      handleCve(data as CveEvent)
+      if (isValidCveEvent(data)) handleCve(data)
       break
     case 'kev_added':
-      handleKev(data as KevEntry)
+      if (isValidKevEntry(data)) handleKev(data)
       break
     case 'ransomware_victim':
-      handleRansomware(data as RansomwareVictim)
+      if (isValidRansomwareVictim(data)) handleRansomware(data)
       break
     case 'coinbase_price':
-      handleCoinbase(data as CoinbaseTickPayload)
+      if (isValidCoinbaseTick(data)) handleCoinbase(data)
       break
     case 'earthquake':
-      handleEarthquake(data as EarthquakePayload)
+      if (isValidEarthquakePayload(data)) handleEarthquake(data)
       break
     case 'iss_position':
-      handleIss(data as IssPositionPayload, queryClient)
+      if (isValidIssPosition(data)) handleIss(data, queryClient)
       break
     case 'wiki_itn':
-      handleWiki(data as WikiItnPayload)
+      if (isValidWikiItn(data)) handleWiki(data)
       break
     case 'gdelt_spike':
-      handleGdelt(data as GdeltSpikePayload)
+      if (isValidGdeltSpike(data)) handleGdelt(data)
       break
     case 'internet_outage':
-      handleOutage(data as OutagePayload, queryClient)
+      if (isValidInternetOutage(data)) handleOutage(data, queryClient)
+      break
+    case 'bgp_hijack':
+      if (isValidBgpHijack(data)) handleHijack(data, queryClient)
       break
     case 'space_weather':
-    case 'bgp_hijack':
     case 'scan_firehose':
       mergeIntoSnapshot(queryClient, ev.topic, data)
       break
@@ -169,17 +145,14 @@ function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
 }
 
 function handleCve(p: CveEvent): void {
-  if (!p.CveID) return
   useCveStore.getState().push(p)
 }
 
 function handleKev(p: KevEntry): void {
-  if (!p.cveID) return
   useKevStore.getState().push(p)
 }
 
 function handleRansomware(p: RansomwareVictim): void {
-  if (!p.post_title) return
   useRansomwareStore.getState().push(p)
   pushRansomwarePoint(p)
 }
@@ -198,13 +171,13 @@ function pushRansomwarePoint(p: RansomwareVictim): void {
   })
 }
 
-function handleOutage(p: OutagePayload, queryClient: QueryClient): void {
+function handleOutage(p: InternetOutage, queryClient: QueryClient): void {
   pushOutagePoints(p)
   mergeIntoSnapshot(queryClient, 'internet_outage', p)
 }
 
-function pushOutagePoints(p: OutagePayload): void {
-  if (!p.id || !Array.isArray(p.locations)) return
+function pushOutagePoints(p: InternetOutage): void {
+  if (!Array.isArray(p.locations)) return
   const now = Date.now()
   for (const loc of p.locations) {
     const c = getCentroid(loc)
@@ -220,8 +193,32 @@ function pushOutagePoints(p: OutagePayload): void {
   }
 }
 
-function handleCoinbase(p: CoinbaseTickPayload): void {
-  if (!p.symbol || !p.ts) return
+function handleHijack(p: BgpHijack, queryClient: QueryClient): void {
+  useBgpHijackStore.getState().push(p)
+  pushHijackPoint(p)
+  mergeIntoSnapshot(queryClient, 'bgp_hijack', p)
+}
+
+function pushHijackPoint(p: BgpHijack): void {
+  const country = p.enrichment?.country
+  if (!country) return
+  const c = getCentroid(country)
+  if (!c) return
+  useGlobeEvents.getState().pushPoint({
+    id: `hijack-${p.id}`,
+    type: 'hijack',
+    lat: c.lat,
+    lng: c.lng,
+    emittedAt: Date.now(),
+    meta: {
+      asn: p.hijackerAsn,
+      isp: p.enrichment?.isp,
+      prefixes: p.prefixes?.length,
+    },
+  })
+}
+
+function handleCoinbase(p: { symbol: string; ts: string; price: string; volume_24h?: string }): void {
   usePrices.getState().pushTick({
     symbol: p.symbol,
     ts: new Date(p.ts).getTime(),
@@ -254,8 +251,7 @@ function handleEarthquake(p: EarthquakePayload): void {
   })
 }
 
-function handleIss(p: IssPositionPayload, queryClient: QueryClient): void {
-  if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') return
+function handleIss(p: IssPosition, queryClient: QueryClient): void {
   useGlobeEvents.getState().pushPoint({
     id: 'iss-current',
     type: 'iss',
@@ -266,7 +262,7 @@ function handleIss(p: IssPositionPayload, queryClient: QueryClient): void {
   mergeIntoSnapshot(queryClient, 'iss_position', p)
 }
 
-function handleWiki(p: WikiItnPayload): void {
+function handleWiki(p: WikiItn): void {
   if (!p.text) return
   const id = `wiki-${p.slug || p.text}`
   useTicker.getState().push({
@@ -277,8 +273,7 @@ function handleWiki(p: WikiItnPayload): void {
   })
 }
 
-function handleGdelt(p: GdeltSpikePayload): void {
-  if (!p.theme) return
+function handleGdelt(p: GdeltSpike): void {
   useTicker.getState().push({
     id: `gdelt-${p.theme}-${p.time}`,
     source: 'GDELT',
@@ -299,8 +294,8 @@ function mergeIntoSnapshot(
 }
 
 function seedGlobeFromSnapshot(snap: Snapshot): void {
-  const eq = snap.earthquake as EarthquakePayload | undefined
-  if (eq) {
+  const eq = snap.earthquake
+  if (isValidEarthquakePayload(eq)) {
     const coords = eq.geometry?.coordinates
     if (Array.isArray(coords)) {
       const lng = coords[0]
@@ -318,12 +313,8 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
     }
   }
 
-  const iss = snap.iss_position as IssPositionPayload | undefined
-  if (
-    iss &&
-    typeof iss.latitude === 'number' &&
-    typeof iss.longitude === 'number'
-  ) {
+  const iss = snap.iss_position
+  if (isValidIssPosition(iss)) {
     useGlobeEvents.getState().pushPoint({
       id: 'iss-current',
       type: 'iss',
@@ -333,9 +324,15 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
     })
   }
 
-  const rw = snap.ransomware_victim as RansomwareVictim | undefined
-  if (rw) pushRansomwarePoint(rw)
+  const rw = snap.ransomware_victim
+  if (isValidRansomwareVictim(rw)) pushRansomwarePoint(rw)
 
-  const outage = snap.internet_outage as OutagePayload | undefined
-  if (outage) pushOutagePoints(outage)
+  const outage = snap.internet_outage
+  if (isValidInternetOutage(outage)) pushOutagePoints(outage)
+
+  const hijack = snap.bgp_hijack
+  if (isValidBgpHijack(hijack)) {
+    useBgpHijackStore.getState().push(hijack)
+    pushHijackPoint(hijack)
+  }
 }
