@@ -168,8 +168,7 @@ $container-2xl: 42rem;
 $container-full: 100%;
 
 // ============================================================================
-// ETHOS TOKENS — operator-grade dashboard surface
-//
+// ETHOS TOKENS — operator-grade dashboard surface.
 // Per docs/design/ethos-reference.md (also mirrored in _ethos.scss).
 // Used by /pages/dashboard/, /pages/globe/, /pages/panels/. NOT used by
 // auth pages — those keep the template's SCSS variables above.
@@ -192,6 +191,7 @@ $container-full: 100%;
   // Accents — ONE green, ONE amber. That is all.
   --ok:    #4ade80;  // live / healthy / busy
   --amber: #f59e0b;  // stale / breached / anomaly. NEVER for decoration.
+  --amber-fg: #1a1a1a;  // near-black text-on-amber pairing (alert banner only)
 
   // Type
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
