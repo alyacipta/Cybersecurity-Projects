@@ -1,0 +1,43 @@
+// ©AngelaMos | 2026
+// Dashboard.module.scss
+
+.root {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    'topstrip'
+    'alertbanner'
+    'main'
+    'bottomticker';
+  height: 100dvh;
+  width: 100vw;
+  background: var(--bg);
+  color: var(--fg-1);
+  overflow: hidden;
+}
+
+.grid {
+  grid-area: main;
+  display: grid;
+  grid-template-columns: var(--col-panel-width) 1fr var(--col-panel-width);
+  min-height: 0;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-right: 1px solid var(--fg-4);
+}
+
+.center {
+  position: relative;
+  overflow: hidden;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid var(--fg-4);
+}

@@ -208,4 +208,7 @@ $container-full: 100%;
   --type-label:  11px;   // UPPERCASE labels
   --type-num-l:  20px;   // KPI numbers
   --type-num-xl: 28px;   // hero KPI numbers (rare; only top-of-panel)
+
+  // Layout — fixed panel column width (spec §11.1)
+  --col-panel-width: 320px;
 }
