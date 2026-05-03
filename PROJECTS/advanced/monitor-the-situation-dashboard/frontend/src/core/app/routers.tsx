@@ -1,18 +1,15 @@
-// ===================
-// © AngelaMos | 2025
+// ©AngelaMos | 2026
 // routers.tsx
-// ===================
 
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { UserRole } from '@/api/types'
 import { ROUTES } from '@/config'
 import { ProtectedRoute } from './protected-route'
-import { Shell } from './shell'
 
 const routes: RouteObject[] = [
   {
     path: ROUTES.HOME,
-    lazy: () => import('@/pages/landing'),
+    lazy: () => import('@/pages/dashboard'),
   },
   {
     path: ROUTES.LOGIN,
@@ -26,17 +23,8 @@ const routes: RouteObject[] = [
     element: <ProtectedRoute />,
     children: [
       {
-        element: <Shell />,
-        children: [
-          {
-            path: ROUTES.DASHBOARD,
-            lazy: () => import('@/pages/dashboard'),
-          },
-          {
-            path: ROUTES.SETTINGS,
-            lazy: () => import('@/pages/settings'),
-          },
-        ],
+        path: ROUTES.SETTINGS,
+        lazy: () => import('@/pages/settings'),
       },
     ],
   },
@@ -44,23 +32,14 @@ const routes: RouteObject[] = [
     element: <ProtectedRoute allowedRoles={[UserRole.ADMIN]} />,
     children: [
       {
-        element: <Shell />,
-        children: [
-          {
-            path: ROUTES.ADMIN.USERS,
-            lazy: () => import('@/pages/admin'),
-          },
-        ],
+        path: ROUTES.ADMIN.USERS,
+        lazy: () => import('@/pages/admin'),
       },
     ],
   },
   {
-    path: ROUTES.UNAUTHORIZED,
-    lazy: () => import('@/pages/landing'),
-  },
-  {
     path: '*',
-    lazy: () => import('@/pages/landing'),
+    lazy: () => import('@/pages/dashboard'),
   },
 ]
 
