@@ -46,9 +46,10 @@ export const useGlobeEvents = create<GlobeStore>((set) => ({
   rings: [],
   focusEvent: null,
   pushPoint: (p) =>
-    set((s) => ({
-      points: [...s.points.slice(-POINT_CAP + 1), p],
-    })),
+    set((s) => {
+      const filtered = s.points.filter((existing) => existing.id !== p.id)
+      return { points: [p, ...filtered].slice(0, POINT_CAP) }
+    }),
   pushRing: (r) =>
     set((s) => ({
       rings: [...s.rings, r],

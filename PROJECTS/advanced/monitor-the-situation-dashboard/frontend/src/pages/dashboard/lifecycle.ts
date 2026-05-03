@@ -3,7 +3,7 @@
 
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { SNAPSHOT_KEY, useSnapshot } from '@/api/snapshot'
+import { SNAPSHOT_KEY, type Snapshot, useSnapshot } from '@/api/snapshot'
 import { browserDriver, createDashboardWS, type WSEvent } from '@/api/ws'
 import { unlockOnFirstGesture } from '@/lib/audio'
 import { type CveEvent, useCveStore } from '@/stores/cve'
@@ -71,10 +71,17 @@ export function useDashboardLifecycle(): void {
   const { data: snapshot, isSuccess } = useSnapshot()
   const queryClient = useQueryClient()
   const wsRef = useRef<ReturnType<typeof createDashboardWS> | null>(null)
+  const globeSeededRef = useRef(false)
 
   useEffect(() => {
     unlockOnFirstGesture()
   }, [])
+
+  useEffect(() => {
+    if (!snapshot || globeSeededRef.current) return
+    globeSeededRef.current = true
+    seedGlobeFromSnapshot(snapshot)
+  }, [snapshot])
 
   useEffect(() => {
     if (!isSuccess) return
@@ -235,4 +242,40 @@ function mergeIntoSnapshot(
     ...(prev ?? {}),
     [topic]: data,
   }))
+}
+
+function seedGlobeFromSnapshot(snap: Snapshot): void {
+  const eq = snap.earthquake as EarthquakePayload | undefined
+  if (eq) {
+    const coords = eq.geometry?.coordinates
+    if (Array.isArray(coords)) {
+      const lng = coords[0]
+      const lat = coords[1]
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        useGlobeEvents.getState().pushPoint({
+          id: `eq-${eq.id}`,
+          type: 'earthquake',
+          lat,
+          lng,
+          emittedAt: Date.now(),
+          meta: eq.properties,
+        })
+      }
+    }
+  }
+
+  const iss = snap.iss_position as IssPositionPayload | undefined
+  if (
+    iss &&
+    typeof iss.latitude === 'number' &&
+    typeof iss.longitude === 'number'
+  ) {
+    useGlobeEvents.getState().pushPoint({
+      id: 'iss-current',
+      type: 'iss',
+      lat: iss.latitude,
+      lng: iss.longitude,
+      emittedAt: Date.now(),
+    })
+  }
 }
