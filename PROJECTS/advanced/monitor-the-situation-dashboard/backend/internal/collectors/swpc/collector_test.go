@@ -5,6 +5,7 @@ package swpc_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -133,6 +134,60 @@ func TestCollector_FastTickPushesToRingsAndEmits(t *testing.T) {
 	}
 	require.Greater(t, st.successes, 0)
 	require.Equal(t, 0, st.failures)
+}
+
+func TestCollector_EmitsRichPayloadWithLatestReadings(t *testing.T) {
+	now := time.Now().UTC()
+	ftch := &fakeFetcher{
+		plasma: []swpc.PlasmaTick{
+			{TimeTag: now.Add(-2 * time.Minute), Density: "1.0", Speed: "300"},
+			{TimeTag: now, Density: "5.42", Speed: "487"},
+		},
+		mag: []swpc.MagTick{
+			{TimeTag: now.Add(-2 * time.Minute), BzGSM: "1.5"},
+			{TimeTag: now, BzGSM: "-3.21"},
+		},
+		xray: []swpc.XrayTick{
+			{TimeTag: now.Add(-2 * time.Minute), Flux: 1e-7},
+			{TimeTag: now, Flux: 2.5e-5},
+		},
+		alerts: []swpc.AlertItem{},
+		kp:     []swpc.KpTick{{TimeTag: now, Kp: 4.0}},
+	}
+	ring := &fakeRing{}
+	emt := &fakeEmitter{}
+	st := &recordingState{}
+
+	c := swpc.NewCollector(swpc.CollectorConfig{
+		FastInterval: 20 * time.Millisecond,
+		SlowInterval: 25 * time.Millisecond,
+		Fetcher:      ftch,
+		Ring:         ring,
+		Emitter:      emt,
+		State:        st,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+	_ = c.Run(ctx)
+
+	require.GreaterOrEqual(t, emt.Count(), 1)
+
+	emt.mu.Lock()
+	last := emt.events[len(emt.events)-1]
+	emt.mu.Unlock()
+
+	raw, ok := last.Payload.(json.RawMessage)
+	require.True(t, ok, "expected payload to be json.RawMessage")
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(raw, &payload))
+
+	require.InDelta(t, 487.0, payload["speed_kms"], 0.001)
+	require.InDelta(t, 5.42, payload["density"], 0.001)
+	require.InDelta(t, -3.21, payload["bz_gsm"], 0.001)
+	require.InDelta(t, 2.5e-5, payload["xray_flux"], 1e-9)
+	require.Equal(t, "M2.5", payload["xray_class"])
+	require.InDelta(t, 4.0, payload["kp"], 0.001)
 }
 
 func TestCollector_FetchErrorsRecordsState(t *testing.T) {

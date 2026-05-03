@@ -6,7 +6,10 @@ package swpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/events"
@@ -22,6 +25,11 @@ const (
 	keyKp     = "swpc:kp"
 	keyXray   = "swpc:xray"
 	keyAlerts = "swpc:alerts"
+
+	xrayBaseB = 1e-7
+	xrayBaseC = 1e-6
+	xrayBaseM = 1e-5
+	xrayBaseX = 1e-4
 )
 
 type Fetcher interface {
@@ -58,6 +66,11 @@ type CollectorConfig struct {
 type Collector struct {
 	cfg    CollectorConfig
 	logger *slog.Logger
+
+	latestKp     *KpTick
+	latestPlasma *PlasmaTick
+	latestMag    *MagTick
+	latestXray   *XrayTick
 }
 
 func NewCollector(cfg CollectorConfig) *Collector {
@@ -130,16 +143,7 @@ func (c *Collector) tickFast(ctx context.Context) {
 	}
 
 	if pushed > 0 {
-		body, _ := json.Marshal(map[string]any{
-			"ts":     time.Now().UTC(),
-			"pushed": pushed,
-		})
-		c.cfg.Emitter.Emit(events.Event{
-			Topic:     events.TopicSpaceWeather,
-			Timestamp: time.Now().UTC(),
-			Source:    Name,
-			Payload:   json.RawMessage(body),
-		})
+		c.emitCombined(pushed)
 	}
 
 	if !hadError {
@@ -148,16 +152,64 @@ func (c *Collector) tickFast(ctx context.Context) {
 }
 
 func (c *Collector) tickSlow(ctx context.Context) {
-	if _, err := c.pushKp(ctx); err != nil {
+	n, err := c.pushKp(ctx)
+	if err != nil {
 		c.logger.Warn("swpc kp", "err", err)
 		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		return
 	}
+	if n > 0 {
+		c.emitCombined(n)
+	}
+}
+
+func (c *Collector) emitCombined(pushed int64) {
+	body, _ := json.Marshal(c.buildPayload(pushed))
+	c.cfg.Emitter.Emit(events.Event{
+		Topic:     events.TopicSpaceWeather,
+		Timestamp: time.Now().UTC(),
+		Source:    Name,
+		Payload:   json.RawMessage(body),
+	})
+}
+
+func (c *Collector) buildPayload(pushed int64) map[string]any {
+	out := map[string]any{
+		"ts":     time.Now().UTC(),
+		"pushed": pushed,
+	}
+	if c.latestKp != nil {
+		out["kp"] = c.latestKp.Kp
+	}
+	if c.latestPlasma != nil {
+		if v, ok := parseSWPCFloat(c.latestPlasma.Speed); ok {
+			out["speed_kms"] = v
+		}
+		if v, ok := parseSWPCFloat(c.latestPlasma.Density); ok {
+			out["density"] = v
+		}
+	}
+	if c.latestMag != nil {
+		if v, ok := parseSWPCFloat(c.latestMag.BzGSM); ok {
+			out["bz_gsm"] = v
+		}
+	}
+	if c.latestXray != nil && c.latestXray.Flux > 0 {
+		out["xray_flux"] = c.latestXray.Flux
+		if cls := classifyXray(c.latestXray.Flux); cls != "" {
+			out["xray_class"] = cls
+		}
+	}
+	return out
 }
 
 func (c *Collector) pushPlasma(ctx context.Context) (int64, error) {
 	rows, err := c.cfg.Fetcher.FetchPlasma(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if latest := lastNonZero(rows, func(r PlasmaTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+		c.latestPlasma = latest
 	}
 	return pushAll(ctx, c.cfg.Ring, keyPlasma, rows, func(r PlasmaTick) int64 { return r.TimeTag.UnixMilli() })
 }
@@ -167,6 +219,9 @@ func (c *Collector) pushMag(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if latest := lastNonZero(rows, func(r MagTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+		c.latestMag = latest
+	}
 	return pushAll(ctx, c.cfg.Ring, keyMag, rows, func(r MagTick) int64 { return r.TimeTag.UnixMilli() })
 }
 
@@ -175,6 +230,9 @@ func (c *Collector) pushKp(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if latest := lastNonZero(rows, func(r KpTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+		c.latestKp = latest
+	}
 	return pushAll(ctx, c.cfg.Ring, keyKp, rows, func(r KpTick) int64 { return r.TimeTag.UnixMilli() })
 }
 
@@ -182,6 +240,9 @@ func (c *Collector) pushXray(ctx context.Context) (int64, error) {
 	rows, err := c.cfg.Fetcher.FetchXray(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if latest := lastNonZero(rows, func(r XrayTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+		c.latestXray = latest
 	}
 	return pushAll(ctx, c.cfg.Ring, keyXray, rows, func(r XrayTick) int64 { return r.TimeTag.UnixMilli() })
 }
@@ -208,4 +269,44 @@ func pushAll[T any](ctx context.Context, ring Ring, key string, rows []T, score 
 		pushed++
 	}
 	return pushed, nil
+}
+
+func lastNonZero[T any](rows []T, ok func(T) bool) *T {
+	for i := len(rows) - 1; i >= 0; i-- {
+		if ok(rows[i]) {
+			r := rows[i]
+			return &r
+		}
+	}
+	return nil
+}
+
+func parseSWPCFloat(s string) (float64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(f) {
+		return 0, false
+	}
+	return f, true
+}
+
+func classifyXray(flux float64) string {
+	if flux <= 0 {
+		return ""
+	}
+	if flux >= xrayBaseX {
+		return fmt.Sprintf("X%.1f", flux/xrayBaseX)
+	}
+	if flux >= xrayBaseM {
+		return fmt.Sprintf("M%.1f", flux/xrayBaseM)
+	}
+	if flux >= xrayBaseC {
+		return fmt.Sprintf("C%.1f", flux/xrayBaseC)
+	}
+	if flux >= xrayBaseB {
+		return fmt.Sprintf("B%.1f", flux/xrayBaseB)
+	}
+	return ""
 }
