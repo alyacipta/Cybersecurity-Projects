@@ -2,6 +2,7 @@
 // Dashboard.tsx
 
 import { AlertBanner } from './AlertBanner'
+import { BottomTicker } from './BottomTicker'
 import styles from './Dashboard.module.scss'
 import { TopStrip } from './TopStrip'
 
@@ -15,6 +16,7 @@ export function Dashboard(): React.ReactElement {
         <section className={styles.center} />
         <aside className={styles.right} />
       </main>
+      <BottomTicker />
     </div>
   )
 }
