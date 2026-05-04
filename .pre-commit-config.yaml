@@ -164,12 +164,22 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-yaml
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-json
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-toml
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-ast
+        exclude: (\.pnpm-store|node_modules|\.venv)/
       - id: check-symlinks
+        exclude: (\.pnpm-store|node_modules)/
       - id: end-of-file-fixer
+        exclude: (\.pnpm-store|node_modules)/
       - id: trailing-whitespace
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-illegal-windows-names
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-executables-have-shebangs
+        exclude: (\.pnpm-store|node_modules)/
       - id: check-shebang-scripts-are-executable
+        exclude: (\.pnpm-store|node_modules)/
