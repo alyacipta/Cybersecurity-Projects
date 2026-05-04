@@ -13,7 +13,10 @@ import (
 )
 
 func TestEncodeEnvelope(t *testing.T) {
-	out, err := ws.EncodeEnvelope("heartbeat", []byte(`{"ts":"2026-05-01T00:00:00Z"}`))
+	out, err := ws.EncodeEnvelope(
+		"heartbeat",
+		[]byte(`{"ts":"2026-05-01T00:00:00Z"}`),
+	)
 	require.NoError(t, err)
 
 	var got map[string]any

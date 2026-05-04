@@ -15,16 +15,17 @@ import (
 )
 
 type Config struct {
-	App        AppConfig        `koanf:"app"`
-	Server     ServerConfig     `koanf:"server"`
-	Database   DatabaseConfig   `koanf:"database"`
-	Redis      RedisConfig      `koanf:"redis"`
-	JWT        JWTConfig        `koanf:"jwt"`
-	RateLimit  RateLimitConfig  `koanf:"rate_limit"`
-	CORS       CORSConfig       `koanf:"cors"`
-	Log        LogConfig        `koanf:"log"`
-	Otel       OtelConfig       `koanf:"otel"`
-	Collectors CollectorsConfig `koanf:"collectors"`
+	App           AppConfig           `koanf:"app"`
+	Server        ServerConfig        `koanf:"server"`
+	Database      DatabaseConfig      `koanf:"database"`
+	Redis         RedisConfig         `koanf:"redis"`
+	JWT           JWTConfig           `koanf:"jwt"`
+	RateLimit     RateLimitConfig     `koanf:"rate_limit"`
+	CORS          CORSConfig          `koanf:"cors"`
+	Log           LogConfig           `koanf:"log"`
+	Otel          OtelConfig          `koanf:"otel"`
+	Collectors    CollectorsConfig    `koanf:"collectors"`
+	Notifications NotificationsConfig `koanf:"notifications"`
 }
 
 type CollectorsConfig struct {
@@ -95,15 +96,24 @@ type AppConfig struct {
 	Name        string `koanf:"name"`
 	Version     string `koanf:"version"`
 	Environment string `koanf:"environment"`
+	PublicURL   string `koanf:"public_url"`
+	AdminEmail  string `koanf:"admin_email"`
+}
+
+type NotificationsConfig struct {
+	EncryptionKey string `koanf:"encryption_key"`
 }
 
 type ServerConfig struct {
-	Host            string        `koanf:"host"`
-	Port            int           `koanf:"port"`
-	ReadTimeout     time.Duration `koanf:"read_timeout"`
-	WriteTimeout    time.Duration `koanf:"write_timeout"`
-	IdleTimeout     time.Duration `koanf:"idle_timeout"`
-	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
+	Host             string        `koanf:"host"`
+	Port             int           `koanf:"port"`
+	ReadTimeout      time.Duration `koanf:"read_timeout"`
+	WriteTimeout     time.Duration `koanf:"write_timeout"`
+	IdleTimeout      time.Duration `koanf:"idle_timeout"`
+	ShutdownTimeout  time.Duration `koanf:"shutdown_timeout"`
+	TrustedProxyHops int           `koanf:"trusted_proxy_hops"`
+	WSMaxConnsPerIP  int           `koanf:"ws_max_conns_per_ip"`
+	WSMaxSubscribers int           `koanf:"ws_max_subscribers"`
 }
 
 type DatabaseConfig struct {
@@ -173,13 +183,19 @@ func Load(configPath string) (*Config, error) {
 		}
 
 		if configPath != "" {
-			if err := k.Load(file.Provider(configPath), yaml.Parser()); err != nil {
+			if err := k.Load(
+				file.Provider(configPath),
+				yaml.Parser(),
+			); err != nil {
 				loadErr = fmt.Errorf("load config file: %w", err)
 				return
 			}
 		}
 
-		if err := k.Load(env.Provider("", ".", envKeyReplacer), nil); err != nil {
+		if err := k.Load(
+			env.Provider("", ".", envKeyReplacer),
+			nil,
+		); err != nil {
 			loadErr = fmt.Errorf("load env vars: %w", err)
 			return
 		}
@@ -216,12 +232,15 @@ func loadDefaults(k *koanf.Koanf) error {
 		"app.version":     "1.0.0",
 		"app.environment": "development",
 
-		"server.host":             "0.0.0.0",
-		"server.port":             8080,
-		"server.read_timeout":     "30s",
-		"server.write_timeout":    "30s",
-		"server.idle_timeout":     "120s",
-		"server.shutdown_timeout": "15s",
+		"server.host":                "0.0.0.0",
+		"server.port":                8080,
+		"server.read_timeout":        "30s",
+		"server.write_timeout":       "30s",
+		"server.idle_timeout":        "120s",
+		"server.shutdown_timeout":    "15s",
+		"server.trusted_proxy_hops":  0,
+		"server.ws_max_conns_per_ip": 25,
+		"server.ws_max_subscribers":  5000,
 
 		"database.max_open_conns":     25,
 		"database.max_idle_conns":     5,
@@ -274,8 +293,8 @@ func loadDefaults(k *koanf.Koanf) error {
 		"collectors.cfradar.interval":       "5m",
 		"collectors.cfradar.min_confidence": 7,
 		"collectors.cve.enabled":            true,
-		"collectors.cve.interval":           "2h",
-		"collectors.cve.window":             "2h",
+		"collectors.cve.interval":           "5m",
+		"collectors.cve.window":             "6m",
 		"collectors.kev.enabled":            true,
 		"collectors.kev.interval":           "1h",
 		"collectors.ransomware.enabled":     true,
@@ -315,6 +334,9 @@ var envKeyMap = map[string]string{
 	"ENVIRONMENT":                 "app.environment",
 	"HOST":                        "server.host",
 	"PORT":                        "server.port",
+	"TRUSTED_PROXY_HOPS":          "server.trusted_proxy_hops",
+	"WS_MAX_CONNS_PER_IP":         "server.ws_max_conns_per_ip",
+	"WS_MAX_SUBSCRIBERS":          "server.ws_max_subscribers",
 	"LOG_LEVEL":                   "log.level",
 	"LOG_FORMAT":                  "log.format",
 	"JWT_PRIVATE_KEY_PATH":        "jwt.private_key_path",
@@ -336,6 +358,9 @@ var envKeyMap = map[string]string{
 	"CF_RADAR_TOKEN":              "collectors.cfradar.bearer_token",
 	"GREYNOISE_API_KEY":           "collectors.greynoise.api_key",
 	"ABUSEIPDB_API_KEY":           "collectors.abuseipdb.api_key",
+	"NOTIFICATION_ENCRYPTION_KEY": "notifications.encryption_key",
+	"PUBLIC_URL":                  "app.public_url",
+	"ADMIN_EMAIL":                 "app.admin_email",
 }
 
 func envKeyReplacer(s string) string {

@@ -86,23 +86,28 @@ type recordingState struct {
 	failures  int
 }
 
-func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) error {
+func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.successes++
-	return nil
 }
 
-func (s *recordingState) RecordError(_ context.Context, _, _ string) error {
+func (s *recordingState) RecordError(_ context.Context, _, _ string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures++
-	return nil
 }
 
 func TestCollector_PositionLoopEmitsAndRecords(t *testing.T) {
 	ftch := &fakeFetcher{
-		pos: iss.Position{Latitude: 10, Longitude: 20, Altitude: 420, Velocity: 27500, Timestamp: 1234, FetchedAt: time.Now().UTC()},
+		pos: iss.Position{
+			Latitude:  10,
+			Longitude: 20,
+			Altitude:  420,
+			Velocity:  27500,
+			Timestamp: 1234,
+			FetchedAt: time.Now().UTC(),
+		},
 		tle: iss.TLE{Line1: "1 25544U ...", Line2: "2 25544 ..."},
 	}
 	store := &fakeStore{}
@@ -118,21 +123,34 @@ func TestCollector_PositionLoopEmitsAndRecords(t *testing.T) {
 		State:            st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 70*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		70*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
-	require.GreaterOrEqual(t, ftch.posN, 2, "position should fire multiple times")
+	require.GreaterOrEqual(
+		t,
+		ftch.posN,
+		2,
+		"position should fire multiple times",
+	)
 	require.GreaterOrEqual(t, emt.Count(), 2)
 	for _, ev := range emt.events {
 		require.Equal(t, events.TopicISSPosition, ev.Topic)
 	}
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 }
 
 func TestCollector_TLELoopSavesToStore(t *testing.T) {
 	ftch := &fakeFetcher{
-		pos: iss.Position{Latitude: 10, Longitude: 20, Altitude: 420, FetchedAt: time.Now().UTC()},
+		pos: iss.Position{
+			Latitude:  10,
+			Longitude: 20,
+			Altitude:  420,
+			FetchedAt: time.Now().UTC(),
+		},
 		tle: iss.TLE{Line1: "1 25544U test", Line2: "2 25544 test"},
 	}
 	store := &fakeStore{}
@@ -148,11 +166,19 @@ func TestCollector_TLELoopSavesToStore(t *testing.T) {
 		State:            st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		100*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
-	require.GreaterOrEqual(t, store.saves, 2, "TLE should refresh multiple times in 100ms with 30ms interval")
+	require.GreaterOrEqual(
+		t,
+		store.saves,
+		2,
+		"TLE should refresh multiple times in 100ms with 30ms interval",
+	)
 	require.Equal(t, "1 25544U test", store.saved.Line1)
 }
 
@@ -174,10 +200,13 @@ func TestCollector_PositionFetchErrorRecordsState(t *testing.T) {
 		State:            st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Equal(t, 0, emt.Count())
-	require.Greater(t, st.failures, 0)
+	require.Positive(t, st.failures)
 }

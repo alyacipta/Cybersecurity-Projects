@@ -3,11 +3,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useEarthquakeData } from '@/api/hooks'
-import { Panel } from './Panel'
+import { useFreshness } from '@/stores/freshness'
 import styles from './EarthquakePanel.module.scss'
+import { Panel } from './Panel'
 
 const QUAKE_ROW_LIMIT = 8
 const FLASH_DURATION_MS = 600
+const STALE_AFTER_MS = 600_000
 const MS_PER_HOUR = 3_600_000
 const MS_PER_MINUTE = 60_000
 const HOURS_PER_DAY = 24
@@ -38,12 +40,23 @@ export function EarthquakePanel(): React.ReactElement {
   const recent = items.slice(0, QUAKE_ROW_LIMIT)
   const now = Date.now()
 
+  const lastTickAt = useFreshness((s) => s.ts.quake)
+  const isStale =
+    items.length === 0
+      ? undefined
+      : lastTickAt !== undefined && Date.now() - lastTickAt > STALE_AFTER_MS
+
   return (
     <Panel
       title="USGS"
       subtitle="QUAKES"
+      source="usgs feed"
+      accent="quake"
       rawHref="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
       rawLabel="USGS feed"
+      isStale={isStale}
+      lastTickAt={lastTickAt}
+      batch
     >
       <table className={styles.table}>
         <thead>
@@ -59,15 +72,10 @@ export function EarthquakePanel(): React.ReactElement {
             return (
               <tr key={q.id} className={isFlashing ? styles.flash : undefined}>
                 <td className={styles.mag}>{fmtMag(q.properties?.mag)}</td>
-                <td
-                  className={styles.place}
-                  title={q.properties?.place ?? ''}
-                >
+                <td className={styles.place} title={q.properties?.place ?? ''}>
                   {q.properties?.place ?? '—'}
                 </td>
-                <td className={styles.ago}>
-                  {fmtAgo(q.properties?.time, now)}
-                </td>
+                <td className={styles.ago}>{fmtAgo(q.properties?.time, now)}</td>
               </tr>
             )
           })}

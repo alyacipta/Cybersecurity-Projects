@@ -19,10 +19,12 @@ import (
 
 func TestClient_GetJSONHonorsRateLimit(t *testing.T) {
 	var hits atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		hits.Add(1)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			hits.Add(1)
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		}),
+	)
 	defer srv.Close()
 
 	c := httpx.New(httpx.Config{
@@ -51,14 +53,16 @@ func TestClient_GetJSONHonorsRateLimit(t *testing.T) {
 
 func TestClient_RetriesOn429WithRetryAfter(t *testing.T) {
 	var hits atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if hits.Add(1) == 1 {
-			w.Header().Set("Retry-After", "1")
-			w.WriteHeader(http.StatusTooManyRequests)
-			return
-		}
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if hits.Add(1) == 1 {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		}),
+	)
 	defer srv.Close()
 
 	c := httpx.New(httpx.Config{
@@ -84,13 +88,15 @@ func TestClient_RetriesOn429WithRetryAfter(t *testing.T) {
 
 func TestClient_RetriesOn5xx(t *testing.T) {
 	var hits atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if hits.Add(1) < 3 {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if hits.Add(1) < 3 {
+				w.WriteHeader(http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		}),
+	)
 	defer srv.Close()
 
 	c := httpx.New(httpx.Config{
@@ -115,11 +121,13 @@ func TestClient_RetriesOn5xx(t *testing.T) {
 
 func TestClient_PermanentErrorOn4xx(t *testing.T) {
 	var hits atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		hits.Add(1)
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`bad`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			hits.Add(1)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`bad`))
+		}),
+	)
 	defer srv.Close()
 
 	c := httpx.New(httpx.Config{
@@ -143,12 +151,14 @@ func TestClient_PermanentErrorOn4xx(t *testing.T) {
 
 func TestClient_AddsBearerAndAPIKeyHeaders(t *testing.T) {
 	var bearer, apiKey, ua string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bearer = r.Header.Get("Authorization")
-		apiKey = r.Header.Get("X-Custom-Key")
-		ua = r.Header.Get("User-Agent")
-		_, _ = w.Write([]byte(`{}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bearer = r.Header.Get("Authorization")
+			apiKey = r.Header.Get("X-Custom-Key")
+			ua = r.Header.Get("User-Agent")
+			_, _ = w.Write([]byte(`{}`))
+		}),
+	)
 	defer srv.Close()
 
 	c := httpx.New(httpx.Config{

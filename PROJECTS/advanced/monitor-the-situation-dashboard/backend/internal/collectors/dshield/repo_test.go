@@ -95,9 +95,18 @@ func TestRepo_LatestByKindIsOrderedDesc(t *testing.T) {
 	t2 := time.Now().UTC().Add(-1 * time.Hour).Truncate(time.Second)
 	t3 := time.Now().UTC().Truncate(time.Second)
 
-	require.NoError(t, repo.PutSnapshot(ctx, t1, "sources", json.RawMessage(`[{"i":1}]`)))
-	require.NoError(t, repo.PutSnapshot(ctx, t3, "sources", json.RawMessage(`[{"i":3}]`)))
-	require.NoError(t, repo.PutSnapshot(ctx, t2, "sources", json.RawMessage(`[{"i":2}]`)))
+	require.NoError(
+		t,
+		repo.PutSnapshot(ctx, t1, "sources", json.RawMessage(`[{"i":1}]`)),
+	)
+	require.NoError(
+		t,
+		repo.PutSnapshot(ctx, t3, "sources", json.RawMessage(`[{"i":3}]`)),
+	)
+	require.NoError(
+		t,
+		repo.PutSnapshot(ctx, t2, "sources", json.RawMessage(`[{"i":2}]`)),
+	)
 
 	rows, err := repo.LatestByKind(ctx, "sources", 3)
 	require.NoError(t, err)

@@ -2,31 +2,21 @@
 // RansomwarePanel.tsx
 
 import { useEffect, useRef, useState } from 'react'
-import { useSnapshot } from '@/api/snapshot'
-import {
-  type RansomwareVictim,
-  useRansomwareStore,
-  victimKey,
-} from '@/stores/ransomware'
+import { useRansomwareData } from '@/api/hooks'
+import { useFreshness } from '@/stores/freshness'
+import { victimKey } from '@/stores/ransomware'
 import { Panel } from './Panel'
 import styles from './RansomwarePanel.module.scss'
 
 const VICTIM_ROW_LIMIT = 6
 const FLASH_DURATION_MS = 600
+const STALE_AFTER_MS = 3_600_000
 const MS_PER_HOUR = 3_600_000
 const MS_PER_MINUTE = 60_000
 const HOURS_PER_DAY = 24
 
 export function RansomwarePanel(): React.ReactElement {
-  const { data } = useSnapshot()
-  const items = useRansomwareStore((s) => s.items)
-  const push = useRansomwareStore((s) => s.push)
-
-  const seed = data?.ransomware_victim as RansomwareVictim | undefined
-  useEffect(() => {
-    if (seed?.post_title) push(seed)
-  }, [seed, push])
-
+  const { items } = useRansomwareData()
   const seenKeys = useRef<Set<string>>(new Set())
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set())
 
@@ -52,12 +42,23 @@ export function RansomwarePanel(): React.ReactElement {
   const recent = items.slice(0, VICTIM_ROW_LIMIT)
   const now = Date.now()
 
+  const lastTickAt = useFreshness((s) => s.ts.ransomware)
+  const isStale =
+    items.length === 0
+      ? undefined
+      : lastTickAt !== undefined && Date.now() - lastTickAt > STALE_AFTER_MS
+
   return (
     <Panel
       title="RANSOMWARE"
       subtitle="VICTIMS"
+      source="ransomware.live"
+      accent="ransomware"
       rawHref="https://ransomware.live/"
       rawLabel="ransomware.live"
+      isStale={isStale}
+      lastTickAt={lastTickAt}
+      batch
     >
       <table className={styles.table}>
         <thead>

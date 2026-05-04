@@ -69,7 +69,10 @@ func TestRepo_InsertAndKnownIDs(t *testing.T) {
 		Payload:           json.RawMessage(`{"cveID":"CVE-2024-3094"}`),
 	}))
 
-	known, err := repo.KnownIDs(ctx, []string{"CVE-2024-3094", "CVE-2024-MISSING"})
+	known, err := repo.KnownIDs(
+		ctx,
+		[]string{"CVE-2024-3094", "CVE-2024-MISSING"},
+	)
 	require.NoError(t, err)
 	require.True(t, known["CVE-2024-3094"])
 	require.False(t, known["CVE-2024-MISSING"])

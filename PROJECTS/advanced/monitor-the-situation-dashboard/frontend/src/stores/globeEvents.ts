@@ -40,6 +40,7 @@ interface GlobeStore {
 
 const POINT_TTL_MS = 15 * 60 * 1000
 const POINT_CAP = 500
+const RING_CAP = 200
 
 export const useGlobeEvents = create<GlobeStore>((set) => ({
   points: [],
@@ -52,7 +53,7 @@ export const useGlobeEvents = create<GlobeStore>((set) => ({
     }),
   pushRing: (r) =>
     set((s) => ({
-      rings: [...s.rings, r],
+      rings: [...s.rings, r].slice(-RING_CAP),
     })),
   evict: (now) =>
     set((s) => ({

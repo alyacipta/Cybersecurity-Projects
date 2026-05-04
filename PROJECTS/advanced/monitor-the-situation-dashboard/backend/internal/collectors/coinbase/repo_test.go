@@ -49,13 +49,13 @@ func setupDB(t *testing.T) *sqlx.DB {
 			PRIMARY KEY (symbol, ts)
 		);
 		CREATE TABLE btc_eth_minute (
-			symbol  text NOT NULL,
-			minute  timestamptz NOT NULL,
-			open    numeric(18,8) NOT NULL,
-			high    numeric(18,8) NOT NULL,
-			low     numeric(18,8) NOT NULL,
-			close   numeric(18,8) NOT NULL,
-			volume  numeric(20,8),
+			symbol               text NOT NULL,
+			minute               timestamptz NOT NULL,
+			open                 numeric(18,8) NOT NULL,
+			high                 numeric(18,8) NOT NULL,
+			low                  numeric(18,8) NOT NULL,
+			close                numeric(18,8) NOT NULL,
+			volume_24h_at_close  numeric(20,8),
 			PRIMARY KEY (symbol, minute)
 		);`)
 	require.NoError(t, err)
@@ -91,13 +91,13 @@ func TestRepo_UpsertMinuteUpdatesOHLC(t *testing.T) {
 
 	minute := time.Now().UTC().Truncate(time.Minute)
 	bar := coinbase.MinuteBar{
-		Symbol: "ETH-USD",
-		Minute: minute,
-		Open:   decimal.RequireFromString("2310.00"),
-		High:   decimal.RequireFromString("2315.50"),
-		Low:    decimal.RequireFromString("2308.10"),
-		Close:  decimal.RequireFromString("2312.75"),
-		Volume: decimal.RequireFromString("88.12300000"),
+		Symbol:           "ETH-USD",
+		Minute:           minute,
+		Open:             decimal.RequireFromString("2310.00"),
+		High:             decimal.RequireFromString("2315.50"),
+		Low:              decimal.RequireFromString("2308.10"),
+		Close:            decimal.RequireFromString("2312.75"),
+		Volume24hAtClose: decimal.RequireFromString("88.12300000"),
 	}
 	require.NoError(t, repo.UpsertMinute(ctx, bar))
 
@@ -120,13 +120,13 @@ func TestRepo_History1hReturnsLast60MinutesOldestFirst(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Minute)
 	for i := 0; i < 75; i++ {
 		bar := coinbase.MinuteBar{
-			Symbol: "BTC-USD",
-			Minute: now.Add(-time.Duration(i) * time.Minute),
-			Open:   decimal.NewFromInt(int64(40000 + i)),
-			High:   decimal.NewFromInt(int64(40050 + i)),
-			Low:    decimal.NewFromInt(int64(39950 + i)),
-			Close:  decimal.NewFromInt(int64(40010 + i)),
-			Volume: decimal.NewFromInt(int64(i)),
+			Symbol:           "BTC-USD",
+			Minute:           now.Add(-time.Duration(i) * time.Minute),
+			Open:             decimal.NewFromInt(int64(40000 + i)),
+			High:             decimal.NewFromInt(int64(40050 + i)),
+			Low:              decimal.NewFromInt(int64(39950 + i)),
+			Close:            decimal.NewFromInt(int64(40010 + i)),
+			Volume24hAtClose: decimal.NewFromInt(int64(i)),
 		}
 		require.NoError(t, repo.UpsertMinute(ctx, bar))
 	}
@@ -134,7 +134,11 @@ func TestRepo_History1hReturnsLast60MinutesOldestFirst(t *testing.T) {
 	hist, err := repo.History1h(ctx, "BTC-USD")
 	require.NoError(t, err)
 	require.Len(t, hist, 60)
-	require.True(t, hist[0].Minute.Before(hist[len(hist)-1].Minute), "history must be oldest → newest")
+	require.True(
+		t,
+		hist[0].Minute.Before(hist[len(hist)-1].Minute),
+		"history must be oldest → newest",
+	)
 }
 
 func TestRepo_LatestTickMissingReturnsErrNoRows(t *testing.T) {

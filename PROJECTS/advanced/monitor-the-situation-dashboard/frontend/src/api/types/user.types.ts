@@ -13,7 +13,8 @@ export const userListResponseSchema = z.object({
   items: z.array(userResponseSchema),
   total: z.number(),
   page: z.number(),
-  size: z.number(),
+  page_size: z.number(),
+  total_pages: z.number(),
 })
 
 export const userCreateRequestSchema = z.object({
@@ -22,11 +23,11 @@ export const userCreateRequestSchema = z.object({
     .string()
     .min(PASSWORD_CONSTRAINTS.MIN_LENGTH)
     .max(PASSWORD_CONSTRAINTS.MAX_LENGTH),
-  full_name: z.string().max(255).nullable().optional(),
+  name: z.string().min(1).max(100),
 })
 
 export const userUpdateRequestSchema = z.object({
-  full_name: z.string().max(255).nullable().optional(),
+  name: z.string().min(1).max(100).optional(),
 })
 
 export const adminUserCreateRequestSchema = z.object({
@@ -35,18 +36,15 @@ export const adminUserCreateRequestSchema = z.object({
     .string()
     .min(PASSWORD_CONSTRAINTS.MIN_LENGTH)
     .max(PASSWORD_CONSTRAINTS.MAX_LENGTH),
-  full_name: z.string().max(255).nullable().optional(),
+  name: z.string().min(1).max(100),
   role: z.nativeEnum(UserRole).optional(),
-  is_active: z.boolean().optional(),
-  is_verified: z.boolean().optional(),
+  tier: z.string().optional(),
 })
 
 export const adminUserUpdateRequestSchema = z.object({
-  email: z.string().email().optional(),
-  full_name: z.string().max(255).nullable().optional(),
+  name: z.string().min(1).max(100).optional(),
   role: z.nativeEnum(UserRole).optional(),
-  is_active: z.boolean().optional(),
-  is_verified: z.boolean().optional(),
+  tier: z.string().optional(),
 })
 
 export const paginationParamsSchema = z.object({
@@ -66,29 +64,7 @@ export const isValidUserListResponse = (
 ): data is UserListResponse => {
   if (data === null || data === undefined) return false
   if (typeof data !== 'object') return false
-
-  const result = userListResponseSchema.safeParse(data)
-  return result.success
-}
-
-export const isValidUserCreateRequest = (
-  data: unknown
-): data is UserCreateRequest => {
-  if (data === null || data === undefined) return false
-  if (typeof data !== 'object') return false
-
-  const result = userCreateRequestSchema.safeParse(data)
-  return result.success
-}
-
-export const isValidAdminUserCreateRequest = (
-  data: unknown
-): data is AdminUserCreateRequest => {
-  if (data === null || data === undefined) return false
-  if (typeof data !== 'object') return false
-
-  const result = adminUserCreateRequestSchema.safeParse(data)
-  return result.success
+  return userListResponseSchema.safeParse(data).success
 }
 
 export class UserResponseError extends Error {

@@ -2,18 +2,7 @@
 // kev.ts
 
 import { create } from 'zustand'
-
-export interface KevEntry {
-  cveID: string
-  vendorProject: string
-  product: string
-  vulnerabilityName: string
-  dateAdded: string
-  dueDate?: string
-  knownRansomwareCampaignUse?: string
-  shortDescription?: string
-  requiredAction?: string
-}
+import type { KevEntry } from '@/api/types'
 
 interface KevStore {
   items: KevEntry[]

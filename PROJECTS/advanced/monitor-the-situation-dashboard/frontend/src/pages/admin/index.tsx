@@ -37,27 +37,22 @@ export function Component(): React.ReactElement {
   const handleCreate = (formData: FormData): void => {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
-    const fullName = (formData.get('fullName') as string) || undefined
+    const rawName = (formData.get('fullName') as string) ?? ''
+    const name = rawName.trim() || email.split('@')[0] || 'user'
     const role = formData.get('role') as UserRole
-    const isActive = formData.get('isActive') === 'on'
 
     createUser.mutate(
-      { email, password, full_name: fullName, role, is_active: isActive },
+      { email, password, name, role },
       { onSuccess: () => setModal({ type: 'closed' }) }
     )
   }
 
   const handleUpdate = (userId: string, formData: FormData): void => {
-    const email = formData.get('email') as string
-    const fullName = (formData.get('fullName') as string) || undefined
+    const name = (formData.get('fullName') as string) || undefined
     const role = formData.get('role') as UserRole
-    const isActive = formData.get('isActive') === 'on'
 
     updateUser.mutate(
-      {
-        id: userId,
-        data: { email, full_name: fullName, role, is_active: isActive },
-      },
+      { id: userId, data: { name, role } },
       { onSuccess: () => setModal({ type: 'closed' }) }
     )
   }
@@ -87,7 +82,6 @@ export function Component(): React.ReactElement {
           <div className={styles.tableHeaderCell}>Email</div>
           <div className={styles.tableHeaderCell}>Name</div>
           <div className={styles.tableHeaderCell}>Role</div>
-          <div className={styles.tableHeaderCell}>Status</div>
           <div className={styles.tableHeaderCell}>Actions</div>
         </div>
 
@@ -104,20 +98,13 @@ export function Component(): React.ReactElement {
                 <span className={styles.email}>{user.email}</span>
               </div>
               <div className={styles.tableCell} data-label="Name">
-                {user.full_name ?? '—'}
+                {user.name}
               </div>
               <div className={styles.tableCell} data-label="Role">
                 <span
                   className={`${styles.badge} ${user.role === UserRole.ADMIN ? styles.admin : styles.user}`}
                 >
                   {user.role}
-                </span>
-              </div>
-              <div className={styles.tableCell} data-label="Status">
-                <span
-                  className={`${styles.badge} ${user.is_active ? styles.active : styles.inactive}`}
-                >
-                  {user.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <div className={styles.actions}>
@@ -241,10 +228,6 @@ export function Component(): React.ReactElement {
                   <option value={UserRole.ADMIN}>Admin</option>
                 </select>
               </div>
-              <label className={styles.checkbox}>
-                <input type="checkbox" name="isActive" defaultChecked />
-                <span>Active</span>
-              </label>
               <div className={styles.formActions}>
                 <button
                   type="button"
@@ -303,7 +286,7 @@ export function Component(): React.ReactElement {
                   type="email"
                   className={styles.input}
                   defaultValue={modal.user.email}
-                  required
+                  readOnly
                 />
               </div>
               <div className={styles.field}>
@@ -315,7 +298,7 @@ export function Component(): React.ReactElement {
                   name="fullName"
                   type="text"
                   className={styles.input}
-                  defaultValue={modal.user.full_name ?? ''}
+                  defaultValue={modal.user.name}
                 />
               </div>
               <div className={styles.field}>
@@ -332,14 +315,6 @@ export function Component(): React.ReactElement {
                   <option value={UserRole.ADMIN}>Admin</option>
                 </select>
               </div>
-              <label className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  defaultChecked={modal.user.is_active}
-                />
-                <span>Active</span>
-              </label>
               <div className={styles.formActions}>
                 <button
                   type="button"

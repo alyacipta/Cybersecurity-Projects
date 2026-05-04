@@ -8,6 +8,7 @@ export interface TickerItem {
   source: string
   headline: string
   ts: number
+  href?: string
 }
 
 interface TickerStore {

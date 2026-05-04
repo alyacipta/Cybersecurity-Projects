@@ -35,7 +35,7 @@ services:
     expose:
       - "8080"
     env_file:
-      - .env
+      - .env.prod
     environment:
       - APP_ENVIRONMENT=production
       - DATABASE_URL=postgres://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-monitor}?sslmode=disable

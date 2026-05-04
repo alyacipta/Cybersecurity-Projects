@@ -22,7 +22,13 @@ func TestBaseline_StableThenSpikeReturnsHighZ(t *testing.T) {
 	b := gdelt.NewThemeState(96)
 	now := time.Now().UTC()
 	for i := 0; i < 96; i++ {
-		b.Push(gdelt.Bucket{Score: now.Add(-time.Duration(i) * 15 * time.Minute).UnixMilli(), Count: 100 + (i % 10)})
+		b.Push(
+			gdelt.Bucket{
+				Score: now.Add(-time.Duration(i) * 15 * time.Minute).
+					UnixMilli(),
+				Count: 100 + (i % 10),
+			},
+		)
 	}
 	z := b.ZScore(500)
 	require.Greater(t, z, 3.0)
@@ -32,7 +38,13 @@ func TestBaseline_StableThenNormalReturnsLowZ(t *testing.T) {
 	b := gdelt.NewThemeState(96)
 	now := time.Now().UTC()
 	for i := 0; i < 96; i++ {
-		b.Push(gdelt.Bucket{Score: now.Add(-time.Duration(i) * 15 * time.Minute).UnixMilli(), Count: 100 + (i % 10)})
+		b.Push(
+			gdelt.Bucket{
+				Score: now.Add(-time.Duration(i) * 15 * time.Minute).
+					UnixMilli(),
+				Count: 100 + (i % 10),
+			},
+		)
 	}
 	z := b.ZScore(108)
 	require.Less(t, z, 3.0)
@@ -50,7 +62,13 @@ func TestBaseline_TinyStdDevDoesNotDivByZero(t *testing.T) {
 	b := gdelt.NewThemeState(96)
 	now := time.Now().UTC()
 	for i := 0; i < 96; i++ {
-		b.Push(gdelt.Bucket{Score: now.Add(-time.Duration(i) * 15 * time.Minute).UnixMilli(), Count: 100})
+		b.Push(
+			gdelt.Bucket{
+				Score: now.Add(-time.Duration(i) * 15 * time.Minute).
+					UnixMilli(),
+				Count: 100,
+			},
+		)
 	}
 	z := b.ZScore(101)
 	require.False(t, math.IsInf(z, 0))

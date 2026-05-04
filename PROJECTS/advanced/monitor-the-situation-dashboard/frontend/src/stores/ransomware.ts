@@ -2,16 +2,7 @@
 // ransomware.ts
 
 import { create } from 'zustand'
-
-export interface RansomwareVictim {
-  post_title: string
-  group_name: string
-  discovered: string
-  country?: string
-  activity?: string
-  website?: string
-  description?: string
-}
+import type { RansomwareVictim } from '@/api/types'
 
 interface RansomwareStore {
   items: RansomwareVictim[]

@@ -84,24 +84,25 @@ type recordingState struct {
 	failures  int
 }
 
-func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) error {
+func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.successes++
-	return nil
 }
 
-func (s *recordingState) RecordError(_ context.Context, _, _ string) error {
+func (s *recordingState) RecordError(_ context.Context, _, _ string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures++
-	return nil
 }
 
 func TestCollector_NewRevidInsertsAndEmits(t *testing.T) {
 	resp := wikipedia.Response{
 		RevID: 999,
-		HTML:  `<ul><li>Story <a href="/wiki/A">link</a></li><li>Another <a href="/wiki/B">link</a></li></ul>`,
+		HTML: `<ul>` +
+			`<li>A long enough ITN headline mentioning <a href="/wiki/A">subject A</a> for context.</li>` +
+			`<li>Another long enough ITN headline referencing <a href="/wiki/B">subject B</a> in the news.</li>` +
+			`</ul>`,
 	}
 	ftch := &fakeFetcher{resp: resp}
 	repo := &fakeRepo{}
@@ -116,7 +117,10 @@ func TestCollector_NewRevidInsertsAndEmits(t *testing.T) {
 		State:    st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -125,7 +129,7 @@ func TestCollector_NewRevidInsertsAndEmits(t *testing.T) {
 	for _, ev := range emt.events {
 		require.Equal(t, events.TopicWikipediaITN, ev.Topic)
 	}
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 }
 
 func TestCollector_RevIDUnchangedSkipsInsert(t *testing.T) {
@@ -146,13 +150,16 @@ func TestCollector_RevIDUnchangedSkipsInsert(t *testing.T) {
 		State:    st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Equal(t, 0, repo.Inserts())
 	require.Equal(t, 0, emt.Count())
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 }
 
 func TestCollector_FetchErrorRecordsState(t *testing.T) {
@@ -169,10 +176,13 @@ func TestCollector_FetchErrorRecordsState(t *testing.T) {
 		State:    st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Equal(t, 0, repo.Inserts())
-	require.Greater(t, st.failures, 0)
+	require.Positive(t, st.failures)
 }

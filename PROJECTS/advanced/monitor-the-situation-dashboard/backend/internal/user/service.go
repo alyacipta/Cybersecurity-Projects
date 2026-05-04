@@ -80,6 +80,64 @@ func (s *Service) UpdatePassword(
 	return s.repo.UpdatePassword(ctx, userID, passwordHash)
 }
 
+// SetRole flips a user's role. Used by ADMIN_EMAIL bootstrapping in
+// auth.Service: the configured email gets promoted to admin on every
+// login/register so a fresh DB after env changes still has an admin.
+func (s *Service) SetRole(ctx context.Context, userID, role string) error {
+	if role != RoleUser && role != RoleAdmin {
+		return fmt.Errorf(
+			"set role: invalid role %q: %w",
+			role,
+			core.ErrInvalidInput,
+		)
+	}
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	user.Role = role
+	return s.repo.Update(ctx, user)
+}
+
+// UpdateEmail changes a user's email after re-verifying their password.
+// Email is normalized to lowercase. Returns ErrDuplicateKey if the new
+// email is already taken by another account.
+func (s *Service) UpdateEmail(
+	ctx context.Context,
+	userID, currentPassword, newEmail string,
+) (*User, error) {
+	newEmail = strings.ToLower(strings.TrimSpace(newEmail))
+	if newEmail == "" {
+		return nil, fmt.Errorf("update email: empty: %w", core.ErrInvalidInput)
+	}
+
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	valid, _, err := core.VerifyPasswordWithRehash(
+		currentPassword,
+		user.PasswordHash,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("verify password: %w", err)
+	}
+	if !valid {
+		return nil, fmt.Errorf("update email: %w", core.ErrUnauthorized)
+	}
+
+	if user.Email == newEmail {
+		return user, nil
+	}
+
+	if err := s.repo.UpdateEmail(ctx, userID, newEmail); err != nil {
+		return nil, err
+	}
+	user.Email = newEmail
+	return user, nil
+}
+
 func (s *Service) GetUser(ctx context.Context, id string) (*User, error) {
 	return s.repo.GetByID(ctx, id)
 }
@@ -105,24 +163,40 @@ func (s *Service) UpdateUser(
 	return user, nil
 }
 
-func (s *Service) UpdateUserRole(
+func (s *Service) AdminUpdateUser(
 	ctx context.Context,
-	id, role string,
+	id string,
+	req AdminUpdateUserRequest,
 ) (*User, error) {
-	if role != RoleUser && role != RoleAdmin {
-		return nil, fmt.Errorf(
-			"update role: invalid role %q: %w",
-			role,
-			core.ErrInvalidInput,
-		)
-	}
-
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	user.Role = role
+	if req.Name != nil {
+		user.Name = *req.Name
+	}
+	if req.Role != nil {
+		if *req.Role != RoleUser && *req.Role != RoleAdmin {
+			return nil, fmt.Errorf(
+				"update role: invalid role %q: %w",
+				*req.Role,
+				core.ErrInvalidInput,
+			)
+		}
+		user.Role = *req.Role
+	}
+	if req.Tier != nil {
+		if *req.Tier != TierFree && *req.Tier != TierPro &&
+			*req.Tier != TierEnterprise {
+			return nil, fmt.Errorf(
+				"update tier: invalid tier %q: %w",
+				*req.Tier,
+				core.ErrInvalidInput,
+			)
+		}
+		user.Tier = *req.Tier
+	}
 
 	if err := s.repo.Update(ctx, user); err != nil {
 		return nil, err
@@ -131,26 +205,46 @@ func (s *Service) UpdateUserRole(
 	return user, nil
 }
 
-func (s *Service) UpdateUserTier(
+func (s *Service) AdminCreateUser(
 	ctx context.Context,
-	id, tier string,
+	req AdminCreateUserRequest,
 ) (*User, error) {
-	if tier != TierFree && tier != TierPro && tier != TierEnterprise {
-		return nil, fmt.Errorf(
-			"update tier: invalid tier %q: %w",
-			tier,
-			core.ErrInvalidInput,
-		)
-	}
-
-	user, err := s.repo.GetByID(ctx, id)
+	hash, err := core.HashPassword(req.Password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	user.Tier = tier
+	user := &User{
+		ID:           uuid.New().String(),
+		Email:        strings.ToLower(req.Email),
+		PasswordHash: hash,
+		Name:         req.Name,
+		Role:         RoleUser,
+		Tier:         TierFree,
+	}
+	if req.Role != nil {
+		if *req.Role != RoleUser && *req.Role != RoleAdmin {
+			return nil, fmt.Errorf(
+				"create user: invalid role %q: %w",
+				*req.Role,
+				core.ErrInvalidInput,
+			)
+		}
+		user.Role = *req.Role
+	}
+	if req.Tier != nil {
+		if *req.Tier != TierFree && *req.Tier != TierPro &&
+			*req.Tier != TierEnterprise {
+			return nil, fmt.Errorf(
+				"create user: invalid tier %q: %w",
+				*req.Tier,
+				core.ErrInvalidInput,
+			)
+		}
+		user.Tier = *req.Tier
+	}
 
-	if err := s.repo.Update(ctx, user); err != nil {
+	if err := s.repo.Create(ctx, user); err != nil {
 		return nil, err
 	}
 

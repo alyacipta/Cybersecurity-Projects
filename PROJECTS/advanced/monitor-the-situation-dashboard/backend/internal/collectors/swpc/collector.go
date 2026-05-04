@@ -49,8 +49,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -115,28 +115,28 @@ func (c *Collector) tickFast(ctx context.Context) {
 
 	if n, err := c.pushPlasma(ctx); err != nil {
 		c.logger.Warn("swpc plasma", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		pushed += n
 	}
 	if n, err := c.pushMag(ctx); err != nil {
 		c.logger.Warn("swpc mag", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		pushed += n
 	}
 	if n, err := c.pushXray(ctx); err != nil {
 		c.logger.Warn("swpc xray", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		pushed += n
 	}
 	if n, err := c.pushAlerts(ctx); err != nil {
 		c.logger.Warn("swpc alerts", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		pushed += n
@@ -147,7 +147,7 @@ func (c *Collector) tickFast(ctx context.Context) {
 	}
 
 	if !hadError {
-		_ = c.cfg.State.RecordSuccess(ctx, Name, pushed)
+		c.cfg.State.RecordSuccess(ctx, Name, pushed)
 	}
 }
 
@@ -155,7 +155,7 @@ func (c *Collector) tickSlow(ctx context.Context) {
 	n, err := c.pushKp(ctx)
 	if err != nil {
 		c.logger.Warn("swpc kp", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 	if n > 0 {
@@ -208,10 +208,19 @@ func (c *Collector) pushPlasma(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if latest := lastNonZero(rows, func(r PlasmaTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+	if latest := lastNonZero(
+		rows,
+		func(r PlasmaTick) bool { return !r.TimeTag.IsZero() },
+	); latest != nil {
 		c.latestPlasma = latest
 	}
-	return pushAll(ctx, c.cfg.Ring, keyPlasma, rows, func(r PlasmaTick) int64 { return r.TimeTag.UnixMilli() })
+	return pushAll(
+		ctx,
+		c.cfg.Ring,
+		keyPlasma,
+		rows,
+		func(r PlasmaTick) int64 { return r.TimeTag.UnixMilli() },
+	)
 }
 
 func (c *Collector) pushMag(ctx context.Context) (int64, error) {
@@ -219,10 +228,19 @@ func (c *Collector) pushMag(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if latest := lastNonZero(rows, func(r MagTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+	if latest := lastNonZero(
+		rows,
+		func(r MagTick) bool { return !r.TimeTag.IsZero() },
+	); latest != nil {
 		c.latestMag = latest
 	}
-	return pushAll(ctx, c.cfg.Ring, keyMag, rows, func(r MagTick) int64 { return r.TimeTag.UnixMilli() })
+	return pushAll(
+		ctx,
+		c.cfg.Ring,
+		keyMag,
+		rows,
+		func(r MagTick) int64 { return r.TimeTag.UnixMilli() },
+	)
 }
 
 func (c *Collector) pushKp(ctx context.Context) (int64, error) {
@@ -230,10 +248,19 @@ func (c *Collector) pushKp(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if latest := lastNonZero(rows, func(r KpTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+	if latest := lastNonZero(
+		rows,
+		func(r KpTick) bool { return !r.TimeTag.IsZero() },
+	); latest != nil {
 		c.latestKp = latest
 	}
-	return pushAll(ctx, c.cfg.Ring, keyKp, rows, func(r KpTick) int64 { return r.TimeTag.UnixMilli() })
+	return pushAll(
+		ctx,
+		c.cfg.Ring,
+		keyKp,
+		rows,
+		func(r KpTick) int64 { return r.TimeTag.UnixMilli() },
+	)
 }
 
 func (c *Collector) pushXray(ctx context.Context) (int64, error) {
@@ -241,10 +268,19 @@ func (c *Collector) pushXray(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if latest := lastNonZero(rows, func(r XrayTick) bool { return !r.TimeTag.IsZero() }); latest != nil {
+	if latest := lastNonZero(
+		rows,
+		func(r XrayTick) bool { return !r.TimeTag.IsZero() },
+	); latest != nil {
 		c.latestXray = latest
 	}
-	return pushAll(ctx, c.cfg.Ring, keyXray, rows, func(r XrayTick) int64 { return r.TimeTag.UnixMilli() })
+	return pushAll(
+		ctx,
+		c.cfg.Ring,
+		keyXray,
+		rows,
+		func(r XrayTick) int64 { return r.TimeTag.UnixMilli() },
+	)
 }
 
 func (c *Collector) pushAlerts(ctx context.Context) (int64, error) {
@@ -252,10 +288,22 @@ func (c *Collector) pushAlerts(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return pushAll(ctx, c.cfg.Ring, keyAlerts, rows, func(r AlertItem) int64 { return r.IssueDatetime.UnixMilli() })
+	return pushAll(
+		ctx,
+		c.cfg.Ring,
+		keyAlerts,
+		rows,
+		func(r AlertItem) int64 { return r.IssueDatetime.UnixMilli() },
+	)
 }
 
-func pushAll[T any](ctx context.Context, ring Ring, key string, rows []T, score func(T) int64) (int64, error) {
+func pushAll[T any](
+	ctx context.Context,
+	ring Ring,
+	key string,
+	rows []T,
+	score func(T) int64,
+) (int64, error) {
 	pushed := int64(0)
 	for _, r := range rows {
 		s := score(r)

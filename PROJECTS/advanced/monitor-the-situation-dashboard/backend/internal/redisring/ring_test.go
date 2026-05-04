@@ -42,7 +42,15 @@ func TestRing_PushAndRecentRoundtrips(t *testing.T) {
 	now := time.Now().UTC()
 	for i := 0; i < 5; i++ {
 		ts := now.Add(-time.Duration(i) * time.Minute)
-		require.NoError(t, r.Push(ctx, "test:key", ts.UnixMilli(), []byte(fmt.Sprintf(`{"i":%d}`, i))))
+		require.NoError(
+			t,
+			r.Push(
+				ctx,
+				"test:key",
+				ts.UnixMilli(),
+				[]byte(fmt.Sprintf(`{"i":%d}`, i)),
+			),
+		)
 	}
 
 	got, err := r.Recent(ctx, "test:key", 3)
@@ -58,7 +66,15 @@ func TestRing_RetentionPrunesOldEntries(t *testing.T) {
 	now := time.Now().UTC()
 	for i := 0; i < 5; i++ {
 		old := now.Add(-2 * time.Hour).Add(-time.Duration(i) * time.Minute)
-		require.NoError(t, r.Push(ctx, "test:key", old.UnixMilli(), []byte(fmt.Sprintf(`old-%d`, i))))
+		require.NoError(
+			t,
+			r.Push(
+				ctx,
+				"test:key",
+				old.UnixMilli(),
+				[]byte(fmt.Sprintf(`old-%d`, i)),
+			),
+		)
 	}
 	require.NoError(t, r.Push(ctx, "test:key", now.UnixMilli(), []byte("now")))
 
@@ -76,7 +92,15 @@ func TestRing_RangeReturnsItemsWithinScoreWindow(t *testing.T) {
 	now := time.Now().UTC()
 	for i := 0; i < 10; i++ {
 		ts := now.Add(-time.Duration(i) * time.Minute)
-		require.NoError(t, r.Push(ctx, "test:key", ts.UnixMilli(), []byte(fmt.Sprintf("i=%d", i))))
+		require.NoError(
+			t,
+			r.Push(
+				ctx,
+				"test:key",
+				ts.UnixMilli(),
+				[]byte(fmt.Sprintf("i=%d", i)),
+			),
+		)
 	}
 
 	from := now.Add(-3 * time.Minute).UnixMilli()

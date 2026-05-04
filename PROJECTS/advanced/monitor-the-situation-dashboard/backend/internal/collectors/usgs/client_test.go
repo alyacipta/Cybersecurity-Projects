@@ -20,10 +20,12 @@ func TestClient_FetchDecodesFeatures(t *testing.T) {
 	body, err := os.ReadFile("testdata/2_5_day.geojson")
 	require.NoError(t, err)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/geo+json")
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/geo+json")
+			_, _ = w.Write(body)
+		}),
+	)
 	defer srv.Close()
 
 	c := usgs.NewClient(usgs.ClientConfig{BaseURL: srv.URL})

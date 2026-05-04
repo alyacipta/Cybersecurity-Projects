@@ -21,6 +21,7 @@ type Repository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	Update(ctx context.Context, user *User) error
 	UpdatePassword(ctx context.Context, id, passwordHash string) error
+	UpdateEmail(ctx context.Context, id, email string) error
 	IncrementTokenVersion(ctx context.Context, id string) error
 	SoftDelete(ctx context.Context, id string) error
 	List(ctx context.Context, params ListUsersParams) ([]User, int, error)
@@ -146,6 +147,30 @@ func (r *repository) UpdatePassword(
 		return fmt.Errorf("update password: %w", core.ErrNotFound)
 	}
 
+	return nil
+}
+
+func (r *repository) UpdateEmail(ctx context.Context, id, email string) error {
+	query := `
+		UPDATE users
+		SET email = $2, updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`
+
+	result, err := r.db.ExecContext(ctx, query, id, email)
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			return fmt.Errorf("update email: %w", core.ErrDuplicateKey)
+		}
+		return fmt.Errorf("update email: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update email: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("update email: %w", core.ErrNotFound)
+	}
 	return nil
 }
 

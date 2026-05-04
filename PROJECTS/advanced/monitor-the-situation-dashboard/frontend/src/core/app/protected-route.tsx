@@ -4,6 +4,7 @@
 // ===================
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useCurrentUser } from '@/api/hooks'
 import type { UserRole } from '@/api/types'
 import { ROUTES } from '@/config'
 import { useAuthStore } from '@/core/lib'
@@ -20,11 +21,18 @@ export function ProtectedRoute({
   const location = useLocation()
   const { isAuthenticated, isLoading, user } = useAuthStore()
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  // On cold load, isAuthenticated is restored from localStorage but the
+  // access token is gone (not persisted). useCurrentUser fires /auth/me;
+  // the axios interceptor catches the inevitable 401 and refreshes via
+  // the HttpOnly cookie. While that's in flight we hold the route — no
+  // flash of protected content before bouncing to /login.
+  const { isLoading: hydrating, isError: hydrationFailed } = useCurrentUser()
+
+  if (isLoading || (isAuthenticated && hydrating && user === null)) {
+    return <div>Loading…</div>
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || hydrationFailed) {
     return (
       <Navigate
         to={redirectTo}

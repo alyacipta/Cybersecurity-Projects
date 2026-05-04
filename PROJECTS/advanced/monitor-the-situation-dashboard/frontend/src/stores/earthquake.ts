@@ -2,7 +2,7 @@
 // earthquake.ts
 
 import { create } from 'zustand'
-import { type EarthquakePayload } from '@/api/types'
+import type { EarthquakePayload } from '@/api/types'
 
 interface EarthquakeStore {
   items: EarthquakePayload[]

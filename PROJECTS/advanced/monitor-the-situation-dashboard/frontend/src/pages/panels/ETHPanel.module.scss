@@ -50,10 +50,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-.spark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  color: var(--fg-2);
+.up   { color: var(--ok); }
+.down { color: #f87171; }
+
+@keyframes flash-up {
+  0%   { color: var(--ok); }
+  100% { color: var(--fg-1); }
+}
+
+@keyframes flash-down {
+  0%   { color: #f87171; }
+  100% { color: var(--fg-1); }
+}
+
+.flashUp {
+  animation: flash-up 600ms ease-out forwards;
+}
+
+.flashDown {
+  animation: flash-down 600ms ease-out forwards;
 }

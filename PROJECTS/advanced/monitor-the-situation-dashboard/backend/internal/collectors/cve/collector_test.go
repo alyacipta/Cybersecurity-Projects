@@ -21,7 +21,11 @@ type stubNVD struct {
 	err  error
 }
 
-func (s *stubNVD) Fetch(context.Context, time.Time, time.Time) (cve.NVDResponse, error) {
+func (s *stubNVD) Fetch(
+	context.Context,
+	time.Time,
+	time.Time,
+) (cve.NVDResponse, error) {
 	return s.resp, s.err
 }
 
@@ -30,7 +34,10 @@ type stubEPSS struct {
 	err    error
 }
 
-func (s *stubEPSS) LookupBatch(context.Context, []string) (map[string]cve.EPSSScore, error) {
+func (s *stubEPSS) LookupBatch(
+	context.Context,
+	[]string,
+) (map[string]cve.EPSSScore, error) {
 	return s.scores, s.err
 }
 
@@ -54,7 +61,11 @@ func (r *stubCVERepo) Upsert(_ context.Context, row cve.Row) error {
 	return nil
 }
 
-func (r *stubCVERepo) UpdateEPSS(_ context.Context, id string, score, pct float64) error {
+func (r *stubCVERepo) UpdateEPSS(
+	_ context.Context,
+	id string,
+	score, pct float64,
+) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.patches[id] = [2]float64{score, pct}
@@ -94,22 +105,29 @@ func (e *stubCVEEmitter) Events() []events.Event {
 
 type stubCVEState struct{}
 
-func (stubCVEState) RecordSuccess(context.Context, string, int64) error { return nil }
-func (stubCVEState) RecordError(context.Context, string, string) error  { return nil }
+func (stubCVEState) RecordSuccess(context.Context, string, int64) {}
+func (stubCVEState) RecordError(context.Context, string, string)  {}
 
 func TestCVECollector_FetchesEnrichesAndEmits(t *testing.T) {
 	now := time.Now().UTC()
 	nvd := &stubNVD{resp: cve.NVDResponse{
 		Vulnerabilities: []cve.NVDVulnRoot{
 			{CVE: cve.NVDCVE{
-				ID: "CVE-2026-0001", Published: cve.NVDTime{Time: now.Add(-time.Hour)},
+				ID:           "CVE-2026-0001",
+				Published:    cve.NVDTime{Time: now.Add(-time.Hour)},
 				LastModified: cve.NVDTime{Time: now},
 				Metrics: cve.NVDMetrics{CVSSv31: []cve.NVDMetricEntry{
-					{CVSSData: cve.NVDCVSSData{BaseScore: 9.8, BaseSeverity: "CRITICAL"}},
+					{
+						CVSSData: cve.NVDCVSSData{
+							BaseScore:    9.8,
+							BaseSeverity: "CRITICAL",
+						},
+					},
 				}},
 			}},
 			{CVE: cve.NVDCVE{
-				ID: "CVE-2026-0002", Published: cve.NVDTime{Time: now.Add(-time.Hour)},
+				ID:           "CVE-2026-0002",
+				Published:    cve.NVDTime{Time: now.Add(-time.Hour)},
 				LastModified: cve.NVDTime{Time: now},
 			}},
 		},
@@ -130,7 +148,10 @@ func TestCVECollector_FetchesEnrichesAndEmits(t *testing.T) {
 		State:    stubCVEState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -162,11 +183,14 @@ func TestCVECollector_NVDFetchErrorRecordsState(t *testing.T) {
 		State:    stubCVEState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		30*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Zero(t, repo.Upserts())
 	require.Zero(t, repo.Patches())
-	require.Zero(t, len(emt.Events()))
+	require.Empty(t, emt.Events())
 }

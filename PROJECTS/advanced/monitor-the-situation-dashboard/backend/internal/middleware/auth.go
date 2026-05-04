@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 )
@@ -31,6 +32,8 @@ type AccessTokenClaims struct {
 	Role         string
 	Tier         string
 	TokenVersion int
+	JTI          string
+	ExpiresAt    time.Time
 }
 
 func Authenticator(verifier TokenVerifier) func(http.Handler) http.Handler {

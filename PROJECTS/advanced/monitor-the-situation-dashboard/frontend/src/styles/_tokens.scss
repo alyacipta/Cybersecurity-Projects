@@ -183,31 +183,53 @@ $container-full: 100%;
   --bg-row-hover: #141414;   // table-row hover, subtle (no interactive theatre)
 
   // Text tiers (3 + 1 muted/border)
-  --fg-1: #e5e5e5;   // primary
-  --fg-2: #a3a3a3;   // secondary (labels, axes, headers)
-  --fg-3: #6b7280;   // muted (timestamps, footnotes)
-  --fg-4: #404040;   // borders / lines
+  --fg-1: #e8e4dc;   // primary (warm near-white)
+  --fg-2: #b3aea4;   // secondary (warm gray, labels/axes/headers)
+  --fg-3: #7a7368;   // muted (warm gray, timestamps/footnotes)
+  --fg-4: #2e2e2e;   // borders / lines (panel chrome)
+
+  // Rule weights — used for anchoring panel headers above panel borders.
+  // --rule-strong is intentionally brighter than --fg-4 so the hairline under
+  // a panel title reads as the start of a new section.
+  --rule-strong: #4a4a4a;
 
   // Accents — ONE green, ONE amber. That is all.
   --ok:    #4ade80;  // live / healthy / busy
   --amber: #f59e0b;  // stale / breached / anomaly. NEVER for decoration.
   --amber-fg: #1a1a1a;  // near-black text-on-amber pairing (alert banner only)
 
-  // Type
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  // Type — Inter for everything; Geist Mono for IDs / IPs / ports / coords only
+  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
 
-  // Density (matches the spec — small padding, tight line-height)
-  --row-py: 4px;
-  --row-px: 8px;
-  --line-height-tight: 1.25;
-  --letter-spacing-label: 0.08em;
+  // Density — asymmetric padding (more horizontal, less vertical)
+  --row-py: 3px;
+  --row-px: 12px;
+  --line-height-tight: 1.35;
+  --letter-spacing-label: 0.09em;
 
   // Sizes — intentionally smaller than SaaS defaults for operator density
-  --type-body:   12px;
-  --type-label:  11px;   // UPPERCASE labels
-  --type-num-l:  20px;   // KPI numbers
-  --type-num-xl: 28px;   // hero KPI numbers (rare; only top-of-panel)
+  --type-body:    10px;
+  --type-label:   10px;   // panel titles (UPPERCASE)
+  --type-col:     9.5px;  // column headers (UPPERCASE, dim)
+  --type-meta:    10px;   // source attribution / footnotes
+  --type-num-l:   18px;   // KPI numbers
+  --type-num-xl:  22px;   // hero KPI numbers (rare; only top-of-panel)
+
+  // Categorical accent colors — used ONLY on panel-header left edges
+  // Carries taxonomy (which event type), never decoration of data.
+  --accent-bgp:        #ef4444;  // red — hijacks
+  --accent-outage:     #fb923c;  // orange — outages
+  --accent-kev:        #d946ef;  // magenta — exploited CVEs
+  --accent-ransomware: #facc15;  // yellow — victims
+  --accent-dshield:    #38bdf8;  // blue — mass scan
+  --accent-quake:      #a78bfa;  // purple — earthquakes
+  --accent-iss:        #4ade80;  // green — ISS / live
+  --accent-spacewx:    #4ade80;  // green — space weather
+  --accent-cve:        #d946ef;  // magenta — CVE velocity
+  --accent-wiki:       #2dd4bf;  // teal — news
+  --accent-btc:        #f7931a;  // bitcoin orange
+  --accent-eth:        #8b9eff;  // ethereum periwinkle
 
   // Layout — fixed panel column width (spec §11.1)
   --col-panel-width: 320px;

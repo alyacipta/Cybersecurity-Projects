@@ -41,18 +41,24 @@ func TestParser_HandlesEmptyHTML(t *testing.T) {
 }
 
 func TestParser_StripsHTMLTagsFromText(t *testing.T) {
-	entries := wikipedia.ParseEntries(`<ul><li>Plain <b>bold</b> headline with <a href="/wiki/Topic">link</a>.</li></ul>`)
+	entries := wikipedia.ParseEntries(
+		`<ul><li>A reasonably long ITN-style sentence with <b>bold</b> and an inline <a href="/wiki/Topic">linked phrase</a> for context.</li></ul>`,
+	)
 	require.Len(t, entries, 1)
-	require.Contains(t, entries[0].Text, "Plain")
-	require.Contains(t, entries[0].Text, "bold")
-	require.Contains(t, entries[0].Text, "link")
+	require.Contains(t, entries[0].Text, "linked phrase")
 	require.NotContains(t, entries[0].Text, "<b>")
 	require.Equal(t, "Topic", entries[0].ArticleSlug)
 }
 
 func TestParser_SkipsListItemsWithoutLinks(t *testing.T) {
-	entries := wikipedia.ParseEntries(`<ul><li>Has <a href="/wiki/Foo">link</a></li><li>No link here</li></ul>`)
-	require.Len(t, entries, 2)
+	entries := wikipedia.ParseEntries(
+		`<ul><li>A long enough sentence with an actual linked <a href="/wiki/Foo">article reference</a> embedded.</li><li>Another long sentence that contains no link element at all in the body text.</li></ul>`,
+	)
+	require.Len(
+		t,
+		entries,
+		1,
+		"items without an article slug should be filtered out",
+	)
 	require.Equal(t, "Foo", entries[0].ArticleSlug)
-	require.Empty(t, entries[1].ArticleSlug)
 }

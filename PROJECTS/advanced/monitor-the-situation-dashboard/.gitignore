@@ -4,12 +4,14 @@
 .env
 .env.local
 .env.*.local
+.env.prod
 
 backend/tmp/
 backend/bin/
 backend/coverage.out
 backend/coverage.html
 backend/keys/
+
 
 frontend/dist/
 frontend/node_modules/

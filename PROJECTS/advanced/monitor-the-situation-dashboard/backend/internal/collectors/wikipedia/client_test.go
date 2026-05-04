@@ -20,13 +20,15 @@ func TestClient_FetchDecodesITNResponse(t *testing.T) {
 	body, err := os.ReadFile("testdata/itn_response.json")
 	require.NoError(t, err)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/w/api.php", r.URL.Path)
-		require.Equal(t, "parse", r.URL.Query().Get("action"))
-		require.Equal(t, "Template:In_the_news", r.URL.Query().Get("page"))
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/w/api.php", r.URL.Path)
+			require.Equal(t, "parse", r.URL.Query().Get("action"))
+			require.Equal(t, "Template:In_the_news", r.URL.Query().Get("page"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}),
+	)
 	defer srv.Close()
 
 	c := wikipedia.NewClient(wikipedia.ClientConfig{BaseURL: srv.URL})

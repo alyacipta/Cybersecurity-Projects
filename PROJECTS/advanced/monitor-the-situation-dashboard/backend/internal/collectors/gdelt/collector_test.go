@@ -23,7 +23,10 @@ type fakeFetcher struct {
 	err     error
 }
 
-func (f *fakeFetcher) FetchTheme(_ context.Context, theme string) ([]gdelt.ThemeBucket, error) {
+func (f *fakeFetcher) FetchTheme(
+	_ context.Context,
+	theme string,
+) ([]gdelt.ThemeBucket, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
@@ -36,13 +39,21 @@ func (f *fakeFetcher) FetchTheme(_ context.Context, theme string) ([]gdelt.Theme
 type fakeRepo struct {
 	mu      sync.Mutex
 	inserts []gdelt.SpikeRow
+	seen    map[string]struct{}
 }
 
-func (r *fakeRepo) Insert(_ context.Context, row gdelt.SpikeRow) error {
+func (r *fakeRepo) Insert(_ context.Context, row gdelt.SpikeRow) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.seen == nil {
+		r.seen = map[string]struct{}{}
+	}
+	if _, ok := r.seen[row.ID]; ok {
+		return false, nil
+	}
+	r.seen[row.ID] = struct{}{}
 	r.inserts = append(r.inserts, row)
-	return nil
+	return true, nil
 }
 
 func (r *fakeRepo) Inserts() int {
@@ -74,18 +85,16 @@ type recordingState struct {
 	failures  int
 }
 
-func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) error {
+func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.successes++
-	return nil
 }
 
-func (s *recordingState) RecordError(_ context.Context, _, _ string) error {
+func (s *recordingState) RecordError(_ context.Context, _, _ string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures++
-	return nil
 }
 
 func TestCollector_NoBaselineNoSpike(t *testing.T) {
@@ -108,13 +117,21 @@ func TestCollector_NoBaselineNoSpike(t *testing.T) {
 		State:       st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
-	require.Equal(t, 0, repo.Inserts(), "first observation has no baseline → cannot detect spike")
+	require.Equal(
+		t,
+		0,
+		repo.Inserts(),
+		"first observation has no baseline → cannot detect spike",
+	)
 	require.Equal(t, 0, emt.Count())
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 }
 
 func TestCollector_StableBaselinePlusSpikeEmitsOnce(t *testing.T) {
@@ -127,7 +144,11 @@ func TestCollector_StableBaselinePlusSpikeEmitsOnce(t *testing.T) {
 			Count: 100 + i,
 		})
 	}
-	spikeBucket := gdelt.ThemeBucket{Theme: "X", Time: base.Add(15 * 15 * time.Minute), Count: 5000}
+	spikeBucket := gdelt.ThemeBucket{
+		Theme: "X",
+		Time:  base.Add(15 * 15 * time.Minute),
+		Count: 5000,
+	}
 	buckets := append(stable, spikeBucket)
 
 	ftch := &fakeFetcher{buckets: map[string][]gdelt.ThemeBucket{"X": buckets}}
@@ -145,7 +166,10 @@ func TestCollector_StableBaselinePlusSpikeEmitsOnce(t *testing.T) {
 		State:       st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		80*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -172,10 +196,13 @@ func TestCollector_FetchErrorsRecordsState(t *testing.T) {
 		State:       st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		60*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Equal(t, 0, repo.Inserts())
-	require.Greater(t, st.failures, 0)
+	require.Positive(t, st.failures)
 }

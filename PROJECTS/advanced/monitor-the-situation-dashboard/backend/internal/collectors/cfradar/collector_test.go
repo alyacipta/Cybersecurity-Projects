@@ -21,11 +21,16 @@ type fakeFetcher struct {
 	hijacks cfradar.HijackBody
 }
 
-func (f *fakeFetcher) FetchOutages(context.Context) (cfradar.OutageResultBody, error) {
+func (f *fakeFetcher) FetchOutages(
+	context.Context,
+) (cfradar.OutageResultBody, error) {
 	return f.outages, nil
 }
 
-func (f *fakeFetcher) FetchHijacks(context.Context, int) (cfradar.HijackBody, error) {
+func (f *fakeFetcher) FetchHijacks(
+	context.Context,
+	int,
+) (cfradar.HijackBody, error) {
 	return f.hijacks, nil
 }
 
@@ -51,7 +56,10 @@ func (r *fakeRepo) UpsertHijack(_ context.Context, _ cfradar.HijackRow) error {
 	return nil
 }
 
-func (r *fakeRepo) KnownOutageIDs(_ context.Context, ids []string) (map[string]bool, error) {
+func (r *fakeRepo) KnownOutageIDs(
+	_ context.Context,
+	ids []string,
+) (map[string]bool, error) {
 	out := make(map[string]bool)
 	for _, id := range ids {
 		if r.knownOutages[id] {
@@ -61,7 +69,10 @@ func (r *fakeRepo) KnownOutageIDs(_ context.Context, ids []string) (map[string]b
 	return out, nil
 }
 
-func (r *fakeRepo) KnownHijackIDs(_ context.Context, ids []int64) (map[int64]bool, error) {
+func (r *fakeRepo) KnownHijackIDs(
+	_ context.Context,
+	ids []int64,
+) (map[int64]bool, error) {
 	out := make(map[int64]bool)
 	for _, id := range ids {
 		if r.knownHijacks[id] {
@@ -92,8 +103,8 @@ func (e *fakeEmitter) Events() []events.Event {
 
 type noopState struct{}
 
-func (noopState) RecordSuccess(context.Context, string, int64) error { return nil }
-func (noopState) RecordError(context.Context, string, string) error  { return nil }
+func (noopState) RecordSuccess(context.Context, string, int64) {}
+func (noopState) RecordError(context.Context, string, string)  {}
 
 type fakeEnricher struct {
 	calls    int
@@ -102,7 +113,10 @@ type fakeEnricher struct {
 	returnFn func(ip string) (cfradar.Enrichment, error)
 }
 
-func (e *fakeEnricher) Lookup(_ context.Context, ip string) (cfradar.Enrichment, error) {
+func (e *fakeEnricher) Lookup(
+	_ context.Context,
+	ip string,
+) (cfradar.Enrichment, error) {
 	e.calls++
 	e.lastIP = ip
 	if e.returnFn != nil {
@@ -114,10 +128,12 @@ func (e *fakeEnricher) Lookup(_ context.Context, ip string) (cfradar.Enrichment,
 func TestCollector_OnlyEmitsNetNew(t *testing.T) {
 	now := time.Now().UTC()
 	ftch := &fakeFetcher{
-		outages: cfradar.OutageResultBody{Annotations: []cfradar.OutageAnnotation{
-			{ID: "out-known", StartDate: now},
-			{ID: "out-new", StartDate: now},
-		}},
+		outages: cfradar.OutageResultBody{
+			Annotations: []cfradar.OutageAnnotation{
+				{ID: "out-known", StartDate: now},
+				{ID: "out-new", StartDate: now},
+			},
+		},
 		hijacks: cfradar.HijackBody{Events: []cfradar.HijackEvent{
 			{ID: 100, DetectedAt: now, StartedAt: now, Confidence: 9},
 			{ID: 200, DetectedAt: now, StartedAt: now, Confidence: 8},
@@ -138,7 +154,10 @@ func TestCollector_OnlyEmitsNetNew(t *testing.T) {
 		State:         noopState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -194,7 +213,10 @@ func TestCollector_EnrichesHijackPayloadWhenEnricherProvided(t *testing.T) {
 		Enricher:      enr,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -219,7 +241,13 @@ func TestCollector_HijackEmitsRawWhenNoEnricher(t *testing.T) {
 	now := time.Now().UTC()
 	ftch := &fakeFetcher{
 		hijacks: cfradar.HijackBody{Events: []cfradar.HijackEvent{
-			{ID: 777, DetectedAt: now, StartedAt: now, Confidence: 9, Prefixes: []string{"198.51.100.0/24"}},
+			{
+				ID:         777,
+				DetectedAt: now,
+				StartedAt:  now,
+				Confidence: 9,
+				Prefixes:   []string{"198.51.100.0/24"},
+			},
 		}},
 	}
 	repo := &fakeRepo{knownHijacks: map[int64]bool{}}
@@ -234,7 +262,10 @@ func TestCollector_HijackEmitsRawWhenNoEnricher(t *testing.T) {
 		State:         noopState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -250,9 +281,11 @@ func TestCollector_HijackEmitsRawWhenNoEnricher(t *testing.T) {
 func TestCollector_RepeatedTickIsIdempotent(t *testing.T) {
 	now := time.Now().UTC()
 	ftch := &fakeFetcher{
-		outages: cfradar.OutageResultBody{Annotations: []cfradar.OutageAnnotation{
-			{ID: "out-x", StartDate: now},
-		}},
+		outages: cfradar.OutageResultBody{
+			Annotations: []cfradar.OutageAnnotation{
+				{ID: "out-x", StartDate: now},
+			},
+		},
 	}
 	emit := &fakeEmitter{}
 
@@ -268,7 +301,10 @@ func TestCollector_RepeatedTickIsIdempotent(t *testing.T) {
 		State:         noopState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		25*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 	known["out-x"] = true
@@ -282,11 +318,19 @@ func TestCollector_RepeatedTickIsIdempotent(t *testing.T) {
 		Emitter:       emit2,
 		State:         noopState{},
 	})
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	ctx2, cancel2 := context.WithTimeout(
+		context.Background(),
+		25*time.Millisecond,
+	)
 	defer cancel2()
 	_ = c2.Run(ctx2)
 
 	for _, ev := range emit2.Events() {
-		require.NotEqual(t, events.TopicInternetOutage, ev.Topic, "should not re-emit known outage")
+		require.NotEqual(
+			t,
+			events.TopicInternetOutage,
+			ev.Topic,
+			"should not re-emit known outage",
+		)
 	}
 }

@@ -21,8 +21,23 @@ type Fetcher interface {
 	FetchAll(ctx context.Context) ([]SnapshotPayload, error)
 }
 
+type DShieldEnrichment struct {
+	Country        string
+	Classification string
+	Actor          string
+}
+
+type Enricher interface {
+	Lookup(ctx context.Context, ip string) (DShieldEnrichment, error)
+}
+
 type Persister interface {
-	PutSnapshot(ctx context.Context, ts time.Time, kind string, payload json.RawMessage) error
+	PutSnapshot(
+		ctx context.Context,
+		ts time.Time,
+		kind string,
+		payload json.RawMessage,
+	) error
 }
 
 type Emitter interface {
@@ -30,8 +45,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -40,6 +55,7 @@ type CollectorConfig struct {
 	Persister Persister
 	Emitter   Emitter
 	State     StateRecorder
+	Enricher  Enricher
 	Logger    *slog.Logger
 }
 
@@ -80,7 +96,7 @@ func (c *Collector) tick(ctx context.Context) {
 	snaps, err := c.cfg.Fetcher.FetchAll(ctx)
 	if err != nil {
 		c.logger.Warn("dshield fetch failed", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
@@ -88,22 +104,31 @@ func (c *Collector) tick(ctx context.Context) {
 	tsRaw, err := json.Marshal(now.Format(time.RFC3339Nano))
 	if err != nil {
 		c.logger.Error("dshield marshal ts", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
 	merged := map[string]json.RawMessage{"ts": tsRaw}
 	for _, s := range snaps {
-		if perr := c.cfg.Persister.PutSnapshot(ctx, now, s.Kind, s.Payload); perr != nil {
+		payload := s.Payload
+		if s.Kind == KindTopIPs {
+			payload = c.enrichSources(ctx, payload)
+		}
+		if perr := c.cfg.Persister.PutSnapshot(
+			ctx,
+			now,
+			s.Kind,
+			payload,
+		); perr != nil {
 			c.logger.Warn("dshield persist failed", "kind", s.Kind, "err", perr)
 		}
-		merged[s.Kind] = s.Payload
+		merged[s.Kind] = payload
 	}
 
 	body, err := json.Marshal(merged)
 	if err != nil {
 		c.logger.Error("dshield marshal merged", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
@@ -113,5 +138,38 @@ func (c *Collector) tick(ctx context.Context) {
 		Source:    Name,
 		Payload:   json.RawMessage(body),
 	})
-	_ = c.cfg.State.RecordSuccess(ctx, Name, 1)
+	c.cfg.State.RecordSuccess(ctx, Name, 1)
+}
+
+func (c *Collector) enrichSources(
+	ctx context.Context,
+	raw json.RawMessage,
+) json.RawMessage {
+	if c.cfg.Enricher == nil {
+		return raw
+	}
+	var srcs []RawSource
+	if err := json.Unmarshal(raw, &srcs); err != nil {
+		return raw
+	}
+	enriched := make([]EnrichedSource, 0, len(srcs))
+	for _, s := range srcs {
+		e := EnrichedSource{
+			Rank:    s.Rank,
+			Source:  s.Source,
+			Reports: s.Reports,
+			Targets: s.Targets,
+		}
+		if info, err := c.cfg.Enricher.Lookup(ctx, s.Source); err == nil {
+			e.Country = info.Country
+			e.Classification = info.Classification
+			e.Actor = info.Actor
+		}
+		enriched = append(enriched, e)
+	}
+	out, err := json.Marshal(enriched)
+	if err != nil {
+		return raw
+	}
+	return out
 }

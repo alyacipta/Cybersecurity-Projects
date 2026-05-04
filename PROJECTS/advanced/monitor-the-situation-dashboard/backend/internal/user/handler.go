@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(
 
 		r.Get("/me", h.GetMe)
 		r.Put("/me", h.UpdateMe)
+		r.Put("/me/email", h.UpdateMyEmail)
 		r.Delete("/me", h.DeleteMe)
 	})
 }
@@ -84,6 +85,54 @@ func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	core.OK(w, ToUserResponse(user))
 }
 
+// UpdateMyEmail changes the authenticated user's email after re-verifying
+// their password.
+func (h *Handler) UpdateMyEmail(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	var req UpdateEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		core.BadRequest(w, "invalid request body")
+		return
+	}
+	if err := h.validator.Struct(req); err != nil {
+		core.BadRequest(w, core.FormatValidationError(err))
+		return
+	}
+
+	user, err := h.service.UpdateEmail(
+		r.Context(),
+		userID,
+		req.CurrentPassword,
+		req.NewEmail,
+	)
+	if err != nil {
+		if errors.Is(err, core.ErrUnauthorized) {
+			core.JSONError(
+				w,
+				core.UnauthorizedError("current password is incorrect"),
+			)
+			return
+		}
+		if errors.Is(err, core.ErrDuplicateKey) {
+			core.JSONError(w, core.DuplicateError("email"))
+			return
+		}
+		if errors.Is(err, core.ErrNotFound) {
+			core.NotFound(w, "user")
+			return
+		}
+		if errors.Is(err, core.ErrInvalidInput) {
+			core.BadRequest(w, err.Error())
+			return
+		}
+		core.InternalServerError(w, err)
+		return
+	}
+
+	core.OK(w, ToUserResponse(user))
+}
+
 func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 
@@ -109,10 +158,9 @@ func (h *Handler) RegisterAdminRoutes(
 		r.Use(adminOnly)
 
 		r.Get("/", h.ListUsers)
+		r.Post("/", h.AdminCreateUser)
 		r.Get("/{userID}", h.GetUser)
-		r.Put("/{userID}", h.UpdateUser)
-		r.Put("/{userID}/role", h.UpdateUserRole)
-		r.Put("/{userID}/tier", h.UpdateUserTier)
+		r.Put("/{userID}", h.AdminUpdateUser)
 		r.Delete("/{userID}", h.DeleteUser)
 	})
 }
@@ -159,11 +207,11 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	core.OK(w, ToUserResponse(user))
 }
 
-// UpdateUser updates a specific user's profile (admin only).
-func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+// AdminUpdateUser updates a specific user — name, role, tier (admin only).
+func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 
-	var req UpdateUserRequest
+	var req AdminUpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		core.BadRequest(w, "invalid request body")
 		return
@@ -174,10 +222,14 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.UpdateUser(r.Context(), userID, req)
+	user, err := h.service.AdminUpdateUser(r.Context(), userID, req)
 	if err != nil {
 		if errors.Is(err, core.ErrNotFound) {
 			core.NotFound(w, "user")
+			return
+		}
+		if errors.Is(err, core.ErrInvalidInput) {
+			core.BadRequest(w, err.Error())
 			return
 		}
 		core.InternalServerError(w, err)
@@ -187,11 +239,9 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	core.OK(w, ToUserResponse(user))
 }
 
-// UpdateUserRole changes a user's role (admin only).
-func (h *Handler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userID")
-
-	var req UpdateUserRoleRequest
+// AdminCreateUser creates a new user (admin only).
+func (h *Handler) AdminCreateUser(w http.ResponseWriter, r *http.Request) {
+	var req AdminCreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		core.BadRequest(w, "invalid request body")
 		return
@@ -202,45 +252,21 @@ func (h *Handler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.UpdateUserRole(r.Context(), userID, req.Role)
+	user, err := h.service.AdminCreateUser(r.Context(), req)
 	if err != nil {
-		if errors.Is(err, core.ErrNotFound) {
-			core.NotFound(w, "user")
+		if errors.Is(err, core.ErrDuplicateKey) {
+			core.JSONError(w, core.DuplicateError("email"))
+			return
+		}
+		if errors.Is(err, core.ErrInvalidInput) {
+			core.BadRequest(w, err.Error())
 			return
 		}
 		core.InternalServerError(w, err)
 		return
 	}
 
-	core.OK(w, ToUserResponse(user))
-}
-
-// UpdateUserTier changes a user's subscription tier (admin only).
-func (h *Handler) UpdateUserTier(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userID")
-
-	var req UpdateUserTierRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		core.BadRequest(w, "invalid request body")
-		return
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		core.BadRequest(w, core.FormatValidationError(err))
-		return
-	}
-
-	user, err := h.service.UpdateUserTier(r.Context(), userID, req.Tier)
-	if err != nil {
-		if errors.Is(err, core.ErrNotFound) {
-			core.NotFound(w, "user")
-			return
-		}
-		core.InternalServerError(w, err)
-		return
-	}
-
-	core.OK(w, ToUserResponse(user))
+	core.Created(w, ToUserResponse(user))
 }
 
 // DeleteUser soft deletes a user account (admin only).
@@ -248,7 +274,11 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	requesterID := middleware.GetUserID(r.Context())
 	targetID := chi.URLParam(r, "userID")
 
-	if err := h.service.CanDeleteUser(r.Context(), requesterID, targetID); err != nil {
+	if err := h.service.CanDeleteUser(
+		r.Context(),
+		requesterID,
+		targetID,
+	); err != nil {
 		if errors.Is(err, core.ErrForbidden) {
 			core.Forbidden(w, "insufficient permissions")
 			return

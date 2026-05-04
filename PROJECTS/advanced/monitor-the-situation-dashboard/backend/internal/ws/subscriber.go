@@ -11,7 +11,11 @@ type subscriber struct {
 	closeSlow func()
 }
 
-func newSubscriber(topics []events.Topic, bufSize int, closeSlow func()) *subscriber {
+func newSubscriber(
+	topics []events.Topic,
+	bufSize int,
+	closeSlow func(),
+) *subscriber {
 	t := make(map[events.Topic]struct{}, len(topics))
 	for _, top := range topics {
 		t[top] = struct{}{}

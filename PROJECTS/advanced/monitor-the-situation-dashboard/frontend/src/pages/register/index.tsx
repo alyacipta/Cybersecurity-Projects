@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { FiArrowLeft } from 'react-icons/fi'
 import { LuEye, LuEyeOff } from 'react-icons/lu'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -35,6 +36,7 @@ export function Component(): React.ReactElement {
 
   const { registerEmail, setRegisterEmail, clearRegisterForm } =
     useAuthFormStore()
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -45,6 +47,7 @@ export function Component(): React.ReactElement {
 
     const result = registerFormSchema.safeParse({
       email: registerEmail,
+      name,
       password,
       confirmPassword,
     })
@@ -56,11 +59,14 @@ export function Component(): React.ReactElement {
     }
 
     register.mutate(
-      { email: result.data.email, password: result.data.password },
+      {
+        email: result.data.email,
+        name: result.data.name,
+        password: result.data.password,
+      },
       {
         onSuccess: () => {
           clearRegisterForm()
-          toast.success('Account created successfully')
           navigate(ROUTES.LOGIN)
         },
       }
@@ -69,6 +75,15 @@ export function Component(): React.ReactElement {
 
   return (
     <div className={styles.page}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => navigate(-1)}
+        aria-label="Go back"
+      >
+        <FiArrowLeft aria-hidden />
+        Back
+      </button>
       <div className={styles.card}>
         <div className={styles.header}>
           <h1 className={styles.title}>Sign up</h1>
@@ -76,6 +91,20 @@ export function Component(): React.ReactElement {
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="name">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              className={styles.input}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+            />
+          </div>
+
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">
               Email

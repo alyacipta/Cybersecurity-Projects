@@ -23,7 +23,6 @@ const SUPPLEMENTARY_CENTROIDS: Record<string, Centroid> = {
   VA: { lat: 41.9029, lng: 12.4534 },
   MV: { lat: 3.2028, lng: 73.2207 },
   BB: { lat: 13.1939, lng: -59.5432 },
-  BS: { lat: 25.0343, lng: -77.3963 },
   BM: { lat: 32.3078, lng: -64.7505 },
   KY: { lat: 19.3133, lng: -81.2546 },
   JM: { lat: 18.1096, lng: -77.2975 },

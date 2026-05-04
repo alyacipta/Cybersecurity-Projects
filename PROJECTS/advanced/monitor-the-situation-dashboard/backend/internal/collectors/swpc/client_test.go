@@ -17,18 +17,20 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/swpc"
 )
 
-func newFakeServer(t *testing.T, route string, fixture string) *httptest.Server {
+func newFakeServer(t *testing.T, route, fixture string) *httptest.Server {
 	t.Helper()
 	body, err := os.ReadFile("testdata/" + fixture)
 	require.NoError(t, err)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.URL.Path, route) {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.Path, route) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}),
+	)
 	t.Cleanup(srv.Close)
 	return srv
 }

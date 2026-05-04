@@ -21,8 +21,22 @@ export function About(): React.ReactElement {
     }
   }, [isOpen])
 
+  function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>): void {
+    if (e.target === dialogRef.current) close()
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDialogElement>): void {
+    if (e.key === 'Escape') close()
+  }
+
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onClose={close}>
+    <dialog
+      ref={dialogRef}
+      className={styles.dialog}
+      onClose={close}
+      onClick={handleBackdropClick}
+      onKeyDown={handleKeyDown}
+    >
       <header className={styles.head}>
         <span className={styles.title}>Monitoring the Situation</span>
         <button

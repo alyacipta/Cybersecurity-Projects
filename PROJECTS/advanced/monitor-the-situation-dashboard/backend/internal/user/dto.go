@@ -17,12 +17,23 @@ type UpdateUserRequest struct {
 	Name *string `json:"name,omitempty" validate:"omitempty,min=1,max=100"`
 }
 
-type UpdateUserRoleRequest struct {
-	Role string `json:"role" validate:"required,oneof=user admin"`
+type UpdateEmailRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewEmail        string `json:"new_email"        validate:"required,email,max=255"`
 }
 
-type UpdateUserTierRequest struct {
-	Tier string `json:"tier" validate:"required,oneof=free pro enterprise"`
+type AdminUpdateUserRequest struct {
+	Name *string `json:"name,omitempty" validate:"omitempty,min=1,max=100"`
+	Role *string `json:"role,omitempty" validate:"omitempty,oneof=user admin"`
+	Tier *string `json:"tier,omitempty" validate:"omitempty,oneof=free pro enterprise"`
+}
+
+type AdminCreateUserRequest struct {
+	Email    string  `json:"email"          validate:"required,email,max=255"`
+	Password string  `json:"password"       validate:"required,min=8,max=128"`
+	Name     string  `json:"name"           validate:"required,min=1,max=100"`
+	Role     *string `json:"role,omitempty" validate:"omitempty,oneof=user admin"`
+	Tier     *string `json:"tier,omitempty" validate:"omitempty,oneof=free pro enterprise"`
 }
 
 type UserResponse struct {

@@ -35,8 +35,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -83,18 +83,18 @@ func (c *Collector) tick(ctx context.Context) {
 	resp, err := c.cfg.Fetcher.Fetch(ctx)
 	if err != nil {
 		c.logger.Warn("wikipedia fetch", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
 	last, found, err := c.cfg.Repo.LastRevID(ctx)
 	if err != nil {
 		c.logger.Warn("wikipedia revid lookup", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 	if found && last == resp.RevID {
-		_ = c.cfg.State.RecordSuccess(ctx, Name, 0)
+		c.cfg.State.RecordSuccess(ctx, Name, 0)
 		return
 	}
 
@@ -129,7 +129,7 @@ func (c *Collector) tick(ctx context.Context) {
 	if err := c.cfg.Repo.RememberRevID(ctx, resp.RevID); err != nil {
 		c.logger.Warn("wikipedia remember revid", "err", err)
 	}
-	_ = c.cfg.State.RecordSuccess(ctx, Name, emitted)
+	c.cfg.State.RecordSuccess(ctx, Name, emitted)
 }
 
 func entryID(e ITNEntry) string {

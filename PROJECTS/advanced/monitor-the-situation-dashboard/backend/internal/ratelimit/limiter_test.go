@@ -52,7 +52,10 @@ func TestLimiter_OpensBreakerOnRepeatedFailures(t *testing.T) {
 	failure := errors.New("upstream broken")
 
 	for i := 0; i < 3; i++ {
-		_, _ = lim.Do(ctx, func(_ context.Context) (string, error) { return "", failure })
+		_, _ = lim.Do(
+			ctx,
+			func(_ context.Context) (string, error) { return "", failure },
+		)
 	}
 
 	called := false
@@ -60,6 +63,10 @@ func TestLimiter_OpensBreakerOnRepeatedFailures(t *testing.T) {
 		called = true
 		return "", nil
 	})
-	require.False(t, called, "should not have called function — breaker should be open")
+	require.False(
+		t,
+		called,
+		"should not have called function — breaker should be open",
+	)
 	require.ErrorIs(t, err, gobreaker.ErrOpenState)
 }

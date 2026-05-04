@@ -23,7 +23,9 @@ type fakeFetcher struct {
 	err   error
 }
 
-func (f *fakeFetcher) FetchAll(_ context.Context) ([]dshield.SnapshotPayload, error) {
+func (f *fakeFetcher) FetchAll(
+	_ context.Context,
+) ([]dshield.SnapshotPayload, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
@@ -32,8 +34,14 @@ func (f *fakeFetcher) FetchAll(_ context.Context) ([]dshield.SnapshotPayload, er
 	}
 	return []dshield.SnapshotPayload{
 		{Kind: dshield.KindTopPorts, Payload: json.RawMessage(`[{"port":22}]`)},
-		{Kind: dshield.KindTopIPs, Payload: json.RawMessage(`[{"ip":"1.2.3.4"}]`)},
-		{Kind: dshield.KindDailySummary, Payload: json.RawMessage(`[{"records":42}]`)},
+		{
+			Kind:    dshield.KindTopIPs,
+			Payload: json.RawMessage(`[{"ip":"1.2.3.4"}]`),
+		},
+		{
+			Kind:    dshield.KindDailySummary,
+			Payload: json.RawMessage(`[{"records":42}]`),
+		},
 	}, nil
 }
 
@@ -53,7 +61,12 @@ type fakePersister struct {
 	rows []persistedRow
 }
 
-func (p *fakePersister) PutSnapshot(_ context.Context, _ time.Time, kind string, body json.RawMessage) error {
+func (p *fakePersister) PutSnapshot(
+	_ context.Context,
+	_ time.Time,
+	kind string,
+	body json.RawMessage,
+) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.rows = append(p.rows, persistedRow{Kind: kind, Body: body})
@@ -95,20 +108,18 @@ type recordingState struct {
 	lastErr   string
 }
 
-func (s *recordingState) RecordSuccess(_ context.Context, _ string, n int64) error {
+func (s *recordingState) RecordSuccess(_ context.Context, _ string, n int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.successes++
 	s.successN += n
-	return nil
 }
 
-func (s *recordingState) RecordError(_ context.Context, _, msg string) error {
+func (s *recordingState) RecordError(_ context.Context, _, msg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures++
 	s.lastErr = msg
-	return nil
 }
 
 func TestCollector_TickPersistsAllAndEmitsScanFirehose(t *testing.T) {
@@ -125,7 +136,10 @@ func TestCollector_TickPersistsAllAndEmitsScanFirehose(t *testing.T) {
 		State:     st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 70*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		70*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -148,7 +162,7 @@ func TestCollector_TickPersistsAllAndEmitsScanFirehose(t *testing.T) {
 		require.Contains(t, merged, "ts")
 	}
 
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 	require.Equal(t, 0, st.failures)
 }
 
@@ -166,12 +180,15 @@ func TestCollector_FetchErrorRecordsState(t *testing.T) {
 		State:     st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
-	require.Equal(t, 0, len(prst.Rows()))
-	require.Equal(t, 0, len(emt.Events()))
-	require.Greater(t, st.failures, 0)
+	require.Empty(t, prst.Rows())
+	require.Empty(t, emt.Events())
+	require.Positive(t, st.failures)
 	require.Contains(t, st.lastErr, "upstream 503")
 }

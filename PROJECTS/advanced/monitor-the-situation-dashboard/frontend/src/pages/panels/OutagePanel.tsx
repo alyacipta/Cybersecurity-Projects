@@ -3,11 +3,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useOutageData } from '@/api/hooks'
-import { Panel } from './Panel'
+import { useFreshness } from '@/stores/freshness'
 import styles from './OutagePanel.module.scss'
+import { Panel } from './Panel'
 
 const OUTAGE_ROW_LIMIT = 6
+const REGIME_CC = 'IR'
 const FLASH_DURATION_MS = 600
+const STALE_AFTER_MS = 1_800_000
 const MS_PER_HOUR = 3_600_000
 const MS_PER_MINUTE = 60_000
 const HOURS_PER_DAY = 24
@@ -38,12 +41,23 @@ export function OutagePanel(): React.ReactElement {
   const recent = items.slice(0, OUTAGE_ROW_LIMIT)
   const now = Date.now()
 
+  const lastTickAt = useFreshness((s) => s.ts.outage)
+  const isStale =
+    items.length === 0
+      ? undefined
+      : lastTickAt !== undefined && Date.now() - lastTickAt > STALE_AFTER_MS
+
   return (
     <Panel
       title="OUTAGES"
       subtitle="CF RADAR"
+      source="cloudflare radar"
+      accent="outage"
       rawHref="https://radar.cloudflare.com/outage-center"
       rawLabel="Cloudflare Radar Outage Center"
+      isStale={isStale}
+      lastTickAt={lastTickAt}
+      batch
     >
       <table className={styles.table}>
         <thead>
@@ -64,7 +78,9 @@ export function OutagePanel(): React.ReactElement {
                   className={styles.info}
                   title={o.reason ?? o.outageType ?? ''}
                 >
-                  {fmtCause(o.reason, o.outageType)}
+                  {isRegime(o.locations)
+                    ? 'Regime 👎'
+                    : fmtCause(o.reason, o.outageType)}
                 </td>
                 <td className={styles.state}>{fmtState(o.endDate)}</td>
                 <td className={styles.ago}>{fmtAgo(o.startDate, now)}</td>
@@ -79,6 +95,10 @@ export function OutagePanel(): React.ReactElement {
 
 OutagePanel.displayName = 'OutagePanel'
 
+function isRegime(locations: string[] | undefined): boolean {
+  return locations?.[0] === REGIME_CC
+}
+
 function fmtCC(locations: string[] | undefined): string {
   if (!locations || locations.length === 0) return '—'
   const first = locations[0] ?? '—'
@@ -90,8 +110,8 @@ function fmtCause(
   reason: string | undefined,
   outageType: string | undefined
 ): string {
-  if (reason && reason.trim()) return reason
-  if (outageType && outageType.trim()) return outageType
+  if (reason?.trim()) return reason
+  if (outageType?.trim()) return outageType
   return '—'
 }
 

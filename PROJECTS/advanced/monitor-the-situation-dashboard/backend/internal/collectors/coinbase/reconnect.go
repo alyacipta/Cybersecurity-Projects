@@ -27,7 +27,12 @@ func PermanentReconnectError(err error) error {
 	return backoff.Permanent(err)
 }
 
-func Reconnect(ctx context.Context, d Dialer, cfg ReconnectConfig, handler ConnHandler) error {
+func Reconnect(
+	ctx context.Context,
+	d Dialer,
+	cfg ReconnectConfig,
+	handler ConnHandler,
+) error {
 	if cfg.InitialInterval <= 0 {
 		cfg.InitialInterval = defaultReconnectInitial
 	}

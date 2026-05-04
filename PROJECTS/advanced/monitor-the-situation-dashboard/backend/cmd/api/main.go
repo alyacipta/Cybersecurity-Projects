@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/admin"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/alerts"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/auth"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/bus"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/collectors/cfradar"
@@ -36,8 +38,11 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/config"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/enrich/abuseipdb"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/enrich/greynoise"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/health"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/intel"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
+	"github.com/carterperez-dev/monitor-the-situation/backend/internal/notifications"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/redisring"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/server"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/snapshot"
@@ -53,7 +58,10 @@ type abuseipdbEnricher struct {
 	client *abuseipdb.Client
 }
 
-func (a abuseipdbEnricher) Lookup(ctx context.Context, ip string) (cfradar.Enrichment, error) {
+func (a abuseipdbEnricher) Lookup(
+	ctx context.Context,
+	ip string,
+) (cfradar.Enrichment, error) {
 	v, err := a.client.Lookup(ctx, ip)
 	if err != nil {
 		return cfradar.Enrichment{}, err
@@ -65,14 +73,60 @@ func (a abuseipdbEnricher) Lookup(ctx context.Context, ip string) (cfradar.Enric
 	}, nil
 }
 
+type compositeDshieldEnricher struct {
+	abuse *abuseipdb.Client
+	gn    *greynoise.Cached
+}
+
+func (c compositeDshieldEnricher) Lookup(
+	ctx context.Context,
+	ip string,
+) (dshield.DShieldEnrichment, error) {
+	out := dshield.DShieldEnrichment{}
+	if c.abuse != nil {
+		if v, err := c.abuse.Lookup(ctx, ip); err == nil {
+			out.Country = v.CountryCode
+		}
+	}
+	if c.gn != nil {
+		if v, err := c.gn.Lookup(ctx, ip); err == nil {
+			out.Classification = v.Classification
+			out.Actor = v.Name
+		}
+	}
+	return out, nil
+}
+
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	healthcheck := flag.Bool(
+		"healthcheck",
+		false,
+		"probe local /healthz and exit 0 if healthy, 1 otherwise",
+	)
 	flag.Parse()
+
+	if *healthcheck {
+		os.Exit(runHealthcheck())
+	}
 
 	if err := run(*configPath); err != nil {
 		slog.Error("application error", "error", err)
 		os.Exit(1)
 	}
+}
+
+func runHealthcheck() int {
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:8080/healthz")
+	if err != nil {
+		return 1
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
 }
 
 //nolint:funlen // bootstrap code is inherently verbose
@@ -128,8 +182,8 @@ func run(configPath string) error {
 		"pool_size", cfg.Redis.PoolSize,
 	)
 
-	if err := ensureJWTKeys(cfg.JWT, logger); err != nil {
-		return err
+	if keyErr := ensureJWTKeys(cfg.JWT, logger); keyErr != nil {
+		return keyErr
 	}
 
 	jwtManager, err := auth.NewJWTManager(cfg.JWT)
@@ -146,8 +200,60 @@ func run(configPath string) error {
 	userHandler := user.NewHandler(userSvc)
 
 	authRepo := auth.NewRepository(db.DB)
-	authSvc := auth.NewService(authRepo, jwtManager, userSvc, redis.Client)
-	authHandler := auth.NewHandler(authSvc)
+	authSvc := auth.NewServiceWithConfig(auth.ServiceConfig{
+		Repo:         authRepo,
+		JWT:          jwtManager,
+		UserProvider: userSvc,
+		Redis:        redis.Client,
+		AdminEmail:   cfg.App.AdminEmail,
+	})
+	authVerifier := auth.NewVerifier(jwtManager, authSvc, userSvc)
+	authHandler := auth.NewHandlerWithConfig(auth.HandlerConfig{
+		Service:          authSvc,
+		TrustedProxyHops: cfg.Server.TrustedProxyHops,
+		SecureCookies:    cfg.IsProduction(),
+	})
+
+	var notifHandler *notifications.Handler
+	var notifBridge *notifications.Bridge
+	if cfg.Notifications.EncryptionKey != "" {
+		enc, encErr := notifications.NewEncryptor(
+			cfg.Notifications.EncryptionKey,
+		)
+		if encErr != nil {
+			logger.Warn(
+				"notifications disabled: invalid encryption key",
+				"error", encErr,
+			)
+		} else {
+			notifRepo := notifications.NewRepository(db.DB)
+			notifSender := notifications.NewSender()
+			notifSvc := notifications.NewService(
+				notifRepo,
+				enc,
+				notifSender,
+				cfg.App.PublicURL,
+				logger.With("service", "notifications"),
+			)
+			notifHandler = notifications.NewHandler(notifSvc)
+			notifBridge = notifications.NewBridge(
+				notifRepo,
+				enc,
+				notifSender,
+				logger.With("service", "alerts"),
+			)
+		}
+	} else {
+		logger.Warn(
+			"notifications disabled: NOTIFICATION_ENCRYPTION_KEY not set",
+		)
+	}
+
+	alertsRepo := alerts.NewRepository(db.DB)
+	authSvc.SetRuleSeeder(func(ctx context.Context, userID string) error {
+		return alertsRepo.SeedDefaults(ctx, userID)
+	})
+	alertsHandler := alerts.NewHandler(alertsRepo)
 
 	healthHandler := health.NewHandler(db, redis)
 
@@ -161,8 +267,28 @@ func run(configPath string) error {
 	snapStore := snapshot.NewStore(redis.Client)
 	snapHandler := snapshot.NewHandler(snapStore)
 
-	hub := ws.NewHub(ws.HubConfig{Logger: logger})
-	wsHandler := ws.NewHandler(hub)
+	cveRepo := cve.NewRepo(db.DB)
+	kevRepo := kev.NewRepo(db.DB)
+	cfradarRepo := cfradar.NewRepo(db.DB)
+	ransomwareRepo := ransomware.NewRepo(db.DB)
+	usgsRepo := usgs.NewRepo(db.DB)
+	intelHandler := intel.NewHandler(intel.HandlerConfig{
+		CVE:        cveRepo,
+		KEV:        kevRepo,
+		CFRadar:    cfradarRepo,
+		Ransomware: ransomwareRepo,
+		USGS:       usgsRepo,
+	})
+
+	hub := ws.NewHub(ws.HubConfig{
+		Logger:         logger,
+		MaxSubscribers: cfg.Server.WSMaxSubscribers,
+	})
+	wsHandler := ws.NewHandlerWithConfig(ws.HandlerConfig{
+		Hub:              hub,
+		MaxConnsPerIP:    cfg.Server.WSMaxConnsPerIP,
+		TrustedProxyHops: cfg.Server.TrustedProxyHops,
+	})
 
 	eventBus := bus.New(bus.Config{
 		BufferSize:  512,
@@ -182,13 +308,66 @@ func run(configPath string) error {
 	collectorGroup.Go(func() error { return eventBus.Run(collectorCtx) })
 	collectorGroup.Go(func() error { return beat.Run(collectorCtx) })
 
+	if notifBridge != nil {
+		alertsEngine, err := alerts.NewEngine(alerts.EngineConfig{
+			Repo:      alertsRepo,
+			Notifier:  notifBridge,
+			Loader:    notifBridge,
+			Cooldowns: alerts.NewRedisCooldown(redis.Client),
+			Logger:    logger.With("component", "alerts.engine"),
+		})
+		if err != nil {
+			return err
+		}
+		dispatcher := alerts.NewDispatcher(
+			eventBus.Subscribe(),
+			alertsEngine,
+			logger.With("component", "alerts.dispatcher"),
+		)
+		collectorGroup.Go(
+			func() error { return alertsEngine.RefreshLoop(collectorCtx) },
+		)
+		collectorGroup.Go(func() error { return dispatcher.Run(collectorCtx) })
+	} else {
+		logger.Info(
+			"alerts engine disabled (notifications module not configured)",
+		)
+	}
+
 	if cfg.Collectors.DShield.Enabled {
+		var dsEnricher dshield.Enricher
+		var abuseClient *abuseipdb.Client
+		var gnCached *greynoise.Cached
+		if cfg.Collectors.AbuseIPDB.Enabled &&
+			cfg.Collectors.AbuseIPDB.APIKey != "" {
+			abuseClient = abuseipdb.NewClient(
+				abuseipdb.ClientConfig{APIKey: cfg.Collectors.AbuseIPDB.APIKey},
+			)
+		}
+		if cfg.Collectors.GreyNoise.Enabled &&
+			cfg.Collectors.GreyNoise.APIKey != "" {
+			gnCached = greynoise.NewCached(
+				greynoise.NewClient(
+					greynoise.ClientConfig{
+						APIKey: cfg.Collectors.GreyNoise.APIKey,
+					},
+				),
+				redis.Client,
+			)
+		}
+		if abuseClient != nil || gnCached != nil {
+			dsEnricher = compositeDshieldEnricher{
+				abuse: abuseClient,
+				gn:    gnCached,
+			}
+		}
 		coll := dshield.NewCollector(dshield.CollectorConfig{
 			Interval:  cfg.Collectors.DShield.Interval,
 			Fetcher:   dshield.NewClient(dshield.ClientConfig{}),
 			Persister: dshield.NewRepo(db.DB),
 			Emitter:   eventBus,
 			State:     collectorState,
+			Enricher:  dsEnricher,
 			Logger:    logger.With("collector", "dshield"),
 		})
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
@@ -196,20 +375,29 @@ func run(configPath string) error {
 
 	if cfg.Collectors.CFRadar.Enabled {
 		var enricher cfradar.Enricher
-		if cfg.Collectors.AbuseIPDB.Enabled && cfg.Collectors.AbuseIPDB.APIKey != "" {
+		if cfg.Collectors.AbuseIPDB.Enabled &&
+			cfg.Collectors.AbuseIPDB.APIKey != "" {
 			enricher = abuseipdbEnricher{
-				client: abuseipdb.NewClient(abuseipdb.ClientConfig{APIKey: cfg.Collectors.AbuseIPDB.APIKey}),
+				client: abuseipdb.NewClient(
+					abuseipdb.ClientConfig{
+						APIKey: cfg.Collectors.AbuseIPDB.APIKey,
+					},
+				),
 			}
 		}
 		coll := cfradar.NewCollector(cfradar.CollectorConfig{
 			Interval:      cfg.Collectors.CFRadar.Interval,
 			MinConfidence: cfg.Collectors.CFRadar.MinConfidence,
-			Fetcher:       cfradar.NewClient(cfradar.ClientConfig{BearerToken: cfg.Collectors.CFRadar.BearerToken}),
-			Repo:          cfradar.NewRepo(db.DB),
-			Emitter:       eventBus,
-			State:         collectorState,
-			Enricher:      enricher,
-			Logger:        logger.With("collector", "cfradar"),
+			Fetcher: cfradar.NewClient(
+				cfradar.ClientConfig{
+					BearerToken: cfg.Collectors.CFRadar.BearerToken,
+				},
+			),
+			Repo:     cfradar.NewRepo(db.DB),
+			Emitter:  eventBus,
+			State:    collectorState,
+			Enricher: enricher,
+			Logger:   logger.With("collector", "cfradar"),
 		})
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
 	}
@@ -218,12 +406,14 @@ func run(configPath string) error {
 		coll := cve.NewCollector(cve.CollectorConfig{
 			Interval: cfg.Collectors.CVE.Interval,
 			Window:   cfg.Collectors.CVE.Window,
-			NVD:      cve.NewNVDClient(cve.NVDClientConfig{APIKey: cfg.Collectors.CVE.NVDAPIKey}),
-			EPSS:     cve.NewEPSSClient(cve.EPSSClientConfig{}),
-			Repo:     cve.NewRepo(db.DB),
-			Emitter:  eventBus,
-			State:    collectorState,
-			Logger:   logger.With("collector", "cve"),
+			NVD: cve.NewNVDClient(
+				cve.NVDClientConfig{APIKey: cfg.Collectors.CVE.NVDAPIKey},
+			),
+			EPSS:    cve.NewEPSSClient(cve.EPSSClientConfig{}),
+			Repo:    cve.NewRepo(db.DB),
+			Emitter: eventBus,
+			State:   collectorState,
+			Logger:  logger.With("collector", "cve"),
 		})
 		collectorGroup.Go(func() error { return coll.Run(collectorCtx) })
 	}
@@ -278,7 +468,10 @@ func run(configPath string) error {
 	}
 
 	if cfg.Collectors.SWPC.Enabled {
-		ring := redisring.New(redis.Client, redisring.Config{Retention: 24 * time.Hour})
+		ring := redisring.New(
+			redis.Client,
+			redisring.Config{Retention: 24 * time.Hour},
+		)
 		coll := swpc.NewCollector(swpc.CollectorConfig{
 			FastInterval: cfg.Collectors.SWPC.FastInterval,
 			SlowInterval: cfg.Collectors.SWPC.SlowInterval,
@@ -355,10 +548,12 @@ func run(configPath string) error {
 	router.Use(middleware.Logger(logger))
 	router.Use(
 		middleware.NewRateLimiter(redis.Client, middleware.RateLimitConfig{
-			Limit: middleware.PerMinute(
+			Limit: middleware.PerWindow(
 				cfg.RateLimit.Requests,
 				cfg.RateLimit.Burst,
+				cfg.RateLimit.Window,
 			),
+			KeyFunc:  middleware.KeyByClientIP(cfg.Server.TrustedProxyHops),
 			FailOpen: true,
 		}).Handler,
 	)
@@ -369,7 +564,7 @@ func run(configPath string) error {
 
 	router.Get("/.well-known/jwks.json", jwtManager.GetJWKSHandler())
 
-	authenticator := middleware.Authenticator(jwtManager)
+	authenticator := middleware.Authenticator(authVerifier)
 	adminOnly := middleware.RequireAdmin
 
 	router.Route("/v1", func(r chi.Router) {
@@ -379,13 +574,20 @@ func run(configPath string) error {
 		r.Get("/snapshot", snapHandler.ServeHTTP)
 		r.Get("/ws", wsHandler.ServeHTTP)
 
-		authHandler.RegisterRoutes(r, authenticator)
+		intelHandler.RegisterRoutes(r)
 
-		r.Post("/users", authHandler.Register)
+		authHandler.RegisterRoutes(r, authenticator)
 
 		userHandler.RegisterRoutes(r, authenticator)
 		userHandler.RegisterAdminRoutes(r, authenticator, adminOnly)
 		adminHandler.RegisterRoutes(r, authenticator, adminOnly)
+
+		if notifHandler != nil {
+			notifHandler.RegisterRoutes(r, authenticator)
+		}
+		if alertsHandler != nil {
+			alertsHandler.RegisterRoutes(r, authenticator)
+		}
 	})
 
 	errChan := make(chan error, 1)

@@ -68,7 +68,12 @@ func (c *Client) FetchAll(ctx context.Context) ([]SnapshotPayload, error) {
 		Kind string
 		Path string
 	}{
-		{KindTopPorts, "/api/topports/records/" + strconv.Itoa(c.topN) + "/" + yesterday + "?json"},
+		{
+			KindTopPorts,
+			"/api/topports/records/" + strconv.Itoa(
+				c.topN,
+			) + "/" + yesterday + "?json",
+		},
 		{KindTopIPs, "/api/topips/?json"},
 		{KindDailySummary, "/api/dailysummary/" + yesterday + "/?json"},
 	}

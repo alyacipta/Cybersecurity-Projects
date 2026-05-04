@@ -105,12 +105,18 @@ func (c *Client) FetchOutages(ctx context.Context) (OutageResultBody, error) {
 		return OutageResultBody{}, fmt.Errorf("fetch outages: %w", err)
 	}
 	if !env.Success {
-		return OutageResultBody{}, fmt.Errorf("radar outages: success=false errors=%v", env.Errors)
+		return OutageResultBody{}, fmt.Errorf(
+			"radar outages: success=false errors=%v",
+			env.Errors,
+		)
 	}
 	return env.Result, nil
 }
 
-func (c *Client) FetchHijacks(ctx context.Context, minConfidence int) (HijackBody, error) {
+func (c *Client) FetchHijacks(
+	ctx context.Context,
+	minConfidence int,
+) (HijackBody, error) {
 	q := url.Values{
 		"dateRange":     []string{defaultDateRange},
 		"minConfidence": []string{strconv.Itoa(minConfidence)},
@@ -120,7 +126,10 @@ func (c *Client) FetchHijacks(ctx context.Context, minConfidence int) (HijackBod
 		return HijackBody{}, fmt.Errorf("fetch hijacks: %w", err)
 	}
 	if !env.Success {
-		return HijackBody{}, fmt.Errorf("radar hijacks: success=false errors=%v", env.Errors)
+		return HijackBody{}, fmt.Errorf(
+			"radar hijacks: success=false errors=%v",
+			env.Errors,
+		)
 	}
 	return env.Result, nil
 }

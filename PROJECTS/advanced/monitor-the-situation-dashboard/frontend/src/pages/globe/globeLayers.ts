@@ -5,30 +5,30 @@ import { useMemo } from 'react'
 import { type GlobePointType, useGlobeEvents } from '@/stores/globeEvents'
 
 const COLOR_BY_TYPE: Record<GlobePointType, string> = {
-  earthquake: '#a3a3a3',
-  ransomware: '#e5e5e5',
-  scan: '#404040',
   iss: '#4ade80',
+  ransomware: '#facc15',
   outage: '#f59e0b',
-  hijack: '#f59e0b',
+  hijack: '#ef4444',
+  scan: '#60a5fa',
+  earthquake: '#a855f7',
 }
 
 const ALTITUDE_BY_TYPE: Record<GlobePointType, number> = {
-  earthquake: 0.01,
-  ransomware: 0.01,
-  scan: 0.005,
-  iss: 0.06,
-  outage: 0.005,
-  hijack: 0.005,
+  iss: 0.08,
+  earthquake: 0.06,
+  hijack: 0.06,
+  ransomware: 0.05,
+  outage: 0.05,
+  scan: 0.04,
 }
 
 const RADIUS_BY_TYPE: Record<GlobePointType, number> = {
-  earthquake: 0.4,
-  ransomware: 0.3,
-  scan: 0.15,
-  iss: 0.5,
-  outage: 0.4,
-  hijack: 0.4,
+  iss: 0.6,
+  earthquake: 0.55,
+  hijack: 0.55,
+  ransomware: 0.5,
+  outage: 0.5,
+  scan: 0.45,
 }
 
 export interface GlobePointDatum {

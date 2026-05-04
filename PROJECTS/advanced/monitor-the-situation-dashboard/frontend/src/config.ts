@@ -7,6 +7,7 @@ const API_VERSION = 'v1'
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: `/${API_VERSION}/auth/login`,
+    REGISTER: `/${API_VERSION}/auth/register`,
     REFRESH: `/${API_VERSION}/auth/refresh`,
     LOGOUT: `/${API_VERSION}/auth/logout`,
     LOGOUT_ALL: `/${API_VERSION}/auth/logout-all`,
@@ -15,9 +16,8 @@ export const API_ENDPOINTS = {
   },
   USERS: {
     BASE: `/${API_VERSION}/users`,
-    BY_ID: (id: string) => `/${API_VERSION}/users/${id}`,
     ME: `/${API_VERSION}/users/me`,
-    REGISTER: `/${API_VERSION}/users`,
+    EMAIL: `/${API_VERSION}/users/me/email`,
   },
   ADMIN: {
     USERS: {
@@ -28,6 +28,23 @@ export const API_ENDPOINTS = {
       DELETE: (id: string) => `/${API_VERSION}/admin/users/${id}`,
     },
   },
+  NOTIFICATIONS: {
+    CHANNELS: `/${API_VERSION}/notifications/channels`,
+    CHANNEL_BY_ID: (id: string) => `/${API_VERSION}/notifications/channels/${id}`,
+    CHANNEL_TEST: (id: string) =>
+      `/${API_VERSION}/notifications/channels/${id}/test`,
+    TELEGRAM: `/${API_VERSION}/notifications/telegram`,
+    TELEGRAM_STATUS: `/${API_VERSION}/notifications/telegram/status`,
+    TELEGRAM_TEST: `/${API_VERSION}/notifications/telegram/test`,
+  },
+  INTEL: {
+    CVES: `/${API_VERSION}/intel/cves`,
+    KEV: `/${API_VERSION}/intel/kev`,
+    HIJACKS: `/${API_VERSION}/intel/hijacks`,
+    OUTAGES: `/${API_VERSION}/intel/outages`,
+    RANSOMWARE: `/${API_VERSION}/intel/ransomware`,
+    QUAKES: `/${API_VERSION}/intel/quakes`,
+  },
 } as const
 
 export const QUERY_KEYS = {
@@ -37,7 +54,6 @@ export const QUERY_KEYS = {
   },
   USERS: {
     ALL: ['users'] as const,
-    BY_ID: (id: string) => [...QUERY_KEYS.USERS.ALL, 'detail', id] as const,
     ME: () => [...QUERY_KEYS.USERS.ALL, 'me'] as const,
   },
   ADMIN: {
@@ -49,6 +65,21 @@ export const QUERY_KEYS = {
       BY_ID: (id: string) =>
         [...QUERY_KEYS.ADMIN.USERS.ALL(), 'detail', id] as const,
     },
+  },
+  NOTIFICATIONS: {
+    ALL: ['notifications'] as const,
+    CHANNELS: () => [...QUERY_KEYS.NOTIFICATIONS.ALL, 'channels'] as const,
+    TELEGRAM_STATUS: () =>
+      [...QUERY_KEYS.NOTIFICATIONS.ALL, 'telegram-status'] as const,
+  },
+  INTEL: {
+    ALL: ['intel'] as const,
+    CVES: () => [...QUERY_KEYS.INTEL.ALL, 'cves'] as const,
+    KEV: () => [...QUERY_KEYS.INTEL.ALL, 'kev'] as const,
+    HIJACKS: () => [...QUERY_KEYS.INTEL.ALL, 'hijacks'] as const,
+    OUTAGES: () => [...QUERY_KEYS.INTEL.ALL, 'outages'] as const,
+    RANSOMWARE: () => [...QUERY_KEYS.INTEL.ALL, 'ransomware'] as const,
+    QUAKES: () => [...QUERY_KEYS.INTEL.ALL, 'quakes'] as const,
   },
 } as const
 

@@ -107,9 +107,30 @@ func TestRepo_RecentByMagOrdered(t *testing.T) {
 
 	now := time.Now().UTC()
 	rows := []usgs.Row{
-		{ID: "small", OccurredAt: now, Mag: 4.5, GeomLon: 0, GeomLat: 0, Payload: json.RawMessage(`{}`)},
-		{ID: "huge", OccurredAt: now, Mag: 7.8, GeomLon: 0, GeomLat: 0, Payload: json.RawMessage(`{}`)},
-		{ID: "mid", OccurredAt: now, Mag: 6.0, GeomLon: 0, GeomLat: 0, Payload: json.RawMessage(`{}`)},
+		{
+			ID:         "small",
+			OccurredAt: now,
+			Mag:        4.5,
+			GeomLon:    0,
+			GeomLat:    0,
+			Payload:    json.RawMessage(`{}`),
+		},
+		{
+			ID:         "huge",
+			OccurredAt: now,
+			Mag:        7.8,
+			GeomLon:    0,
+			GeomLat:    0,
+			Payload:    json.RawMessage(`{}`),
+		},
+		{
+			ID:         "mid",
+			OccurredAt: now,
+			Mag:        6.0,
+			GeomLon:    0,
+			GeomLat:    0,
+			Payload:    json.RawMessage(`{}`),
+		},
 	}
 	for _, r := range rows {
 		require.NoError(t, repo.Upsert(ctx, r))

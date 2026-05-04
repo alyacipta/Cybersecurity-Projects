@@ -5,6 +5,13 @@ import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { SNAPSHOT_KEY, type Snapshot, useSnapshot } from '@/api/snapshot'
 import {
+  type BgpHijack,
+  type CveEvent,
+  type DShieldData,
+  type EarthquakePayload,
+  type GdeltSpike,
+  type InternetOutage,
+  type IssPosition,
   isValidBgpHijack,
   isValidCoinbaseTick,
   isValidCveEvent,
@@ -16,13 +23,6 @@ import {
   isValidKevEntry,
   isValidRansomwareVictim,
   isValidWikiItn,
-  type BgpHijack,
-  type CveEvent,
-  type DShieldData,
-  type EarthquakePayload,
-  type GdeltSpike,
-  type InternetOutage,
-  type IssPosition,
   type KevEntry,
   type RansomwareVictim,
   type WikiItn,
@@ -33,7 +33,9 @@ import { getCentroid } from '@/lib/countryCentroids'
 import { useBgpHijackStore } from '@/stores/bgpHijack'
 import { useCveStore } from '@/stores/cve'
 import { useEarthquakeStore } from '@/stores/earthquake'
+import { type SourceKey, useFreshness } from '@/stores/freshness'
 import { useGlobeEvents } from '@/stores/globeEvents'
+import { useHeartbeat } from '@/stores/heartbeat'
 import { useKevStore } from '@/stores/kev'
 import { useOutageStore } from '@/stores/outage'
 import { usePrices } from '@/stores/prices'
@@ -105,53 +107,108 @@ export function useDashboardLifecycle(): void {
 }
 
 function routeEvent(ev: WSEvent, queryClient: QueryClient): void {
+  if (ev.ch === 'heartbeat') {
+    useHeartbeat.getState().beat()
+    useFreshness.getState().ping('ws')
+    return
+  }
   const data = ev.data
   if (data === undefined || data === null) return
+  dispatchEvent(ev.ch, data, queryClient)
+}
 
-  switch (ev.ch) {
+function dispatchEvent(
+  ch: string,
+  data: unknown,
+  queryClient: QueryClient
+): void {
+  const ping = useFreshness.getState().ping
+  switch (ch) {
     case 'cve_new':
-      if (isValidCveEvent(data)) handleCve(data)
+      if (isValidCveEvent(data)) {
+        handleCve(data)
+        ping('cve')
+      }
       break
     case 'kev_added':
-      if (isValidKevEntry(data)) handleKev(data)
+      if (isValidKevEntry(data)) {
+        handleKev(data)
+        ping('kev')
+      }
       break
     case 'ransomware_victim':
-      if (isValidRansomwareVictim(data)) handleRansomware(data)
+      if (isValidRansomwareVictim(data)) {
+        handleRansomware(data)
+        ping('ransomware')
+      }
       break
     case 'coinbase_price':
-      if (isValidCoinbaseTick(data)) handleCoinbase(data)
+      if (isValidCoinbaseTick(data)) {
+        handleCoinbase(data)
+        pingCoinbaseChannel(data.symbol, ping)
+      }
       break
     case 'earthquake':
-      if (isValidEarthquakePayload(data)) handleEarthquake(data)
+      if (isValidEarthquakePayload(data)) {
+        handleEarthquake(data)
+        ping('quake')
+      }
       break
     case 'iss_position':
-      if (isValidIssPosition(data)) handleIss(data, queryClient)
+      if (isValidIssPosition(data)) {
+        handleIss(data, queryClient)
+        ping('iss')
+      }
       break
     case 'wiki_itn':
-      if (isValidWikiItn(data)) handleWiki(data)
+      if (isValidWikiItn(data)) {
+        handleWiki(data)
+        ping('wiki')
+      }
       break
     case 'gdelt_spike':
       if (isValidGdeltSpike(data)) handleGdelt(data)
       break
     case 'internet_outage':
-      if (isValidInternetOutage(data)) handleOutage(data, queryClient)
+      if (isValidInternetOutage(data)) {
+        handleOutage(data, queryClient)
+        ping('outage')
+      }
       break
     case 'bgp_hijack':
-      if (isValidBgpHijack(data)) handleHijack(data, queryClient)
+      if (isValidBgpHijack(data)) {
+        handleHijack(data, queryClient)
+        ping('bgp')
+      }
       break
     case 'scan_firehose':
-      if (isValidDShieldData(data)) handleScanFirehose(data, queryClient)
+      if (isValidDShieldData(data)) {
+        handleScanFirehose(data, queryClient)
+        ping('dshield')
+      }
       break
     case 'space_weather':
-      mergeIntoSnapshot(queryClient, ev.ch, data)
+      mergeIntoSnapshot(queryClient, ch, data)
+      ping('spacewx')
       break
     default:
       break
   }
 }
 
+function pingCoinbaseChannel(symbol: string, ping: (k: SourceKey) => void): void {
+  if (symbol === 'BTC-USD') ping('btc')
+  else if (symbol === 'ETH-USD') ping('eth')
+}
+
 function handleCve(p: CveEvent): void {
   useCveStore.getState().push(p)
+  useTicker.getState().push({
+    id: `cve-tick-${p.CveID}`,
+    source: 'CVE',
+    headline: `${p.CveID} · ${p.Severity}`,
+    ts: Date.now(),
+  })
 }
 
 function handleKev(p: KevEntry): void {
@@ -161,6 +218,12 @@ function handleKev(p: KevEntry): void {
 function handleRansomware(p: RansomwareVictim): void {
   useRansomwareStore.getState().push(p)
   pushRansomwarePoint(p)
+  useTicker.getState().push({
+    id: `rw-tick-${victimKey(p)}`,
+    source: 'RANSOM',
+    headline: `${p.group_name} · ${p.post_title}`,
+    ts: Date.now(),
+  })
 }
 
 function pushRansomwarePoint(p: RansomwareVictim): void {
@@ -204,6 +267,13 @@ function handleHijack(p: BgpHijack, queryClient: QueryClient): void {
   useBgpHijackStore.getState().push(p)
   pushHijackPoint(p)
   mergeIntoSnapshot(queryClient, 'bgp_hijack', p)
+  const n = p.prefixes?.length ?? 0
+  useTicker.getState().push({
+    id: `bgp-tick-${p.id}`,
+    source: 'BGP',
+    headline: `ASN ${p.hijackerAsn || '?'} · ${n} prefix${n !== 1 ? 'es' : ''} hijacked`,
+    ts: Date.now(),
+  })
 }
 
 function pushHijackPoint(p: BgpHijack): void {
@@ -247,12 +317,35 @@ function pushScanPoints(p: DShieldData): void {
   }
 }
 
-function handleCoinbase(p: { symbol: string; ts: string; price: string; volume_24h?: string }): void {
-  usePrices.getState().pushTick({
+function handleCoinbase(p: {
+  symbol: string
+  ts: string
+  price: string
+  volume_24h?: string
+}): void {
+  const tsMs = new Date(p.ts).getTime()
+  const minute = Math.floor(tsMs / 60_000) * 60_000
+  const prices = usePrices.getState()
+
+  prices.pushTick({
     symbol: p.symbol,
-    ts: new Date(p.ts).getTime(),
+    ts: tsMs,
     price: p.price,
     volume24h: p.volume_24h,
+  })
+
+  const bars = prices.history[p.symbol] ?? []
+  const existing = bars.find((b) => b.minute === minute)
+  const num = Number(p.price)
+
+  prices.pushMinute({
+    symbol: p.symbol,
+    minute,
+    open: existing?.open ?? p.price,
+    high: existing ? String(Math.max(Number(existing.high), num)) : p.price,
+    low: existing ? String(Math.min(Number(existing.low), num)) : p.price,
+    close: p.price,
+    volume: p.volume_24h,
   })
 }
 
@@ -300,6 +393,7 @@ function handleWiki(p: WikiItn): void {
     source: 'Wikipedia',
     headline: p.text,
     ts: Date.now(),
+    href: p.slug ? `https://en.wikipedia.org/wiki/${p.slug}` : undefined,
   })
 }
 
@@ -356,7 +450,15 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
   }
 
   const rw = snap.ransomware_victim
-  if (isValidRansomwareVictim(rw)) pushRansomwarePoint(rw)
+  if (isValidRansomwareVictim(rw)) {
+    pushRansomwarePoint(rw)
+    useTicker.getState().push({
+      id: `rw-tick-${victimKey(rw)}`,
+      source: 'RANSOM',
+      headline: `${rw.group_name} · ${rw.post_title}`,
+      ts: Date.now(),
+    })
+  }
 
   const outage = snap.internet_outage
   if (isValidInternetOutage(outage)) {
@@ -368,8 +470,26 @@ function seedGlobeFromSnapshot(snap: Snapshot): void {
   if (isValidBgpHijack(hijack)) {
     useBgpHijackStore.getState().push(hijack)
     pushHijackPoint(hijack)
+    const n = hijack.prefixes?.length ?? 0
+    useTicker.getState().push({
+      id: `bgp-tick-${hijack.id}`,
+      source: 'BGP',
+      headline: `ASN ${hijack.hijackerAsn || '?'} · ${n} prefix${n !== 1 ? 'es' : ''} hijacked`,
+      ts: Date.now(),
+    })
   }
 
   const scan = snap.scan_firehose
   if (isValidDShieldData(scan)) pushScanPoints(scan)
+
+  const wiki = snap.wiki_itn
+  if (isValidWikiItn(wiki) && wiki.text) {
+    useTicker.getState().push({
+      id: `wiki-${wiki.slug || wiki.text}`,
+      source: 'Wikipedia',
+      headline: wiki.text,
+      ts: Date.now(),
+      href: wiki.slug ? `https://en.wikipedia.org/wiki/${wiki.slug}` : undefined,
+    })
+  }
 }

@@ -2,7 +2,7 @@
 // outage.ts
 
 import { create } from 'zustand'
-import { type InternetOutage } from '@/api/types'
+import type { InternetOutage } from '@/api/types'
 
 interface OutageStore {
   items: InternetOutage[]

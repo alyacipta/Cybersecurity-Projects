@@ -52,13 +52,20 @@ func (r *Repo) Insert(ctx context.Context, row Row) error {
 	return nil
 }
 
-func (r *Repo) KnownIDs(ctx context.Context, ids []string) (map[string]bool, error) {
+func (r *Repo) KnownIDs(
+	ctx context.Context,
+	ids []string,
+) (map[string]bool, error) {
 	if len(ids) == 0 {
 		return map[string]bool{}, nil
 	}
 	var found []string
-	if err := r.db.SelectContext(ctx, &found,
-		`SELECT cve_id FROM kev_entries WHERE cve_id = ANY($1::text[])`, pq.Array(ids)); err != nil {
+	if err := r.db.SelectContext(
+		ctx,
+		&found,
+		`SELECT cve_id FROM kev_entries WHERE cve_id = ANY($1::text[])`,
+		pq.Array(ids),
+	); err != nil {
 		return nil, fmt.Errorf("kev known ids: %w", err)
 	}
 	out := make(map[string]bool, len(found))
@@ -70,8 +77,32 @@ func (r *Repo) KnownIDs(ctx context.Context, ids []string) (map[string]bool, err
 
 func (r *Repo) Count(ctx context.Context) (int64, error) {
 	var n int64
-	if err := r.db.GetContext(ctx, &n, `SELECT count(*) FROM kev_entries`); err != nil {
+	if err := r.db.GetContext(
+		ctx,
+		&n,
+		`SELECT count(*) FROM kev_entries`,
+	); err != nil {
 		return 0, fmt.Errorf("kev count: %w", err)
 	}
 	return n, nil
+}
+
+func (r *Repo) RecentByDateAdded(
+	ctx context.Context,
+	limit int,
+) ([]Row, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var rows []Row
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT cve_id, vendor, product, vulnerability_name, date_added, due_date,
+		       ransomware_use, payload
+		  FROM kev_entries
+		 ORDER BY date_added DESC, cve_id DESC
+		 LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("recent kev: %w", err)
+	}
+	return rows, nil
 }

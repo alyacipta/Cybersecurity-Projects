@@ -171,7 +171,9 @@ func TestClient_DecodeHeartbeatExposesCurrentTime(t *testing.T) {
 		loadFixture(t, "heartbeats.json"),
 	)
 
-	d := coinbase.NewWSDialer(coinbase.DialerConfig{URL: fs.URL(), ProductIDs: []string{"BTC-USD"}})
+	d := coinbase.NewWSDialer(
+		coinbase.DialerConfig{URL: fs.URL(), ProductIDs: []string{"BTC-USD"}},
+	)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 

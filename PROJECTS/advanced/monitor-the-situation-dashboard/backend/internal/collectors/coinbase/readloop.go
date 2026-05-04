@@ -13,7 +13,12 @@ var ErrSequenceGap = errors.New("coinbase: sequence gap detected")
 
 type FrameHandler func(ctx context.Context, f Frame) error
 
-func ReadLoop(ctx context.Context, conn *Conn, seq *Sequencer, handler FrameHandler) error {
+func ReadLoop(
+	ctx context.Context,
+	conn *Conn,
+	seq *Sequencer,
+	handler FrameHandler,
+) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err

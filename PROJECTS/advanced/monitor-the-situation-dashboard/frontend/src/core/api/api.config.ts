@@ -21,6 +21,17 @@ interface RefreshSubscriber {
   reject: (error: Error) => void
 }
 
+interface GoEnvelope {
+  success: boolean
+  data?: unknown
+  meta?: {
+    page: number
+    page_size: number
+    total: number
+    total_pages: number
+  }
+}
+
 const getBaseURL = (): string => {
   return import.meta.env.VITE_API_URL ?? '/api'
 }
@@ -54,9 +65,10 @@ const addRefreshSubscriber = (
 }
 
 const handleTokenRefresh = async (): Promise<string> => {
-  const response = await apiClient.post<{ access_token: string }>(
-    API_ENDPOINTS.AUTH.REFRESH
-  )
+  // Refresh token rides in the HttpOnly cookie set by the backend on login.
+  // axios sends it automatically because the client is configured with
+  // withCredentials: true. We don't read or send it from JS at all.
+  const response = await apiClient.post<unknown>(API_ENDPOINTS.AUTH.REFRESH, {})
 
   if (
     response.data === null ||
@@ -70,7 +82,10 @@ const handleTokenRefresh = async (): Promise<string> => {
     )
   }
 
-  const accessToken = response.data.access_token
+  const payload = response.data as {
+    tokens?: { access_token?: string }
+  }
+  const accessToken = payload.tokens?.access_token
   if (typeof accessToken !== 'string' || accessToken.length === 0) {
     throw new ApiError(
       'Invalid access token',
@@ -86,6 +101,33 @@ const handleAuthFailure = (): void => {
   useAuthStore.getState().logout()
   window.location.href = '/login'
 }
+
+apiClient.interceptors.response.use(
+  (response) => {
+    if (
+      response.status !== 204 &&
+      response.data !== null &&
+      response.data !== undefined &&
+      typeof response.data === 'object' &&
+      'success' in (response.data as object)
+    ) {
+      const envelope = response.data as GoEnvelope
+      if (envelope.meta !== undefined && envelope.meta !== null) {
+        response.data = {
+          items: envelope.data,
+          page: envelope.meta.page,
+          page_size: envelope.meta.page_size,
+          total: envelope.meta.total,
+          total_pages: envelope.meta.total_pages,
+        }
+      } else {
+        response.data = envelope.data
+      }
+    }
+    return response
+  },
+  (error: unknown) => Promise.reject(error)
+)
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
@@ -113,8 +155,21 @@ apiClient.interceptors.response.use(
     const isNotRetried = originalRequest._retry !== true
     const isNotRefreshEndpoint =
       originalRequest.url?.includes(API_ENDPOINTS.AUTH.REFRESH) !== true
+    const hadBearerToken =
+      typeof originalRequest.headers.Authorization === 'string' &&
+      originalRequest.headers.Authorization.startsWith('Bearer ')
+    // Cold-load hydration: persisted isAuthenticated=true but accessToken
+    // is missing (it's not persisted across reloads). The first protected
+    // call has no Bearer header, gets 401, and we should still try a
+    // refresh via the HttpOnly cookie.
+    const persistedAuth = useAuthStore.getState().isAuthenticated
 
-    if (isUnauthorized && isNotRetried && isNotRefreshEndpoint) {
+    if (
+      isUnauthorized &&
+      isNotRetried &&
+      isNotRefreshEndpoint &&
+      (hadBearerToken || persistedAuth)
+    ) {
       if (isRefreshing) {
         return new Promise<unknown>((resolve, reject) => {
           addRefreshSubscriber(

@@ -85,7 +85,12 @@ func New(cfg Config) *Client {
 	}
 }
 
-func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out any) error {
+func (c *Client) GetJSON(
+	ctx context.Context,
+	path string,
+	query url.Values,
+	out any,
+) error {
 	resp, err := c.Get(ctx, path, query)
 	if err != nil {
 		return err
@@ -94,7 +99,11 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-func (c *Client) Get(ctx context.Context, path string, query url.Values) (*http.Response, error) {
+func (c *Client) Get(
+	ctx context.Context,
+	path string,
+	query url.Values,
+) (*http.Response, error) {
 	target, err := c.resolveURL(path, query)
 	if err != nil {
 		return nil, err
@@ -107,9 +116,12 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values) (*http.
 
 	var resp *http.Response
 	op := func() error {
-		r, opErr := c.limiter.Do(ctx, func(rctx context.Context) (*http.Response, error) {
-			return c.do(rctx, target)
-		})
+		r, opErr := c.limiter.Do(
+			ctx,
+			func(rctx context.Context) (*http.Response, error) {
+				return c.do(rctx, target)
+			},
+		)
 		if opErr != nil {
 			return opErr
 		}
@@ -131,7 +143,9 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values) (*http.
 		case r.StatusCode >= 400:
 			body, _ := io.ReadAll(io.LimitReader(r.Body, clientErrorBodyLimit))
 			drainAndClose(r)
-			return backoff.Permanent(&StatusError{Code: r.StatusCode, Body: string(body)})
+			return backoff.Permanent(
+				&StatusError{Code: r.StatusCode, Body: string(body)},
+			)
 		}
 		resp = r
 		return nil
@@ -142,7 +156,10 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values) (*http.
 	return resp, nil
 }
 
-func (c *Client) do(ctx context.Context, target string) (*http.Response, error) {
+func (c *Client) do(
+	ctx context.Context,
+	target string,
+) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, err

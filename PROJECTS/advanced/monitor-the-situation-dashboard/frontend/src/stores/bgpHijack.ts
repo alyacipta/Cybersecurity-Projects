@@ -2,7 +2,7 @@
 // bgpHijack.ts
 
 import { create } from 'zustand'
-import { type BgpHijack } from '@/api/types'
+import type { BgpHijack } from '@/api/types'
 
 interface BgpHijackStore {
   items: BgpHijack[]

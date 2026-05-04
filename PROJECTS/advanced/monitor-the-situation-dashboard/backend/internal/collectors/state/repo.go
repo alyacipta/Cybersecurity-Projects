@@ -5,7 +5,7 @@ package state
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -29,12 +29,26 @@ type Row struct {
 }
 
 type Repo struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	logger *slog.Logger
 }
 
-func NewRepo(db *sqlx.DB) *Repo { return &Repo{db: db} }
+func NewRepo(db *sqlx.DB) *Repo {
+	return &Repo{db: db, logger: slog.Default()}
+}
 
-func (r *Repo) RecordSuccess(ctx context.Context, name string, eventCount int64) error {
+func NewRepoWithLogger(db *sqlx.DB, logger *slog.Logger) *Repo {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Repo{db: db, logger: logger}
+}
+
+func (r *Repo) RecordSuccess(
+	ctx context.Context,
+	name string,
+	eventCount int64,
+) {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO collector_state (name, state, last_success_at, last_event_count, updated_at)
 		VALUES ($1, $2, now(), $3, now())
@@ -46,12 +60,12 @@ func (r *Repo) RecordSuccess(ctx context.Context, name string, eventCount int64)
 		name, StateHealthy, eventCount,
 	)
 	if err != nil {
-		return fmt.Errorf("upsert healthy %s: %w", name, err)
+		r.logger.Warn("collector_state record success failed",
+			"collector", name, "err", err)
 	}
-	return nil
 }
 
-func (r *Repo) RecordError(ctx context.Context, name, errMsg string) error {
+func (r *Repo) RecordError(ctx context.Context, name, errMsg string) {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO collector_state (name, state, last_error_at, last_error, updated_at)
 		VALUES ($1, $2, now(), $3, now())
@@ -63,21 +77,21 @@ func (r *Repo) RecordError(ctx context.Context, name, errMsg string) error {
 		name, StateDegraded, errMsg,
 	)
 	if err != nil {
-		return fmt.Errorf("upsert degraded %s: %w", name, err)
+		r.logger.Warn("collector_state record error failed",
+			"collector", name, "err", err)
 	}
-	return nil
 }
 
-func (r *Repo) Get(ctx context.Context, name string) (Row, error) {
+func (r *Repo) Get(ctx context.Context, name string) (Row, bool, error) {
 	var row Row
 	err := r.db.GetContext(ctx, &row, `
 		SELECT name, state, last_success_at, last_error_at, last_error,
 		       last_event_count, updated_at
 		  FROM collector_state WHERE name = $1`, name)
 	if err != nil {
-		return Row{}, fmt.Errorf("get state %s: %w", name, err)
+		return Row{}, false, err
 	}
-	return row, nil
+	return row, true, nil
 }
 
 func (r *Repo) All(ctx context.Context) ([]Row, error) {
@@ -87,7 +101,7 @@ func (r *Repo) All(ctx context.Context) ([]Row, error) {
 		       last_event_count, updated_at
 		  FROM collector_state ORDER BY name`)
 	if err != nil {
-		return nil, fmt.Errorf("select all collector_state: %w", err)
+		return nil, err
 	}
 	return rows, nil
 }

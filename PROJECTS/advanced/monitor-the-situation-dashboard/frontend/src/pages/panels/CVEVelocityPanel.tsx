@@ -1,9 +1,10 @@
 // ©AngelaMos | 2026
 // CVEVelocityPanel.tsx
 
-import { useEffect, useMemo } from 'react'
-import { useSnapshot } from '@/api/snapshot'
-import { type CveEvent, useCveStore } from '@/stores/cve'
+import { useMemo } from 'react'
+import { useCveData } from '@/api/hooks'
+import type { CveEvent } from '@/api/types'
+import { useFreshness } from '@/stores/freshness'
 import styles from './CVEVelocityPanel.module.scss'
 import { Panel } from './Panel'
 import { KPI } from './shared/KPI'
@@ -11,6 +12,7 @@ import { Sparkline } from './shared/Sparkline'
 
 const RECENT_ROW_LIMIT = 5
 const SPARKLINE_HOURS = 24
+const STALE_AFTER_MS = 900_000
 const SPARKLINE_WIDTH = 280
 const SPARKLINE_HEIGHT = 28
 const MS_PER_HOUR = 3_600_000
@@ -18,38 +20,42 @@ const MS_PER_MINUTE = 60_000
 const HOURS_PER_DAY = 24
 
 export function CVEVelocityPanel(): React.ReactElement {
-  const { data } = useSnapshot()
-  const items = useCveStore((s) => s.items)
-  const push = useCveStore((s) => s.push)
-
-  const seed = data?.cve_new as CveEvent | undefined
-  useEffect(() => {
-    if (seed?.CveID) push(seed)
-  }, [seed, push])
-
-  const now = Date.now()
+  const { items } = useCveData()
+  const nowMinute = Math.floor(Date.now() / MS_PER_MINUTE) * MS_PER_MINUTE
 
   const counts = useMemo(() => {
     return {
-      h1: countWithin(items, 1, now),
-      h6: countWithin(items, 6, now),
-      h24: countWithin(items, SPARKLINE_HOURS, now),
+      h1: countWithin(items, 1, nowMinute),
+      h6: countWithin(items, 6, nowMinute),
+      h24: countWithin(items, SPARKLINE_HOURS, nowMinute),
     }
-  }, [items, now])
+  }, [items, nowMinute])
 
   const hourly = useMemo(
-    () => hourlyBuckets(items, SPARKLINE_HOURS, now),
-    [items, now]
+    () => hourlyBuckets(items, SPARKLINE_HOURS, nowMinute),
+    [items, nowMinute]
   )
 
   const recent = items.slice(0, RECENT_ROW_LIMIT)
+  const now = Date.now()
+
+  const lastTickAt = useFreshness((s) => s.ts.cve)
+  const isStale =
+    items.length === 0
+      ? undefined
+      : lastTickAt !== undefined && Date.now() - lastTickAt > STALE_AFTER_MS
 
   return (
     <Panel
       title="CVE"
       subtitle="VELOCITY + EPSS"
+      source="nvd · first.org"
+      accent="cve"
       rawHref="https://nvd.nist.gov/"
       rawLabel="NVD CVE 2.0"
+      isStale={isStale}
+      lastTickAt={lastTickAt}
+      batch
     >
       <div className={styles.kpis}>
         <KPI label="1H" value={counts.h1} />

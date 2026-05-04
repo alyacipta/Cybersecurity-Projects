@@ -6,6 +6,7 @@ package iss
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -97,21 +98,17 @@ func (c *Client) FetchTLE(ctx context.Context) (TLE, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body := strings.Builder{}
-	buf := make([]byte, 1024)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			body.Write(buf[:n])
-		}
-		if rerr != nil {
-			break
-		}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return TLE{}, fmt.Errorf("read iss tle body: %w", err)
 	}
 
-	lines := strings.Split(strings.TrimSpace(body.String()), "\n")
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
 	if len(lines) < 3 {
-		return TLE{}, fmt.Errorf("iss tle: expected 3 lines, got %d", len(lines))
+		return TLE{}, fmt.Errorf(
+			"iss tle: expected 3 lines, got %d",
+			len(lines),
+		)
 	}
 	return TLE{
 		Line1:     strings.TrimRight(lines[1], " \r"),

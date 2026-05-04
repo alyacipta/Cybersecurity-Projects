@@ -24,7 +24,12 @@ type Repo struct {
 
 func NewRepo(db *sqlx.DB) *Repo { return &Repo{db: db} }
 
-func (r *Repo) PutSnapshot(ctx context.Context, ts time.Time, kind string, payload json.RawMessage) error {
+func (r *Repo) PutSnapshot(
+	ctx context.Context,
+	ts time.Time,
+	kind string,
+	payload json.RawMessage,
+) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO dshield_snapshots (ts, kind, payload)
 		VALUES ($1, $2, $3)
@@ -37,7 +42,11 @@ func (r *Repo) PutSnapshot(ctx context.Context, ts time.Time, kind string, paylo
 	return nil
 }
 
-func (r *Repo) LatestByKind(ctx context.Context, kind string, limit int) ([]Snapshot, error) {
+func (r *Repo) LatestByKind(
+	ctx context.Context,
+	kind string,
+	limit int,
+) ([]Snapshot, error) {
 	var rows []Snapshot
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT ts, kind, payload FROM dshield_snapshots

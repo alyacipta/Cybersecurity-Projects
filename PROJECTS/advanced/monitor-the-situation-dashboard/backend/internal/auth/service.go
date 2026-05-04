@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +41,14 @@ type UserProvider interface {
 	) (*UserInfo, error)
 	IncrementTokenVersion(ctx context.Context, userID string) error
 	UpdatePassword(ctx context.Context, userID, passwordHash string) error
+	SetRole(ctx context.Context, userID, role string) error
 }
+
+// RuleSeeder is called after a fresh user registers, to populate
+// default alert rules. Wired by main.go using alerts.Repo.SeedDefaults.
+// Optional — auth works without it; user just won't get alerts until
+// they create rules manually.
+type RuleSeeder func(ctx context.Context, userID string) error
 
 type Service struct {
 	repo         Repository
@@ -48,6 +56,24 @@ type Service struct {
 	userProvider UserProvider
 	redis        *redis.Client
 	blacklistTTL time.Duration
+	adminEmail   string
+	ruleSeeder   RuleSeeder
+}
+
+// SetRuleSeeder registers a callback fired after Register succeeds.
+// Called from main.go after both auth.Service and alerts.Repo are
+// constructed; resolves the cyclic dependency (auth doesn't import
+// alerts, alerts doesn't import auth).
+func (s *Service) SetRuleSeeder(fn RuleSeeder) {
+	s.ruleSeeder = fn
+}
+
+type ServiceConfig struct {
+	Repo         Repository
+	JWT          *JWTManager
+	UserProvider UserProvider
+	Redis        *redis.Client
+	AdminEmail   string
 }
 
 func NewService(
@@ -56,13 +82,44 @@ func NewService(
 	userProvider UserProvider,
 	redisClient *redis.Client,
 ) *Service {
+	return NewServiceWithConfig(ServiceConfig{
+		Repo:         repo,
+		JWT:          jwt,
+		UserProvider: userProvider,
+		Redis:        redisClient,
+	})
+}
+
+func NewServiceWithConfig(cfg ServiceConfig) *Service {
 	return &Service{
-		repo:         repo,
-		jwt:          jwt,
-		userProvider: userProvider,
-		redis:        redisClient,
+		repo:         cfg.Repo,
+		jwt:          cfg.JWT,
+		userProvider: cfg.UserProvider,
+		redis:        cfg.Redis,
 		blacklistTTL: 15 * time.Minute,
+		adminEmail:   strings.ToLower(strings.TrimSpace(cfg.AdminEmail)),
 	}
+}
+
+// promoteIfAdminEmail flips role to admin when the user's email matches
+// the configured ADMIN_EMAIL. Idempotent — does nothing if already admin
+// or if no admin email is configured. Mutates `user` in place so the
+// returned auth response reflects the new role.
+func (s *Service) promoteIfAdminEmail(ctx context.Context, user *UserInfo) {
+	if s.adminEmail == "" || user == nil {
+		return
+	}
+	if !strings.EqualFold(user.Email, s.adminEmail) {
+		return
+	}
+	if user.Role == "admin" {
+		return
+	}
+	if err := s.userProvider.SetRole(ctx, user.ID, "admin"); err != nil {
+		// Best-effort. Logging is the caller's job.
+		return
+	}
+	user.Role = "admin"
 }
 
 func (s *Service) Login(
@@ -97,6 +154,15 @@ func (s *Service) Login(
 		_ = s.userProvider.UpdatePassword(ctx, user.ID, newHash)
 	}
 
+	s.promoteIfAdminEmail(ctx, user)
+
+	if s.ruleSeeder != nil {
+		// Idempotent. Cheap (one INSERT-WHERE-NOT-EXISTS per default
+		// rule) and gives existing accounts new defaults the moment we
+		// ship them, without needing a one-off migration.
+		_ = s.ruleSeeder(ctx, user.ID)
+	}
+
 	return s.createAuthResponse(ctx, user, userAgent, ipAddress, "", nil)
 }
 
@@ -116,6 +182,14 @@ func (s *Service) Register(
 			return nil, ErrEmailExists
 		}
 		return nil, fmt.Errorf("create user: %w", err)
+	}
+
+	s.promoteIfAdminEmail(ctx, user)
+
+	if s.ruleSeeder != nil {
+		// Best-effort. Don't block registration if seeding fails — the
+		// user can configure rules manually.
+		_ = s.ruleSeeder(ctx, user.ID)
 	}
 
 	return s.createAuthResponse(ctx, user, userAgent, ipAddress, "", nil)
@@ -165,13 +239,25 @@ func (s *Service) Refresh(
 
 func (s *Service) Logout(
 	ctx context.Context,
-	refreshToken, userID string,
+	refreshToken, userID, accessJTI string,
+	accessExpiresAt time.Time,
 ) error {
 	tokenHash := core.HashToken(refreshToken)
 
 	storedToken, err := s.repo.FindByHash(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, core.ErrNotFound) {
+			// Refresh token already gone — still blacklist the access JTI
+			// so the current session can't make authenticated calls.
+			if accessJTI != "" {
+				if revErr := s.RevokeAccessToken(
+					ctx,
+					accessJTI,
+					accessExpiresAt,
+				); revErr != nil {
+					return fmt.Errorf("blacklist access token: %w", revErr)
+				}
+			}
 			return nil
 		}
 		return fmt.Errorf("find token: %w", err)
@@ -184,6 +270,16 @@ func (s *Service) Logout(
 	if err := s.repo.RevokeByID(ctx, storedToken.ID); err != nil &&
 		!errors.Is(err, core.ErrNotFound) {
 		return fmt.Errorf("revoke token: %w", err)
+	}
+
+	if accessJTI != "" {
+		if err := s.RevokeAccessToken(
+			ctx,
+			accessJTI,
+			accessExpiresAt,
+		); err != nil {
+			return fmt.Errorf("blacklist access token: %w", err)
+		}
 	}
 
 	return nil
@@ -372,6 +468,29 @@ func (s *Service) createAuthResponse(
 
 	newTokenID := uuid.New().String()
 
+	// Claim the old token BEFORE inserting the new one. Two concurrent
+	// refresh attempts with the same token race on this UPDATE; only one
+	// flips is_used=false→true. The loser sees ErrNotFound and returns
+	// ErrTokenReuse without ever creating a new refresh row, which keeps
+	// the rotation chain single-use.
+	if oldTokenID != nil {
+		if err := s.repo.MarkAsUsed(ctx, *oldTokenID, newTokenID); err != nil {
+			if errors.Is(err, core.ErrNotFound) {
+				if revErr := s.repo.RevokeByFamilyID(
+					ctx,
+					familyID,
+				); revErr != nil {
+					return nil, fmt.Errorf(
+						"rotate refresh token: revoke family on race-loss: %w",
+						revErr,
+					)
+				}
+				return nil, ErrTokenReuse
+			}
+			return nil, fmt.Errorf("rotate refresh token: %w", err)
+		}
+	}
+
 	refreshTokenEntity := &RefreshToken{
 		ID:        newTokenID,
 		UserID:    user.ID,
@@ -384,11 +503,6 @@ func (s *Service) createAuthResponse(
 
 	if err := s.repo.Create(ctx, refreshTokenEntity); err != nil {
 		return nil, fmt.Errorf("store refresh token: %w", err)
-	}
-
-	if oldTokenID != nil {
-		//nolint:errcheck // best-effort token chain tracking
-		_ = s.repo.MarkAsUsed(ctx, *oldTokenID, newTokenID)
 	}
 
 	return &AuthResponse{

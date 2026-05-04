@@ -31,7 +31,9 @@ type Repo struct {
 func NewRepo(db *sqlx.DB) *Repo { return &Repo{db: db} }
 
 func (r *Repo) Upsert(ctx context.Context, row Row) error {
-	_, err := r.db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(
+		ctx,
+		`
 		INSERT INTO cve_events (cve_id, published, last_modified, severity, cvss_score, payload)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (cve_id) DO UPDATE SET
@@ -39,7 +41,12 @@ func (r *Repo) Upsert(ctx context.Context, row Row) error {
 			severity      = EXCLUDED.severity,
 			cvss_score    = EXCLUDED.cvss_score,
 			payload       = EXCLUDED.payload`,
-		row.CveID, row.Published, row.LastModified, row.Severity, row.CVSS, []byte(row.Payload),
+		row.CveID,
+		row.Published,
+		row.LastModified,
+		row.Severity,
+		row.CVSS,
+		[]byte(row.Payload),
 	)
 	if err != nil {
 		return fmt.Errorf("upsert cve %s: %w", row.CveID, err)
@@ -47,10 +54,17 @@ func (r *Repo) Upsert(ctx context.Context, row Row) error {
 	return nil
 }
 
-func (r *Repo) UpdateEPSS(ctx context.Context, cveID string, score, percentile float64) error {
-	_, err := r.db.ExecContext(ctx,
+func (r *Repo) UpdateEPSS(
+	ctx context.Context,
+	cveID string,
+	score, percentile float64,
+) error {
+	_, err := r.db.ExecContext(
+		ctx,
 		`UPDATE cve_events SET epss_score = $2, epss_percentile = $3 WHERE cve_id = $1`,
-		cveID, score, percentile,
+		cveID,
+		score,
+		percentile,
 	)
 	if err != nil {
 		return fmt.Errorf("update epss %s: %w", cveID, err)
@@ -70,7 +84,10 @@ func (r *Repo) Get(ctx context.Context, cveID string) (Row, error) {
 	return row, nil
 }
 
-func (r *Repo) RecentByLastModified(ctx context.Context, limit int) ([]Row, error) {
+func (r *Repo) RecentByLastModified(
+	ctx context.Context,
+	limit int,
+) ([]Row, error) {
 	var rows []Row
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT cve_id, published, last_modified, severity, cvss_score,

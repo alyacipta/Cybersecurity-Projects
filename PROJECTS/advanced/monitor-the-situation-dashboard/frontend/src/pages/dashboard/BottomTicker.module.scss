@@ -11,19 +11,20 @@
 }
 
 .track {
-  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: inline-flex;
   align-items: center;
-  height: 100%;
-  gap: 24px;
-  padding-left: 100%;
+  gap: 48px;
   white-space: nowrap;
-  animation: ticker-scroll 60s linear infinite;
+  will-change: transform;
+  animation: ticker-right 60s linear infinite;
 }
 
-@keyframes ticker-scroll {
-  to {
-    transform: translateX(-100%);
-  }
+@keyframes ticker-right {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100vw); }
 }
 
 .item {
@@ -32,6 +33,12 @@
   gap: 8px;
   font-size: var(--type-body);
   color: var(--fg-2);
+
+  &::after {
+    content: '·';
+    color: var(--fg-4);
+    margin-left: 8px;
+  }
 }
 
 .source {
@@ -39,6 +46,10 @@
   letter-spacing: var(--letter-spacing-label);
   color: var(--fg-3);
   text-transform: uppercase;
+}
+
+.headline {
+  color: var(--fg-2);
 }
 
 .ts {

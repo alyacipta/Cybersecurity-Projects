@@ -63,7 +63,10 @@ type EPSSResponse struct {
 	Data []EPSSScore `json:"data"`
 }
 
-func (c *EPSSClient) LookupBatch(ctx context.Context, cveIDs []string) (map[string]EPSSScore, error) {
+func (c *EPSSClient) LookupBatch(
+	ctx context.Context,
+	cveIDs []string,
+) (map[string]EPSSScore, error) {
 	out := map[string]EPSSScore{}
 	for i := 0; i < len(cveIDs); i += epssBatchSize {
 		end := i + epssBatchSize

@@ -29,9 +29,7 @@ export type EarthquakeProperties = z.infer<typeof earthquakePropertiesSchema>
 
 export const earthquakePayloadSchema = z.object({
   id: z.string(),
-  geometry: z
-    .object({ coordinates: z.array(z.number()).optional() })
-    .optional(),
+  geometry: z.object({ coordinates: z.array(z.number()).optional() }).optional(),
   properties: earthquakePropertiesSchema.optional(),
 })
 
@@ -50,18 +48,21 @@ export const internetOutageSchema = z.object({
 export type InternetOutage = z.infer<typeof internetOutageSchema>
 
 export const isValidIssPosition = (data: unknown): data is IssPosition => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return issPositionSchema.safeParse(data).success
 }
 
 export const isValidEarthquakePayload = (
   data: unknown
 ): data is EarthquakePayload => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return earthquakePayloadSchema.safeParse(data).success
 }
 
 export const isValidInternetOutage = (data: unknown): data is InternetOutage => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return internetOutageSchema.safeParse(data).success
 }

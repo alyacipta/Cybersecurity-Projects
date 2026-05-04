@@ -51,7 +51,10 @@ func (r *Repo) Upsert(ctx context.Context, row Row) error {
 	return nil
 }
 
-func (r *Repo) KnownIDs(ctx context.Context, ids []string) (map[string]bool, error) {
+func (r *Repo) KnownIDs(
+	ctx context.Context,
+	ids []string,
+) (map[string]bool, error) {
 	out := make(map[string]bool, len(ids))
 	if len(ids) == 0 {
 		return out, nil
@@ -79,6 +82,22 @@ func (r *Repo) RecentByMag(ctx context.Context, limit int) ([]Row, error) {
 		 LIMIT $1`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("recent earthquakes: %w", err)
+	}
+	return rows, nil
+}
+
+func (r *Repo) RecentByTime(ctx context.Context, limit int) ([]Row, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var rows []Row
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT id, occurred_at, mag, place, geom_lon, geom_lat, depth_km, payload
+		  FROM earthquakes
+		 ORDER BY occurred_at DESC
+		 LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("recent earthquakes by time: %w", err)
 	}
 	return rows, nil
 }

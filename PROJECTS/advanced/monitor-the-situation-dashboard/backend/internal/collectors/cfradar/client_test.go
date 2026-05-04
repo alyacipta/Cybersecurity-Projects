@@ -20,21 +20,27 @@ import (
 func newRadarServer(t *testing.T, authHits *atomic.Int32) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/client/v4/radar/annotations/outages", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") == "Bearer test-token" {
-			authHits.Add(1)
-		}
-		body, err := os.ReadFile("testdata/outages.json")
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
-	mux.HandleFunc("/client/v4/radar/bgp/hijacks/events", func(w http.ResponseWriter, _ *http.Request) {
-		body, err := os.ReadFile("testdata/hijacks.json")
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
+	mux.HandleFunc(
+		"/client/v4/radar/annotations/outages",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "Bearer test-token" {
+				authHits.Add(1)
+			}
+			body, err := os.ReadFile("testdata/outages.json")
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		},
+	)
+	mux.HandleFunc(
+		"/client/v4/radar/bgp/hijacks/events",
+		func(w http.ResponseWriter, _ *http.Request) {
+			body, err := os.ReadFile("testdata/hijacks.json")
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		},
+	)
 	return httptest.NewServer(mux)
 }
 
@@ -82,12 +88,20 @@ func TestClient_FetchHijacksDecodes(t *testing.T) {
 }
 
 func TestClient_FetchOutagesFailsOnSuccessFalse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"success":false,"errors":[{"message":"unauthorized"}]}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write(
+				[]byte(
+					`{"success":false,"errors":[{"message":"unauthorized"}]}`,
+				),
+			)
+		}),
+	)
 	defer srv.Close()
 
-	c := cfradar.NewClient(cfradar.ClientConfig{BaseURL: srv.URL, BearerToken: "x"})
+	c := cfradar.NewClient(
+		cfradar.ClientConfig{BaseURL: srv.URL, BearerToken: "x"},
+	)
 	_, err := c.FetchOutages(context.Background())
 	require.Error(t, err)
 }

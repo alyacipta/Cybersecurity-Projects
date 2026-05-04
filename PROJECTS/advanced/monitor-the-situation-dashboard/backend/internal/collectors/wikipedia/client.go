@@ -6,6 +6,7 @@ package wikipedia
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"time"
 
@@ -60,16 +61,9 @@ func (c *Client) Fetch(ctx context.Context) (Response, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body := make([]byte, 0, 32*1024)
-	buf := make([]byte, 4*1024)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			body = append(body, buf[:n]...)
-		}
-		if rerr != nil {
-			break
-		}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Response{}, fmt.Errorf("read wikipedia ITN body: %w", err)
 	}
 	return DecodeResponse(body)
 }

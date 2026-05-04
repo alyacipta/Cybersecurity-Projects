@@ -3,11 +3,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useBgpHijackData } from '@/api/hooks'
-import { Panel } from './Panel'
+import { useFreshness } from '@/stores/freshness'
 import styles from './BGPHijackPanel.module.scss'
+import { Panel } from './Panel'
 
 const HIJACK_ROW_LIMIT = 6
 const FLASH_DURATION_MS = 600
+const STALE_AFTER_MS = 600_000
 const MS_PER_HOUR = 3_600_000
 const MS_PER_MINUTE = 60_000
 const HOURS_PER_DAY = 24
@@ -38,12 +40,23 @@ export function BGPHijackPanel(): React.ReactElement {
   const recent = items.slice(0, HIJACK_ROW_LIMIT)
   const now = Date.now()
 
+  const lastTickAt = useFreshness((s) => s.ts.bgp)
+  const isStale =
+    items.length === 0
+      ? undefined
+      : lastTickAt !== undefined && Date.now() - lastTickAt > STALE_AFTER_MS
+
   return (
     <Panel
       title="BGP"
       subtitle="HIJACKS"
+      source="cloudflare radar"
+      accent="bgp"
       rawHref="https://radar.cloudflare.com/security"
       rawLabel="Cloudflare Radar"
+      isStale={isStale}
+      lastTickAt={lastTickAt}
+      batch
     >
       <table className={styles.table}>
         <thead>

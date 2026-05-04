@@ -46,3 +46,21 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+.tag {
+  padding: var(--row-py) var(--row-px);
+  font-family: var(--font-mono);
+  font-size: var(--type-col);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+
+.tagBenign {
+  color: var(--fg-2);
+}
+
+.tagMalicious {
+  color: var(--amber);
+}

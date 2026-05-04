@@ -39,6 +39,8 @@ func DecodeResponse(body []byte) (Response, error) {
 	return Response{RevID: r.Parse.RevID, HTML: r.Parse.Text.Star}, nil
 }
 
+const minEntryLen = 50
+
 func ParseEntries(html string) []ITNEntry {
 	if strings.TrimSpace(html) == "" {
 		return nil
@@ -50,16 +52,19 @@ func ParseEntries(html string) []ITNEntry {
 	var out []ITNEntry
 	doc.Find("ul li").Each(func(_ int, s *goquery.Selection) {
 		text := strings.TrimSpace(s.Text())
-		if text == "" {
+		if text == "" || len(text) < minEntryLen ||
+			!strings.Contains(text, " ") {
 			return
 		}
-		entry := ITNEntry{Text: text}
-		if href, ok := s.Find("a").First().Attr("href"); ok {
-			if slug := slugFromHref(href); slug != "" {
-				entry.ArticleSlug = slug
-			}
+		href, ok := s.Find("a").First().Attr("href")
+		if !ok {
+			return
 		}
-		out = append(out, entry)
+		slug := slugFromHref(href)
+		if slug == "" {
+			return
+		}
+		out = append(out, ITNEntry{Text: text, ArticleSlug: slug})
 	})
 	return out
 }

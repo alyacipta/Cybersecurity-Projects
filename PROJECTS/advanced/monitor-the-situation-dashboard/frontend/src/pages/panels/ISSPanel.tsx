@@ -1,7 +1,7 @@
 // ©AngelaMos | 2026
 // ISSPanel.tsx
 
-import { useSnapshot } from '@/api/snapshot'
+import { useIssPosition } from '@/api/hooks'
 import styles from './ISSPanel.module.scss'
 import { Panel } from './Panel'
 
@@ -9,18 +9,8 @@ const STALE_AFTER_MS = 30_000
 const COORDS_DECIMALS = 2
 const ALT_DECIMALS = 0
 
-interface IssPositionData {
-  latitude: number
-  longitude: number
-  altitude: number
-  velocity: number
-  timestamp: number
-  fetched_at?: string
-}
-
 export function ISSPanel(): React.ReactElement {
-  const { data } = useSnapshot()
-  const iss = data?.iss_position as IssPositionData | undefined
+  const iss = useIssPosition()
 
   const lastTickAt = iss?.fetched_at
     ? new Date(iss.fetched_at).getTime()
@@ -34,6 +24,8 @@ export function ISSPanel(): React.ReactElement {
     <Panel
       title="ISS"
       subtitle="POSITION"
+      source="wheretheiss.at"
+      accent="iss"
       rawHref="https://wheretheiss.at/"
       rawLabel="wheretheiss.at"
       isStale={isStale}

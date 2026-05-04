@@ -19,7 +19,9 @@ type stubFetcher struct {
 	victims []ransomware.Victim
 }
 
-func (s *stubFetcher) FetchRecent(context.Context) ([]ransomware.Victim, error) {
+func (s *stubFetcher) FetchRecent(
+	context.Context,
+) ([]ransomware.Victim, error) {
 	return s.victims, nil
 }
 
@@ -40,7 +42,10 @@ func (r *stubRansomRepo) Insert(_ context.Context, row ransomware.Row) error {
 	return nil
 }
 
-func (r *stubRansomRepo) KnownIDs(_ context.Context, ids []string) (map[string]bool, error) {
+func (r *stubRansomRepo) KnownIDs(
+	_ context.Context,
+	ids []string,
+) (map[string]bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out := make(map[string]bool)
@@ -81,14 +86,26 @@ func (e *stubRansomEmitter) Events() []events.Event {
 
 type stubRansomState struct{}
 
-func (stubRansomState) RecordSuccess(context.Context, string, int64) error { return nil }
-func (stubRansomState) RecordError(context.Context, string, string) error  { return nil }
+func (stubRansomState) RecordSuccess(context.Context, string, int64) {}
+func (stubRansomState) RecordError(context.Context, string, string)  {}
 
 func TestCollector_OnlyEmitsNewVictims(t *testing.T) {
 	now := time.Now().UTC()
-	known := ransomware.Victim{PostTitle: "Old", GroupName: "lockbit", Discovered: now.Add(-time.Hour)}
-	new1 := ransomware.Victim{PostTitle: "Acme", GroupName: "blackcat", Discovered: now}
-	new2 := ransomware.Victim{PostTitle: "Banco", GroupName: "play", Discovered: now}
+	known := ransomware.Victim{
+		PostTitle:  "Old",
+		GroupName:  "lockbit",
+		Discovered: now.Add(-time.Hour),
+	}
+	new1 := ransomware.Victim{
+		PostTitle:  "Acme",
+		GroupName:  "blackcat",
+		Discovered: now,
+	}
+	new2 := ransomware.Victim{
+		PostTitle:  "Banco",
+		GroupName:  "play",
+		Discovered: now,
+	}
 
 	ftch := &stubFetcher{victims: []ransomware.Victim{known, new1, new2}}
 	repo := &stubRansomRepo{known: map[string]bool{known.ID(): true}}
@@ -102,7 +119,10 @@ func TestCollector_OnlyEmitsNewVictims(t *testing.T) {
 		State:    stubRansomState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 

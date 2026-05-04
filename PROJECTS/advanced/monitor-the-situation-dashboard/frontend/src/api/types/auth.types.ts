@@ -16,26 +16,29 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime().nullable(),
   email: z.string().email(),
-  full_name: z.string().nullable(),
-  is_active: z.boolean(),
-  is_verified: z.boolean(),
+  name: z.string(),
   role: z.nativeEnum(UserRole),
+  tier: z.string(),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime().optional(),
 })
 
 export const tokenResponseSchema = z.object({
   access_token: z.string(),
+  refresh_token: z.string(),
   token_type: z.string(),
+  expires_in: z.number(),
+  expires_at: z.string().datetime(),
 })
 
-export const tokenWithUserResponseSchema = tokenResponseSchema.extend({
+export const tokenWithUserResponseSchema = z.object({
   user: userResponseSchema,
+  tokens: tokenResponseSchema,
 })
 
 export const loginRequestSchema = z.object({
-  username: z.string().email(),
+  email: z.string().email(),
   password: z
     .string()
     .min(PASSWORD_CONSTRAINTS.MIN_LENGTH)
@@ -74,17 +77,13 @@ export type LogoutAllResponse = z.infer<typeof logoutAllResponseSchema>
 export const isValidUserResponse = (data: unknown): data is UserResponse => {
   if (data === null || data === undefined) return false
   if (typeof data !== 'object') return false
-
-  const result = userResponseSchema.safeParse(data)
-  return result.success
+  return userResponseSchema.safeParse(data).success
 }
 
 export const isValidTokenResponse = (data: unknown): data is TokenResponse => {
   if (data === null || data === undefined) return false
   if (typeof data !== 'object') return false
-
-  const result = tokenResponseSchema.safeParse(data)
-  return result.success
+  return tokenResponseSchema.safeParse(data).success
 }
 
 export const isValidTokenWithUserResponse = (
@@ -92,9 +91,7 @@ export const isValidTokenWithUserResponse = (
 ): data is TokenWithUserResponse => {
   if (data === null || data === undefined) return false
   if (typeof data !== 'object') return false
-
-  const result = tokenWithUserResponseSchema.safeParse(data)
-  return result.success
+  return tokenWithUserResponseSchema.safeParse(data).success
 }
 
 export const isValidLogoutAllResponse = (
@@ -102,9 +99,7 @@ export const isValidLogoutAllResponse = (
 ): data is LogoutAllResponse => {
   if (data === null || data === undefined) return false
   if (typeof data !== 'object') return false
-
-  const result = logoutAllResponseSchema.safeParse(data)
-  return result.success
+  return logoutAllResponseSchema.safeParse(data).success
 }
 
 export class AuthResponseError extends Error {

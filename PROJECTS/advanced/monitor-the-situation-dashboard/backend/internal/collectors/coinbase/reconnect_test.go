@@ -31,7 +31,10 @@ func (d *stubDialer) Dial(_ context.Context) (*coinbase.Conn, error) {
 func TestReconnect_StopsOnContextCancel(t *testing.T) {
 	d := &stubDialer{failsBeforeOK: 0}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		80*time.Millisecond,
+	)
 	defer cancel()
 
 	calls := atomic.Int32{}
@@ -42,13 +45,25 @@ func TestReconnect_StopsOnContextCancel(t *testing.T) {
 		calls.Add(1)
 		return errors.New("upstream closed")
 	})
-	require.True(t, errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled))
-	require.Greater(t, calls.Load(), int32(1), "callback should fire multiple times before ctx expires")
+	require.True(
+		t,
+		errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, context.Canceled),
+	)
+	require.Greater(
+		t,
+		calls.Load(),
+		int32(1),
+		"callback should fire multiple times before ctx expires",
+	)
 }
 
 func TestReconnect_TransientDialFailureBacksOffThenSucceeds(t *testing.T) {
 	d := &stubDialer{failsBeforeOK: 3}
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		500*time.Millisecond,
+	)
 	defer cancel()
 
 	cbInvocations := atomic.Int32{}
@@ -59,8 +74,17 @@ func TestReconnect_TransientDialFailureBacksOffThenSucceeds(t *testing.T) {
 		cbInvocations.Add(1)
 		return errors.New("force loop")
 	})
-	require.True(t, errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled))
-	require.GreaterOrEqual(t, d.called.Load(), int32(4), "must dial at least 4 times (3 failures + 1 success)")
+	require.True(
+		t,
+		errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, context.Canceled),
+	)
+	require.GreaterOrEqual(
+		t,
+		d.called.Load(),
+		int32(4),
+		"must dial at least 4 times (3 failures + 1 success)",
+	)
 	require.GreaterOrEqual(t, cbInvocations.Load(), int32(1))
 }
 
@@ -68,7 +92,10 @@ func TestReconnect_PermanentErrorFromCallbackPropagates(t *testing.T) {
 	d := &stubDialer{failsBeforeOK: 0}
 	sentinel := errors.New("hard stop")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		200*time.Millisecond,
+	)
 	defer cancel()
 
 	err := coinbase.Reconnect(ctx, d, coinbase.ReconnectConfig{

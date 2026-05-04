@@ -16,12 +16,14 @@ import (
 )
 
 func TestKEVClient_FetchCatalogDecodes(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		body, err := os.ReadFile("testdata/kev_catalog.json")
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			body, err := os.ReadFile("testdata/kev_catalog.json")
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}),
+	)
 	defer srv.Close()
 
 	c := kev.NewClient(kev.ClientConfig{URL: srv.URL})
@@ -32,9 +34,11 @@ func TestKEVClient_FetchCatalogDecodes(t *testing.T) {
 }
 
 func TestKEVClient_RejectsServerError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}),
+	)
 	defer srv.Close()
 
 	c := kev.NewClient(kev.ClientConfig{URL: srv.URL})

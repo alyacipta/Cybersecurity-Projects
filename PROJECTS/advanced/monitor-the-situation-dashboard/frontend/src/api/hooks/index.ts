@@ -4,8 +4,8 @@
 // ===================
 
 export * from './useAdmin'
+export * from './useAlerts'
 export * from './useAuth'
-export * from './useUsers'
 export * from './useBgpHijackData'
 export * from './useCoinbasePrices'
 export * from './useCveData'
@@ -16,3 +16,4 @@ export * from './useKevData'
 export * from './useOutageData'
 export * from './useRansomwareData'
 export * from './useSpaceWeather'
+export * from './useUsers'

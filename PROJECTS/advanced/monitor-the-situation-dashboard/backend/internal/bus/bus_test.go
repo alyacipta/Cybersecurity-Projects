@@ -95,5 +95,5 @@ func TestBus_DropOnFullBuffer(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		b.Emit(events.Event{Topic: events.TopicHeartbeat, Source: "stress"})
 	}
-	require.Greater(t, b.DroppedCount(), uint64(0))
+	require.Positive(t, b.DroppedCount())
 }

@@ -32,7 +32,12 @@ func New(rc *redis.Client, cfg Config) *Client {
 	return &Client{rc: rc, retention: cfg.Retention}
 }
 
-func (c *Client) Push(ctx context.Context, key string, score int64, payload []byte) error {
+func (c *Client) Push(
+	ctx context.Context,
+	key string,
+	score int64,
+	payload []byte,
+) error {
 	cutoff := time.UnixMilli(score).Add(-c.retention).UnixMilli()
 	pipe := c.rc.Pipeline()
 	pipe.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: payload})
@@ -43,7 +48,11 @@ func (c *Client) Push(ctx context.Context, key string, score int64, payload []by
 	return nil
 }
 
-func (c *Client) Recent(ctx context.Context, key string, n int) ([][]byte, error) {
+func (c *Client) Recent(
+	ctx context.Context,
+	key string,
+	n int,
+) ([][]byte, error) {
 	if n <= 0 {
 		return nil, nil
 	}
@@ -63,7 +72,11 @@ func (c *Client) Recent(ctx context.Context, key string, n int) ([][]byte, error
 	return out, nil
 }
 
-func (c *Client) Range(ctx context.Context, key string, fromScore, toScore int64) ([][]byte, error) {
+func (c *Client) Range(
+	ctx context.Context,
+	key string,
+	fromScore, toScore int64,
+) ([][]byte, error) {
 	res, err := c.rc.ZRangeByScore(ctx, key, &redis.ZRangeBy{
 		Min: strconv.FormatInt(fromScore, 10),
 		Max: strconv.FormatInt(toScore, 10),

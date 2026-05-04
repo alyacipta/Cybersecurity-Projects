@@ -10,10 +10,9 @@ export interface WSDriver {
 }
 
 export interface WSEvent {
-  topic: string
-  source?: string
-  timestamp?: string
-  payload?: unknown
+  ch: string
+  data?: unknown
+  ts?: string
 }
 
 export interface BackoffConfig {
@@ -39,32 +38,41 @@ interface DashboardWS {
   disconnect: () => void
 }
 
+const INIT_OP = '{"op":"init"}'
+
 export function createDashboardWS(opts: CreateDashboardWSOpts): DashboardWS {
   const backoff = opts.backoff ?? DEFAULT_BACKOFF
   const onEvent = opts.onEvent ?? (() => undefined)
 
   let driver: WSDriver | null = null
   let ready = false
+  let opened = false
   let closed = false
   let buffer: WSEvent[] = []
   let nextDelay = backoff.initialMs
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
+  function sendInitIfReady() {
+    if (ready && opened && driver) {
+      driver.send(INIT_OP)
+    }
+  }
+
   function attach() {
     if (closed) return
     const d = opts.driver()
     driver = d
+    opened = false
     d.onOpen = () => {
-      // reset backoff on a successful open; init is sent only after setReady()
       nextDelay = backoff.initialMs
-      if (ready) sendInit()
+      opened = true
+      sendInitIfReady()
     }
     d.onMessage = (data) => {
       let parsed: WSEvent
       try {
         parsed = JSON.parse(data) as WSEvent
       } catch {
-        console.warn('coinbase ws: malformed frame', data)
         return
       }
       if (ready) {
@@ -75,15 +83,12 @@ export function createDashboardWS(opts: CreateDashboardWSOpts): DashboardWS {
     }
     d.onClose = () => {
       driver = null
+      opened = false
       if (closed) return
       const delay = nextDelay
       nextDelay = Math.min(nextDelay * 2, backoff.maxMs)
       reconnectTimer = setTimeout(attach, delay)
     }
-  }
-
-  function sendInit() {
-    driver?.send(JSON.stringify({ op: 'init' }))
   }
 
   return {
@@ -92,14 +97,15 @@ export function createDashboardWS(opts: CreateDashboardWSOpts): DashboardWS {
     },
     setReady() {
       ready = true
+      sendInitIfReady()
       const flush = buffer
       buffer = []
       for (const ev of flush) onEvent(ev)
-      sendInit()
     },
     disconnect() {
       closed = true
       ready = false
+      opened = false
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
         reconnectTimer = null

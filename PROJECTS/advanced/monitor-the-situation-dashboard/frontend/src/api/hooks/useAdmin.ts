@@ -44,7 +44,7 @@ const fetchAdminUsers = async (
   size: number
 ): Promise<UserListResponse> => {
   const response = await apiClient.get<unknown>(API_ENDPOINTS.ADMIN.USERS.LIST, {
-    params: { page, size },
+    params: { page, page_size: size },
   })
   const data: unknown = response.data
 
@@ -147,7 +147,7 @@ interface AdminUpdateUserParams {
 const performAdminUpdateUser = async (
   params: AdminUpdateUserParams
 ): Promise<UserResponse> => {
-  const response = await apiClient.patch<unknown>(
+  const response = await apiClient.put<unknown>(
     API_ENDPOINTS.ADMIN.USERS.UPDATE(params.id),
     params.data
   )

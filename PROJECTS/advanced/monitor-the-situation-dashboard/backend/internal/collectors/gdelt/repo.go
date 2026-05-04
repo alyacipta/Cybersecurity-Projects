@@ -5,7 +5,9 @@ package gdelt
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,15 +32,27 @@ type Repo struct {
 
 func NewRepo(db *sqlx.DB) *Repo { return &Repo{db: db} }
 
-func (r *Repo) Insert(ctx context.Context, row SpikeRow) error {
-	_, err := r.db.ExecContext(ctx, `
+func (r *Repo) Insert(ctx context.Context, row SpikeRow) (bool, error) {
+	var id string
+	err := r.db.GetContext(
+		ctx,
+		&id,
+		`
 		INSERT INTO world_events (id, source, occurred_at, headline, payload)
 		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (id) DO NOTHING`,
-		row.ID, sourceGDELTSpike, row.OccurredAt, row.Headline, []byte(row.Payload),
+		ON CONFLICT (id) DO NOTHING
+		RETURNING id`,
+		row.ID,
+		sourceGDELTSpike,
+		row.OccurredAt,
+		row.Headline,
+		[]byte(row.Payload),
 	)
-	if err != nil {
-		return fmt.Errorf("insert gdelt spike %s: %w", row.ID, err)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
 	}
-	return nil
+	if err != nil {
+		return false, fmt.Errorf("insert gdelt spike %s: %w", row.ID, err)
+	}
+	return true, nil
 }

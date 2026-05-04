@@ -13,19 +13,23 @@ func NewAggregator() *Aggregator {
 	return &Aggregator{open: make(map[string]MinuteBar)}
 }
 
+// Push folds a tick into the open minute bar for its symbol. Volume24h
+// from the latest tick within the minute wins — the column on
+// MinuteBar is documented as "24h volume sampled at close of minute",
+// not as per-minute volume. Per-trade size isn't on the ticker channel.
 func (a *Aggregator) Push(t Tick) (*MinuteBar, MinuteBar) {
 	minute := t.TS.UTC().Truncate(time.Minute)
 	cur, exists := a.open[t.Symbol]
 
 	if !exists {
 		cur = MinuteBar{
-			Symbol: t.Symbol,
-			Minute: minute,
-			Open:   t.Price,
-			High:   t.Price,
-			Low:    t.Price,
-			Close:  t.Price,
-			Volume: t.Volume24h,
+			Symbol:           t.Symbol,
+			Minute:           minute,
+			Open:             t.Price,
+			High:             t.Price,
+			Low:              t.Price,
+			Close:            t.Price,
+			Volume24hAtClose: t.Volume24h,
 		}
 		a.open[t.Symbol] = cur
 		return nil, cur
@@ -34,13 +38,13 @@ func (a *Aggregator) Push(t Tick) (*MinuteBar, MinuteBar) {
 	if minute.After(cur.Minute) {
 		closed := cur
 		cur = MinuteBar{
-			Symbol: t.Symbol,
-			Minute: minute,
-			Open:   t.Price,
-			High:   t.Price,
-			Low:    t.Price,
-			Close:  t.Price,
-			Volume: t.Volume24h,
+			Symbol:           t.Symbol,
+			Minute:           minute,
+			Open:             t.Price,
+			High:             t.Price,
+			Low:              t.Price,
+			Close:            t.Price,
+			Volume24hAtClose: t.Volume24h,
 		}
 		a.open[t.Symbol] = cur
 		return &closed, cur
@@ -53,9 +57,7 @@ func (a *Aggregator) Push(t Tick) (*MinuteBar, MinuteBar) {
 		cur.Low = t.Price
 	}
 	cur.Close = t.Price
-	if t.Volume24h.GreaterThan(cur.Volume) {
-		cur.Volume = t.Volume24h
-	}
+	cur.Volume24hAtClose = t.Volume24h
 	a.open[t.Symbol] = cur
 	return nil, cur
 }

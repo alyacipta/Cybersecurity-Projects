@@ -23,14 +23,18 @@ type Tick struct {
 	Volume24h decimal.Decimal `db:"volume_24h"`
 }
 
+// MinuteBar holds a per-minute OHLC for a symbol plus the rolling 24h
+// volume sampled at the minute's close. The Coinbase ticker channel only
+// publishes 24h volume, not per-trade size, so true per-minute volume
+// would require the market_trades channel — out of scope here.
 type MinuteBar struct {
-	Symbol string          `db:"symbol"`
-	Minute time.Time       `db:"minute"`
-	Open   decimal.Decimal `db:"open"`
-	High   decimal.Decimal `db:"high"`
-	Low    decimal.Decimal `db:"low"`
-	Close  decimal.Decimal `db:"close"`
-	Volume decimal.Decimal `db:"volume"`
+	Symbol           string          `db:"symbol"`
+	Minute           time.Time       `db:"minute"`
+	Open             decimal.Decimal `db:"open"`
+	High             decimal.Decimal `db:"high"`
+	Low              decimal.Decimal `db:"low"`
+	Close            decimal.Decimal `db:"close"`
+	Volume24hAtClose decimal.Decimal `db:"volume_24h_at_close"`
 }
 
 type Repo struct {
@@ -54,15 +58,15 @@ func (r *Repo) InsertTick(ctx context.Context, t Tick) error {
 
 func (r *Repo) UpsertMinute(ctx context.Context, b MinuteBar) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO btc_eth_minute (symbol, minute, open, high, low, close, volume)
+		INSERT INTO btc_eth_minute (symbol, minute, open, high, low, close, volume_24h_at_close)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (symbol, minute) DO UPDATE SET
-			open   = EXCLUDED.open,
-			high   = EXCLUDED.high,
-			low    = EXCLUDED.low,
-			close  = EXCLUDED.close,
-			volume = EXCLUDED.volume`,
-		b.Symbol, b.Minute, b.Open, b.High, b.Low, b.Close, b.Volume,
+			open                = EXCLUDED.open,
+			high                = EXCLUDED.high,
+			low                 = EXCLUDED.low,
+			close               = EXCLUDED.close,
+			volume_24h_at_close = EXCLUDED.volume_24h_at_close`,
+		b.Symbol, b.Minute, b.Open, b.High, b.Low, b.Close, b.Volume24hAtClose,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert minute %s @ %s: %w", b.Symbol, b.Minute, err)
@@ -83,10 +87,13 @@ func (r *Repo) LatestTick(ctx context.Context, symbol string) (Tick, error) {
 	return t, nil
 }
 
-func (r *Repo) History1h(ctx context.Context, symbol string) ([]MinuteBar, error) {
+func (r *Repo) History1h(
+	ctx context.Context,
+	symbol string,
+) ([]MinuteBar, error) {
 	var rows []MinuteBar
 	err := r.db.SelectContext(ctx, &rows, `
-		SELECT symbol, minute, open, high, low, close, volume
+		SELECT symbol, minute, open, high, low, close, volume_24h_at_close
 		  FROM btc_eth_minute
 		 WHERE symbol = $1
 		 ORDER BY minute DESC LIMIT $2`, symbol, history1hLimit,

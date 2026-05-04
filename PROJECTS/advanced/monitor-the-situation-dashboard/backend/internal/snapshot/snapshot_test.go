@@ -42,8 +42,22 @@ func TestStore_PutLatestAndGetAll(t *testing.T) {
 	store := snapshot.NewStore(rdb)
 
 	ctx := context.Background()
-	require.NoError(t, store.PutLatest(ctx, events.TopicHeartbeat, json.RawMessage(`{"ts":"2026-05-01T00:00:00Z"}`)))
-	require.NoError(t, store.PutLatest(ctx, events.TopicCVENew, json.RawMessage(`{"id":"CVE-2026-9999"}`)))
+	require.NoError(
+		t,
+		store.PutLatest(
+			ctx,
+			events.TopicHeartbeat,
+			json.RawMessage(`{"ts":"2026-05-01T00:00:00Z"}`),
+		),
+	)
+	require.NoError(
+		t,
+		store.PutLatest(
+			ctx,
+			events.TopicCVENew,
+			json.RawMessage(`{"id":"CVE-2026-9999"}`),
+		),
+	)
 
 	all, err := store.GetAll(ctx)
 	require.NoError(t, err)

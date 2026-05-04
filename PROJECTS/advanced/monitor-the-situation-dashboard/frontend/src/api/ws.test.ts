@@ -1,7 +1,7 @@
 // ©AngelaMos | 2026
 // ws.test.ts
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createDashboardWS, type WSDriver } from './ws'
 
 class FakeDriver implements WSDriver {

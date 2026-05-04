@@ -12,10 +12,10 @@
   background: var(--ok);
 }
 
-.stale {
+.batch {
   background: var(--amber);
 }
 
-.unknown {
-  background: var(--fg-4);
+.stale {
+  background: var(--fg-3);
 }

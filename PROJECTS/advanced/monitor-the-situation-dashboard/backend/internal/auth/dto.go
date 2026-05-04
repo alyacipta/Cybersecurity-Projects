@@ -19,7 +19,7 @@ type RegisterRequest struct {
 }
 
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type TokenResponse struct {

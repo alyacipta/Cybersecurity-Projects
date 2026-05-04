@@ -59,7 +59,12 @@ type Victim struct {
 }
 
 func (v Victim) ID() string {
-	h := sha256.Sum256([]byte(v.PostTitle + "|" + v.GroupName + "|" + v.Discovered.UTC().Format(time.RFC3339)))
+	h := sha256.Sum256(
+		[]byte(
+			v.PostTitle + "|" + v.GroupName + "|" + v.Discovered.UTC().
+				Format(time.RFC3339),
+		),
+	)
 	return hex.EncodeToString(h[:idHashBytes])
 }
 

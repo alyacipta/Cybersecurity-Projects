@@ -26,14 +26,28 @@ type fakeFetcher struct {
 	err    error
 }
 
-func (f *fakeFetcher) FetchPlasma(_ context.Context) ([]swpc.PlasmaTick, error) {
+func (f *fakeFetcher) FetchPlasma(
+	_ context.Context,
+) ([]swpc.PlasmaTick, error) {
 	return f.plasma, f.err
 }
-func (f *fakeFetcher) FetchMag(_ context.Context) ([]swpc.MagTick, error) { return f.mag, f.err }
-func (f *fakeFetcher) FetchKp(_ context.Context) ([]swpc.KpTick, error)   { return f.kp, f.err }
+
+func (f *fakeFetcher) FetchMag(
+	_ context.Context,
+) ([]swpc.MagTick, error) {
+	return f.mag, f.err
+}
+
+func (f *fakeFetcher) FetchKp(
+	_ context.Context,
+) ([]swpc.KpTick, error) {
+	return f.kp, f.err
+}
+
 func (f *fakeFetcher) FetchXray(_ context.Context) ([]swpc.XrayTick, error) {
 	return f.xray, f.err
 }
+
 func (f *fakeFetcher) FetchAlerts(_ context.Context) ([]swpc.AlertItem, error) {
 	return f.alerts, f.err
 }
@@ -43,7 +57,12 @@ type fakeRing struct {
 	pushes map[string]int
 }
 
-func (r *fakeRing) Push(_ context.Context, key string, _ int64, _ []byte) error {
+func (r *fakeRing) Push(
+	_ context.Context,
+	key string,
+	_ int64,
+	_ []byte,
+) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.pushes == nil {
@@ -82,28 +101,32 @@ type recordingState struct {
 	failures  int
 }
 
-func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) error {
+func (s *recordingState) RecordSuccess(_ context.Context, _ string, _ int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.successes++
-	return nil
 }
 
-func (s *recordingState) RecordError(_ context.Context, _, _ string) error {
+func (s *recordingState) RecordError(_ context.Context, _, _ string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures++
-	return nil
 }
 
 func TestCollector_FastTickPushesToRingsAndEmits(t *testing.T) {
 	now := time.Now().UTC()
 	ftch := &fakeFetcher{
-		plasma: []swpc.PlasmaTick{{TimeTag: now, Density: "2.94", Speed: "450", Temperature: "93030"}},
-		mag:    []swpc.MagTick{{TimeTag: now, Bt: "5.6"}},
-		xray:   []swpc.XrayTick{{TimeTag: now, Flux: 1e-7, Energy: "0.1-0.8nm"}},
-		alerts: []swpc.AlertItem{{ProductID: "TIIA", IssueDatetime: now, Message: "test alert"}},
-		kp:     []swpc.KpTick{{TimeTag: now, Kp: 3.0}},
+		plasma: []swpc.PlasmaTick{
+			{TimeTag: now, Density: "2.94", Speed: "450", Temperature: "93030"},
+		},
+		mag: []swpc.MagTick{{TimeTag: now, Bt: "5.6"}},
+		xray: []swpc.XrayTick{
+			{TimeTag: now, Flux: 1e-7, Energy: "0.1-0.8nm"},
+		},
+		alerts: []swpc.AlertItem{
+			{ProductID: "TIIA", IssueDatetime: now, Message: "test alert"},
+		},
+		kp: []swpc.KpTick{{TimeTag: now, Kp: 3.0}},
 	}
 	ring := &fakeRing{}
 	emt := &fakeEmitter{}
@@ -118,7 +141,10 @@ func TestCollector_FastTickPushesToRingsAndEmits(t *testing.T) {
 		State:        st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		80*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -132,7 +158,7 @@ func TestCollector_FastTickPushesToRingsAndEmits(t *testing.T) {
 	for _, ev := range emt.events {
 		require.Equal(t, events.TopicSpaceWeather, ev.Topic)
 	}
-	require.Greater(t, st.successes, 0)
+	require.Positive(t, st.successes)
 	require.Equal(t, 0, st.failures)
 }
 
@@ -167,7 +193,10 @@ func TestCollector_EmitsRichPayloadWithLatestReadings(t *testing.T) {
 		State:        st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		60*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -205,10 +234,13 @@ func TestCollector_FetchErrorsRecordsState(t *testing.T) {
 		State:        st,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		60*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
 	require.Equal(t, 0, ring.PushCount("swpc:plasma"))
-	require.Greater(t, st.failures, 0)
+	require.Positive(t, st.failures)
 }

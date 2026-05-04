@@ -20,5 +20,8 @@ func (s StorePersister) Save(ctx context.Context, ev events.Event) error {
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
+	if ev.Topic == events.TopicCoinbasePrice {
+		return s.Store.MergeSymbolMap(ctx, ev.Topic, raw)
+	}
 	return s.Store.PutLatest(ctx, ev.Topic, raw)
 }

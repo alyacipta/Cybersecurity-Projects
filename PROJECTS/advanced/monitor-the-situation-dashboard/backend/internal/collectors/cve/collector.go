@@ -23,12 +23,19 @@ type NVDFetcher interface {
 }
 
 type EPSSFetcher interface {
-	LookupBatch(ctx context.Context, cveIDs []string) (map[string]EPSSScore, error)
+	LookupBatch(
+		ctx context.Context,
+		cveIDs []string,
+	) (map[string]EPSSScore, error)
 }
 
 type Repository interface {
 	Upsert(ctx context.Context, row Row) error
-	UpdateEPSS(ctx context.Context, cveID string, score, percentile float64) error
+	UpdateEPSS(
+		ctx context.Context,
+		cveID string,
+		score, percentile float64,
+	) error
 }
 
 type Emitter interface {
@@ -36,8 +43,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -94,7 +101,7 @@ func (c *Collector) tick(ctx context.Context) {
 	resp, err := c.cfg.NVD.Fetch(ctx, start, end)
 	if err != nil {
 		c.logger.Warn("nvd fetch", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
@@ -127,7 +134,12 @@ func (c *Collector) tick(ctx context.Context) {
 			continue
 		}
 		if s, ok := scores[row.CveID]; ok {
-			if err := c.cfg.Repo.UpdateEPSS(ctx, row.CveID, s.Score, s.Percentile); err != nil {
+			if err := c.cfg.Repo.UpdateEPSS(
+				ctx,
+				row.CveID,
+				s.Score,
+				s.Percentile,
+			); err != nil {
 				c.logger.Warn("update epss", "id", row.CveID, "err", err)
 			}
 			row.EPSSScore = &s.Score
@@ -142,5 +154,5 @@ func (c *Collector) tick(ctx context.Context) {
 		})
 		emitted++
 	}
-	_ = c.cfg.State.RecordSuccess(ctx, Name, emitted)
+	c.cfg.State.RecordSuccess(ctx, Name, emitted)
 }

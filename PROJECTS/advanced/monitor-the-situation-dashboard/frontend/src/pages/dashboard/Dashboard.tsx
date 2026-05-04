@@ -13,6 +13,7 @@ import { KEVPanel } from '@/pages/panels/KEVPanel'
 import { OutagePanel } from '@/pages/panels/OutagePanel'
 import { RansomwarePanel } from '@/pages/panels/RansomwarePanel'
 import { SpaceWeatherPanel } from '@/pages/panels/SpaceWeatherPanel'
+import { WikiPanel } from '@/pages/panels/WikiPanel'
 import { useUIStore } from '@/stores/ui'
 import { About } from './About'
 import { AlertBanner } from './AlertBanner'
@@ -20,6 +21,8 @@ import { BottomTicker } from './BottomTicker'
 import styles from './Dashboard.module.scss'
 import { useDashboardLifecycle } from './lifecycle'
 import { presentationMode } from './presentationMode'
+import { StatusFooter } from './StatusFooter'
+import { TimezoneTickerBar } from './TimezoneTickerBar'
 import { TopStrip } from './TopStrip'
 
 export function Dashboard(): React.ReactElement {
@@ -33,29 +36,47 @@ export function Dashboard(): React.ReactElement {
 
   return (
     <div className={rootClass}>
+      <div className={styles.rotateBanner} aria-hidden="true">
+        ↻ Rotate for a better view
+      </div>
       <TopStrip />
       <AlertBanner />
+      <TimezoneTickerBar />
       <main className={styles.grid}>
         <aside className={styles.left}>
-          <BTCPanel />
-          <ETHPanel />
-          <SpaceWeatherPanel />
-          <ISSPanel />
-          <EarthquakePanel />
-          <CVEVelocityPanel />
+          <div className={styles.group}>
+            <BTCPanel />
+            <ETHPanel />
+          </div>
+          <div className={styles.group}>
+            <SpaceWeatherPanel />
+            <ISSPanel />
+            <EarthquakePanel />
+          </div>
+          <div className={styles.group}>
+            <CVEVelocityPanel />
+            <WikiPanel />
+          </div>
         </aside>
         <section className={styles.center}>
           <Globe />
         </section>
         <aside className={styles.right}>
-          <BGPHijackPanel />
-          <OutagePanel />
-          <KEVPanel />
-          <RansomwarePanel />
-          <DShieldPanel />
+          <div className={styles.group}>
+            <BGPHijackPanel />
+            <OutagePanel />
+          </div>
+          <div className={styles.group}>
+            <KEVPanel />
+            <RansomwarePanel />
+          </div>
+          <div className={styles.group}>
+            <DShieldPanel />
+          </div>
         </aside>
       </main>
       <BottomTicker />
+      <StatusFooter />
       <About />
     </div>
   )

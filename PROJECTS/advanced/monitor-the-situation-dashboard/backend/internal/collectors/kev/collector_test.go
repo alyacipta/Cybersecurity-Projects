@@ -41,7 +41,10 @@ func (r *stubKEVRepo) Insert(_ context.Context, row kev.Row) error {
 	return nil
 }
 
-func (r *stubKEVRepo) KnownIDs(_ context.Context, ids []string) (map[string]bool, error) {
+func (r *stubKEVRepo) KnownIDs(
+	_ context.Context,
+	ids []string,
+) (map[string]bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out := make(map[string]bool)
@@ -82,8 +85,8 @@ func (e *stubKEVEmitter) Events() []events.Event {
 
 type stubKEVState struct{}
 
-func (stubKEVState) RecordSuccess(context.Context, string, int64) error { return nil }
-func (stubKEVState) RecordError(context.Context, string, string) error  { return nil }
+func (stubKEVState) RecordSuccess(context.Context, string, int64) {}
+func (stubKEVState) RecordError(context.Context, string, string)  {}
 
 func TestCollector_OnlyEmitsNewKEVs(t *testing.T) {
 	ftch := &stubFetcher{cat: kev.Catalog{Vulnerabilities: []kev.Vulnerability{
@@ -101,7 +104,10 @@ func TestCollector_OnlyEmitsNewKEVs(t *testing.T) {
 		State:    stubKEVState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 
@@ -137,7 +143,10 @@ func TestCollector_EmptyKnownInsertsAll(t *testing.T) {
 		State:    stubKEVState{},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		30*time.Millisecond,
+	)
 	defer cancel()
 	_ = c.Run(ctx)
 

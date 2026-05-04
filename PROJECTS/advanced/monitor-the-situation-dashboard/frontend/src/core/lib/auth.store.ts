@@ -8,6 +8,11 @@ import { devtools, persist } from 'zustand/middleware'
 import { type UserResponse, UserRole } from '@/api/types'
 import { STORAGE_KEYS } from '@/config'
 
+// Refresh tokens live in an HttpOnly cookie set by the backend, NOT in JS
+// state — so XSS-leakable storage doesn't carry the long-lived credential.
+// The access token stays in memory (not persisted) and is short-lived (15m);
+// `isAuthenticated` is persisted so the UI knows to attempt a hydration call
+// on cold load instead of immediately bouncing to /login.
 interface AuthState {
   user: UserResponse | null
   accessToken: string | null
@@ -20,6 +25,7 @@ interface AuthActions {
   logout: () => void
   setLoading: (loading: boolean) => void
   setAccessToken: (token: string | null) => void
+  setUser: (user: UserResponse | null) => void
   updateUser: (updates: Partial<UserResponse>) => void
 }
 
@@ -63,6 +69,9 @@ export const useAuthStore = create<AuthStore>()(
 
         setAccessToken: (token) =>
           set({ accessToken: token }, false, 'auth/setAccessToken'),
+
+        setUser: (user) =>
+          set({ user, isAuthenticated: user !== null }, false, 'auth/setUser'),
 
         updateUser: (updates) =>
           set(

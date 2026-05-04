@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -18,17 +17,22 @@ import (
 )
 
 func TestEPSSClient_BatchLookupDecodesScores(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ids := r.URL.Query().Get("cve")
-		require.True(t, strings.Contains(ids, "CVE-2024-3094"))
-		body, err := os.ReadFile("testdata/epss_batch.json")
-		require.NoError(t, err)
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ids := r.URL.Query().Get("cve")
+			require.Contains(t, ids, "CVE-2024-3094")
+			body, err := os.ReadFile("testdata/epss_batch.json")
+			require.NoError(t, err)
+			_, _ = w.Write(body)
+		}),
+	)
 	defer srv.Close()
 
 	c := cve.NewEPSSClient(cve.EPSSClientConfig{BaseURL: srv.URL})
-	scores, err := c.LookupBatch(context.Background(), []string{"CVE-2024-3094", "CVE-2024-21413"})
+	scores, err := c.LookupBatch(
+		context.Background(),
+		[]string{"CVE-2024-3094", "CVE-2024-21413"},
+	)
 	require.NoError(t, err)
 	require.NotEmpty(t, scores)
 
@@ -39,10 +43,12 @@ func TestEPSSClient_BatchLookupDecodesScores(t *testing.T) {
 
 func TestEPSSClient_ChunksOver100PerRequest(t *testing.T) {
 	var hits atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		hits.Add(1)
-		_, _ = w.Write([]byte(`{"data":[]}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			hits.Add(1)
+			_, _ = w.Write([]byte(`{"data":[]}`))
+		}),
+	)
 	defer srv.Close()
 
 	c := cve.NewEPSSClient(cve.EPSSClientConfig{BaseURL: srv.URL})

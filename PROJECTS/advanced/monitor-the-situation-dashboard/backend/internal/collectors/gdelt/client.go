@@ -7,8 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -74,7 +74,10 @@ type rawTimeline struct {
 	} `json:"timeline"`
 }
 
-func (c *Client) FetchTheme(ctx context.Context, theme string) ([]ThemeBucket, error) {
+func (c *Client) FetchTheme(
+	ctx context.Context,
+	theme string,
+) ([]ThemeBucket, error) {
 	q := url.Values{}
 	q.Set("query", "theme:"+theme)
 	q.Set("mode", "timelinevol")
@@ -88,20 +91,13 @@ func (c *Client) FetchTheme(ctx context.Context, theme string) ([]ThemeBucket, e
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body := strings.Builder{}
-	buf := make([]byte, 4096)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			body.Write(buf[:n])
-		}
-		if rerr != nil {
-			break
-		}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read gdelt theme %s body: %w", theme, err)
 	}
 
 	var raw rawTimeline
-	if err := json.Unmarshal([]byte(body.String()), &raw); err != nil {
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("decode gdelt theme %s: %w", theme, err)
 	}
 	if len(raw.Timeline) == 0 {

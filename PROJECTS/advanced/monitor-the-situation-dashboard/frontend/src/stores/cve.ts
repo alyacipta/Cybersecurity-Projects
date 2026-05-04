@@ -2,17 +2,7 @@
 // cve.ts
 
 import { create } from 'zustand'
-
-export interface CveEvent {
-  CveID: string
-  Published: string
-  LastModified: string
-  Severity: string
-  CVSS: number | null
-  EPSSScore: number | null
-  EPSSPercentile: number | null
-  InKEV?: boolean
-}
+import type { CveEvent } from '@/api/types'
 
 interface CveStore {
   items: CveEvent[]

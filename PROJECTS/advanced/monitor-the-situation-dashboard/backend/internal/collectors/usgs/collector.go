@@ -32,8 +32,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -80,7 +80,7 @@ func (c *Collector) tick(ctx context.Context) {
 	feed, err := c.cfg.Fetcher.Fetch(ctx)
 	if err != nil {
 		c.logger.Warn("usgs fetch", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
@@ -91,7 +91,7 @@ func (c *Collector) tick(ctx context.Context) {
 	known, err := c.cfg.Repo.KnownIDs(ctx, ids)
 	if err != nil {
 		c.logger.Warn("usgs known ids", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 
@@ -124,7 +124,7 @@ func (c *Collector) tick(ctx context.Context) {
 		})
 		emitted++
 	}
-	_ = c.cfg.State.RecordSuccess(ctx, Name, emitted)
+	c.cfg.State.RecordSuccess(ctx, Name, emitted)
 }
 
 func coord(c []float64, i int) float64 {

@@ -6,9 +6,8 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -17,16 +16,77 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 )
 
+const (
+	refreshCookieName   = "mts_rt"
+	refreshCookiePath   = "/api/v1/auth"
+	refreshCookieMaxAge = 7 * 24 * time.Hour
+)
+
 type Handler struct {
-	service   *Service
-	validator *validator.Validate
+	service          *Service
+	validator        *validator.Validate
+	trustedProxyHops int
+	secureCookies    bool
 }
 
-func NewHandler(service *Service) *Handler {
+type HandlerConfig struct {
+	Service          *Service
+	TrustedProxyHops int
+	SecureCookies    bool
+}
+
+func NewHandler(service *Service, trustedProxyHops int) *Handler {
+	return NewHandlerWithConfig(HandlerConfig{
+		Service:          service,
+		TrustedProxyHops: trustedProxyHops,
+	})
+}
+
+func NewHandlerWithConfig(cfg HandlerConfig) *Handler {
 	return &Handler{
-		service:   service,
-		validator: validator.New(validator.WithRequiredStructEnabled()),
+		service:          cfg.Service,
+		validator:        validator.New(validator.WithRequiredStructEnabled()),
+		trustedProxyHops: cfg.TrustedProxyHops,
+		secureCookies:    cfg.SecureCookies,
 	}
+}
+
+func (h *Handler) setRefreshCookie(
+	w http.ResponseWriter,
+	token string,
+	expiresAt time.Time,
+) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    token,
+		Path:     refreshCookiePath,
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  expiresAt,
+	})
+}
+
+func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    "",
+		Path:     refreshCookiePath,
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+}
+
+func (h *Handler) refreshTokenFromRequest(r *http.Request, body string) string {
+	if body != "" {
+		return body
+	}
+	if c, err := r.Cookie(refreshCookieName); err == nil {
+		return c.Value
+	}
+	return ""
 }
 
 func (h *Handler) RegisterRoutes(
@@ -63,7 +123,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userAgent := r.UserAgent()
-	ipAddress := extractIPAddress(r)
+	ipAddress := h.extractIPAddress(r)
 
 	resp, err := h.service.Login(r.Context(), req, userAgent, ipAddress)
 	if err != nil {
@@ -78,6 +138,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(
+		w,
+		resp.Tokens.RefreshToken,
+		time.Now().Add(refreshCookieMaxAge),
+	)
 	core.OK(w, resp)
 }
 
@@ -94,7 +159,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userAgent := r.UserAgent()
-	ipAddress := extractIPAddress(r)
+	ipAddress := h.extractIPAddress(r)
 
 	resp, err := h.service.Register(r.Context(), req, userAgent, ipAddress)
 	if err != nil {
@@ -106,27 +171,33 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(
+		w,
+		resp.Tokens.RefreshToken,
+		time.Now().Add(refreshCookieMaxAge),
+	)
 	core.Created(w, resp)
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		core.BadRequest(w, "invalid request body")
-		return
+		// Body may be empty when frontend uses cookie-only flow.
+		req = RefreshRequest{}
 	}
 
-	if err := h.validator.Struct(req); err != nil {
-		core.BadRequest(w, core.FormatValidationError(err))
+	refreshToken := h.refreshTokenFromRequest(r, req.RefreshToken)
+	if refreshToken == "" {
+		core.BadRequest(w, "refresh_token required (cookie or body)")
 		return
 	}
 
 	userAgent := r.UserAgent()
-	ipAddress := extractIPAddress(r)
+	ipAddress := h.extractIPAddress(r)
 
 	resp, err := h.service.Refresh(
 		r.Context(),
-		req.RefreshToken,
+		refreshToken,
 		userAgent,
 		ipAddress,
 	)
@@ -156,6 +227,11 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(
+		w,
+		resp.Tokens.RefreshToken,
+		time.Now().Add(refreshCookieMaxAge),
+	)
 	core.OK(w, resp)
 }
 
@@ -168,11 +244,24 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		core.BadRequest(w, "invalid request body")
-		return
+		req = RefreshRequest{}
+	}
+	refreshToken := h.refreshTokenFromRequest(r, req.RefreshToken)
+
+	var jti string
+	var expiresAt time.Time
+	if claims := middleware.GetClaims(r.Context()); claims != nil {
+		jti = claims.JTI
+		expiresAt = claims.ExpiresAt
 	}
 
-	if err := h.service.Logout(r.Context(), req.RefreshToken, userID); err != nil {
+	if err := h.service.Logout(
+		r.Context(),
+		refreshToken,
+		userID,
+		jti,
+		expiresAt,
+	); err != nil {
 		if errors.Is(err, core.ErrForbidden) {
 			core.Forbidden(w, "cannot revoke another user's token")
 			return
@@ -181,6 +270,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.clearRefreshCookie(w)
 	core.NoContent(w)
 }
 
@@ -228,7 +318,11 @@ func (h *Handler) RevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.RevokeSession(r.Context(), userID, sessionID); err != nil {
+	if err := h.service.RevokeSession(
+		r.Context(),
+		userID,
+		sessionID,
+	); err != nil {
 		if errors.Is(err, core.ErrNotFound) {
 			core.NotFound(w, "session")
 			return
@@ -262,7 +356,12 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
+	if err := h.service.ChangePassword(
+		r.Context(),
+		userID,
+		req.CurrentPassword,
+		req.NewPassword,
+	); err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
 			core.JSONError(
 				w,
@@ -297,20 +396,6 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	core.OK(w, user)
 }
 
-func extractIPAddress(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ips := strings.Split(xff, ",")
-		return strings.TrimSpace(ips[len(ips)-1])
-	}
-
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
-	}
-
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-
-	return ip
+func (h *Handler) extractIPAddress(r *http.Request) string {
+	return middleware.ClientIP(r, h.trustedProxyHops)
 }

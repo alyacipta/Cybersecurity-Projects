@@ -6,8 +6,10 @@
 @use '@/styles' as *;
 
 .page {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  font-size: 16px;
   @include flex-center;
   background-color: $bg-default;
   background-image: radial-gradient(
@@ -35,18 +37,18 @@
 }
 
 .header {
-  margin-bottom: $space-6;
+  margin-bottom: $space-7;
 }
 
 .title {
-  font-size: $font-size-2xl;
+  font-size: 2.6rem;
   font-weight: $font-weight-semibold;
   color: $white;
-  margin-bottom: $space-2;
+  margin-bottom: $space-3;
 }
 
 .subtitle {
-  font-size: $font-size-sm;
+  font-size: 1.25rem;
   color: $text-light;
 }
 
@@ -61,7 +63,7 @@
 }
 
 .label {
-  font-size: $font-size-sm;
+  font-size: 1.2rem;
   font-weight: $font-weight-medium;
   color: $white;
 }
@@ -73,7 +75,7 @@
   background-color: transparent;
   border: 1px solid $border-default;
   border-radius: $radius-md;
-  font-size: $font-size-base;
+  font-size: $font-size-lg;
   color: $white;
   @include transition-fast;
 
@@ -116,8 +118,8 @@
   }
 
   svg {
-    width: 20px;
-    height: 20px;
+    width: 17px;
+    height: 17px;
   }
 }
 
@@ -136,7 +138,7 @@
   background-color: $white;
   border: none;
   border-radius: $radius-md;
-  font-size: $font-size-base;
+  font-size: 1.35rem;
   font-weight: $font-weight-medium;
   color: $black;
   cursor: pointer;
@@ -153,9 +155,9 @@
 }
 
 .footer {
-  margin-top: $space-6;
+  margin-top: $space-7;
   text-align: center;
-  font-size: $font-size-sm;
+  font-size: $font-size-lg;
   color: $text-light;
 }
 
@@ -167,5 +169,31 @@
 
   @include hover {
     color: $text-light;
+  }
+}
+
+.backButton {
+  position: absolute;
+  top: $space-5;
+  left: $space-5;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  background: transparent;
+  border: none;
+  color: $text-muted;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  padding: $space-1 0;
+  @include transition-fast;
+
+  @include hover {
+    color: $text-light;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 }

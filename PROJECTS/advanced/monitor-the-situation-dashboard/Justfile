@@ -29,7 +29,7 @@ lint-fix:
 
 [group('lint')]
 format:
-    cd backend && gofumpt -w . && goimports -w .
+    cd backend && golangci-lint fmt
 
 [group('lint')]
 tidy:
@@ -106,7 +106,7 @@ install:
 
 [group('db')]
 migrate *ARGS:
-    docker compose -f compose.yml exec backend sh -c 'goose -dir /migrations postgres "$DATABASE_URL" up' {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml exec backend sh -c 'goose -dir /migrations postgres "$DATABASE_URL" up' {{ARGS}}
 
 [group('db')]
 migrate-dev *ARGS:
@@ -134,27 +134,27 @@ redis-cli:
 
 [group('docker')]
 up *ARGS:
-    docker compose -f compose.yml up {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml up {{ARGS}}
 
 [group('docker')]
 start *ARGS:
-    docker compose -f compose.yml up -d --build {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml up -d --build {{ARGS}}
 
 [group('docker')]
 down *ARGS:
-    docker compose -f compose.yml down {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml down {{ARGS}}
 
 [group('docker')]
 logs *SERVICE:
-    docker compose -f compose.yml logs -f {{SERVICE}}
+    docker compose --env-file .env.prod -f compose.yml logs -f {{SERVICE}}
 
 [group('docker')]
 ps:
-    docker compose -f compose.yml ps
+    docker compose --env-file .env.prod -f compose.yml ps
 
 [group('docker')]
 build-prod:
-    docker compose -f compose.yml build
+    docker compose --env-file .env.prod -f compose.yml build
 
 # =============================================================================
 # Docker (development)
@@ -185,6 +185,12 @@ dev-shell service='backend':
     docker compose -f dev.compose.yml exec -it {{service}} /bin/sh
 
 [group('docker')]
+dev-restart:
+    docker compose -f dev.compose.yml down
+    docker compose -f dev.compose.yml up -d --build
+    docker compose -f dev.compose.yml logs -f
+
+[group('docker')]
 dev-clean:
     docker compose -f dev.compose.yml down -v
 
@@ -194,19 +200,35 @@ dev-clean:
 
 [group('tunnel')]
 tunnel-up *ARGS:
-    docker compose -f compose.yml -f cloudflared.compose.yml up {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml up {{ARGS}}
 
 [group('tunnel')]
 tunnel-start *ARGS:
-    docker compose -f compose.yml -f cloudflared.compose.yml up -d --build {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml up -d --build {{ARGS}}
 
 [group('tunnel')]
 tunnel-down *ARGS:
-    docker compose -f compose.yml -f cloudflared.compose.yml down {{ARGS}}
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml down {{ARGS}}
 
 [group('tunnel')]
 tunnel-logs:
-    docker compose -f compose.yml -f cloudflared.compose.yml logs -f cloudflared
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml logs -f cloudflared
+
+[group('tunnel')]
+prod-restart:
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml down
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml up -d
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml logs -f
+
+[group('tunnel')]
+prod-redeploy:
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml down
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml up -d --build
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml logs -f
+
+[group('tunnel')]
+prod-logs *SERVICE:
+    docker compose --env-file .env.prod -f compose.yml -f cloudflared.compose.yml logs -f {{SERVICE}}
 
 # =============================================================================
 # Utilities

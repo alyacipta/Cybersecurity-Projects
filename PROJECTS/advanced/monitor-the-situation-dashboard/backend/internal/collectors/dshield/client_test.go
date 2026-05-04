@@ -21,26 +21,37 @@ import (
 func newFixtureServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/topports/", func(w http.ResponseWriter, r *http.Request) {
-		require.Contains(t, r.URL.Path, "/api/topports/records/")
-		body, err := os.ReadFile(filepath.Join("testdata", "topports.json"))
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
-	mux.HandleFunc("/api/topips/", func(w http.ResponseWriter, _ *http.Request) {
-		body, err := os.ReadFile(filepath.Join("testdata", "topips.json"))
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
-	mux.HandleFunc("/api/dailysummary/", func(w http.ResponseWriter, r *http.Request) {
-		require.True(t, strings.HasPrefix(r.URL.Path, "/api/dailysummary/"))
-		body, err := os.ReadFile(filepath.Join("testdata", "dailysummary.json"))
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
+	mux.HandleFunc(
+		"/api/topports/",
+		func(w http.ResponseWriter, r *http.Request) {
+			require.Contains(t, r.URL.Path, "/api/topports/records/")
+			body, err := os.ReadFile(filepath.Join("testdata", "topports.json"))
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		},
+	)
+	mux.HandleFunc(
+		"/api/topips/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			body, err := os.ReadFile(filepath.Join("testdata", "topips.json"))
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		},
+	)
+	mux.HandleFunc(
+		"/api/dailysummary/",
+		func(w http.ResponseWriter, r *http.Request) {
+			require.True(t, strings.HasPrefix(r.URL.Path, "/api/dailysummary/"))
+			body, err := os.ReadFile(
+				filepath.Join("testdata", "dailysummary.json"),
+			)
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		},
+	)
 	return httptest.NewServer(mux)
 }
 
@@ -70,17 +81,26 @@ func TestClient_FetchAllReturnsThreeKinds(t *testing.T) {
 func TestClient_FetchAllUsesYesterdayDate(t *testing.T) {
 	var topPortsPath, dailyPath string
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/topports/", func(w http.ResponseWriter, r *http.Request) {
-		topPortsPath = r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
-	})
-	mux.HandleFunc("/api/topips/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`[]`))
-	})
-	mux.HandleFunc("/api/dailysummary/", func(w http.ResponseWriter, r *http.Request) {
-		dailyPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
-	})
+	mux.HandleFunc(
+		"/api/topports/",
+		func(w http.ResponseWriter, r *http.Request) {
+			topPortsPath = r.URL.Path
+			_, _ = w.Write([]byte(`{}`))
+		},
+	)
+	mux.HandleFunc(
+		"/api/topips/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`[]`))
+		},
+	)
+	mux.HandleFunc(
+		"/api/dailysummary/",
+		func(w http.ResponseWriter, r *http.Request) {
+			dailyPath = r.URL.Path
+			_, _ = w.Write([]byte(`[]`))
+		},
+	)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 

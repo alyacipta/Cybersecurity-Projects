@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { FiArrowLeft } from 'react-icons/fi'
 import { LuEye, LuEyeOff } from 'react-icons/lu'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -25,7 +26,7 @@ export function Component(): React.ReactElement {
     e.preventDefault()
 
     const result = loginRequestSchema.safeParse({
-      username: loginEmail,
+      email: loginEmail,
       password,
     })
 
@@ -45,6 +46,15 @@ export function Component(): React.ReactElement {
 
   return (
     <div className={styles.page}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => navigate(-1)}
+        aria-label="Go back"
+      >
+        <FiArrowLeft aria-hidden />
+        Back
+      </button>
       <div className={styles.card}>
         <div className={styles.header}>
           <h1 className={styles.title}>Login</h1>

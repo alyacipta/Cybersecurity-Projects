@@ -37,7 +37,8 @@ func NewRepo(db *sqlx.DB, rdb *redis.Client) *Repo {
 }
 
 func (r *Repo) RememberRevID(ctx context.Context, revID int64) error {
-	if err := r.rdb.Set(ctx, keyRevID, strconv.FormatInt(revID, 10), 0).Err(); err != nil {
+	if err := r.rdb.Set(ctx, keyRevID, strconv.FormatInt(revID, 10), 0).
+		Err(); err != nil {
 		return fmt.Errorf("save wiki revid: %w", err)
 	}
 	return nil

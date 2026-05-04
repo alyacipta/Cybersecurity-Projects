@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -94,23 +93,18 @@ func (rl *RateLimiter) allow(
 	return res, nil
 }
 
+// KeyByIP keys requests by their RemoteAddr only — does NOT trust
+// X-Forwarded-For. Use KeyByClientIP(trustedHops) when you have a known
+// proxy chain to peel back.
 func KeyByIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ips := strings.Split(xff, ",")
-		ip := strings.TrimSpace(ips[len(ips)-1])
-		return "ratelimit:ip:" + ip
-	}
+	return "ratelimit:ip:" + ClientIP(r, 0)
+}
 
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return "ratelimit:ip:" + xri
+// KeyByClientIP returns a KeyFunc that honors trustedHops of X-Forwarded-For.
+func KeyByClientIP(trustedHops int) func(*http.Request) string {
+	return func(r *http.Request) string {
+		return "ratelimit:ip:" + ClientIP(r, trustedHops)
 	}
-
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr
-	}
-
-	return "ratelimit:ip:" + ip
 }
 
 func KeyByUser(r *http.Request) string {
@@ -351,25 +345,24 @@ func TieredRateLimiter(
 }
 
 func PerMinute(rate, burst int) redis_rate.Limit {
-	return redis_rate.Limit{
-		Rate:   rate,
-		Burst:  burst,
-		Period: time.Minute,
-	}
+	return PerWindow(rate, burst, time.Minute)
 }
 
 func PerSecond(rate, burst int) redis_rate.Limit {
-	return redis_rate.Limit{
-		Rate:   rate,
-		Burst:  burst,
-		Period: time.Second,
-	}
+	return PerWindow(rate, burst, time.Second)
 }
 
 func PerHour(rate, burst int) redis_rate.Limit {
+	return PerWindow(rate, burst, time.Hour)
+}
+
+func PerWindow(rate, burst int, window time.Duration) redis_rate.Limit {
+	if window <= 0 {
+		window = time.Minute
+	}
 	return redis_rate.Limit{
 		Rate:   rate,
 		Burst:  burst,
-		Period: time.Hour,
+		Period: window,
 	}
 }

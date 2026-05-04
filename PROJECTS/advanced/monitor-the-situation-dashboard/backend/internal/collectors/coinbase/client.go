@@ -88,7 +88,11 @@ func (d *WSDialer) Dial(ctx context.Context) (*Conn, error) {
 	conn := &Conn{c: c}
 	subCtx, cancel := context.WithTimeout(ctx, d.cfg.WriteTimeout)
 	defer cancel()
-	if err := conn.subscribe(subCtx, channelTicker, d.cfg.ProductIDs); err != nil {
+	if err := conn.subscribe(
+		subCtx,
+		channelTicker,
+		d.cfg.ProductIDs,
+	); err != nil {
 		_ = c.Close(websocket.StatusInternalError, "subscribe ticker")
 		return nil, err
 	}
@@ -116,8 +120,16 @@ type subscribeMsg struct {
 	ProductIDs []string `json:"product_ids,omitempty"`
 }
 
-func (c *Conn) subscribe(ctx context.Context, channel string, productIDs []string) error {
-	msg := subscribeMsg{Type: "subscribe", Channel: channel, ProductIDs: productIDs}
+func (c *Conn) subscribe(
+	ctx context.Context,
+	channel string,
+	productIDs []string,
+) error {
+	msg := subscribeMsg{
+		Type:       "subscribe",
+		Channel:    channel,
+		ProductIDs: productIDs,
+	}
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("marshal subscribe %s: %w", channel, err)
@@ -151,7 +163,10 @@ func parseCoinbaseTime(s string) time.Time {
 	if idx := strings.Index(s, " m=+"); idx > 0 {
 		s = s[:idx]
 	}
-	if t, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", s); err == nil {
+	if t, err := time.Parse(
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		s,
+	); err == nil {
 		return t
 	}
 	return time.Time{}

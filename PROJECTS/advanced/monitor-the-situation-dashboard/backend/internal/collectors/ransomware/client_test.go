@@ -17,12 +17,14 @@ import (
 )
 
 func TestClient_FetchRecentVictimsDecodes(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		body, err := os.ReadFile("testdata/recentvictims.json")
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			body, err := os.ReadFile("testdata/recentvictims.json")
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}),
+	)
 	defer srv.Close()
 
 	c := ransomware.NewClient(ransomware.ClientConfig{BaseURL: srv.URL})

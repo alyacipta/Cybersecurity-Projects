@@ -5,10 +5,14 @@ package auth
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	_ "crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,6 +28,8 @@ import (
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/core"
 	"github.com/carterperez-dev/monitor-the-situation/backend/internal/middleware"
 )
+
+const kidLength = 8
 
 type JWTManager struct {
 	privateKey jwk.Key
@@ -47,14 +53,20 @@ func NewJWTManager(cfg config.JWTConfig) (*JWTManager, error) {
 		return nil, fmt.Errorf("set algorithm: %w", setErr)
 	}
 
-	keyID := uuid.New().String()[:8]
-	if setErr := privateKey.Set(jwk.KeyIDKey, keyID); setErr != nil {
-		return nil, fmt.Errorf("set key id: %w", setErr)
-	}
-
 	publicKey, err := privateKey.PublicKey()
 	if err != nil {
 		return nil, fmt.Errorf("derive public key: %w", err)
+	}
+
+	keyID, err := deriveKeyID(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive key id: %w", err)
+	}
+	if setErr := privateKey.Set(jwk.KeyIDKey, keyID); setErr != nil {
+		return nil, fmt.Errorf("set key id: %w", setErr)
+	}
+	if setErr := publicKey.Set(jwk.KeyIDKey, keyID); setErr != nil {
+		return nil, fmt.Errorf("set public key id: %w", setErr)
 	}
 
 	if setErr := publicKey.Set(jwk.KeyUsageKey, "sig"); setErr != nil {
@@ -85,10 +97,6 @@ func GenerateKeyPair(privateKeyPath, publicKeyPath string) error {
 		return fmt.Errorf("import private key: %w", err)
 	}
 
-	keyID := uuid.New().String()[:8]
-	if setErr := jwkPrivate.Set(jwk.KeyIDKey, keyID); setErr != nil {
-		return fmt.Errorf("set key id: %w", setErr)
-	}
 	if setErr := jwkPrivate.Set(jwk.AlgorithmKey, jwa.ES256()); setErr != nil {
 		return fmt.Errorf("set algorithm: %w", setErr)
 	}
@@ -98,7 +106,11 @@ func GenerateKeyPair(privateKeyPath, publicKeyPath string) error {
 		return fmt.Errorf("encode private key: %w", err)
 	}
 
-	if writeErr := os.WriteFile(privateKeyPath, privatePEM, 0o600); writeErr != nil {
+	if writeErr := os.WriteFile(
+		privateKeyPath,
+		privatePEM,
+		0o600,
+	); writeErr != nil {
 		return fmt.Errorf("write private key: %w", writeErr)
 	}
 
@@ -113,7 +125,11 @@ func GenerateKeyPair(privateKeyPath, publicKeyPath string) error {
 	}
 
 	//nolint:gosec // G306: public key is intentionally world-readable
-	if writeErr := os.WriteFile(publicKeyPath, publicPEM, 0o644); writeErr != nil {
+	if writeErr := os.WriteFile(
+		publicKeyPath,
+		publicPEM,
+		0o644,
+	); writeErr != nil {
 		return fmt.Errorf("write public key: %w", writeErr)
 	}
 
@@ -216,11 +232,16 @@ func (m *JWTManager) VerifyAccessToken(
 		)
 	}
 
+	jti, _ := token.JwtID()
+	expiresAt, _ := token.Expiration()
+
 	return &middleware.AccessTokenClaims{
 		UserID:       subject,
 		Role:         roleStr,
 		Tier:         tierStr,
 		TokenVersion: int(versionFloat),
+		JTI:          jti,
+		ExpiresAt:    expiresAt,
 	}, nil
 }
 
@@ -228,9 +249,20 @@ func isTokenExpiredError(err error) bool {
 	if err == nil {
 		return false
 	}
+	if errors.Is(err, jwt.TokenExpiredError()) {
+		return true
+	}
 	errStr := err.Error()
 	return strings.Contains(errStr, "exp") &&
 		strings.Contains(errStr, "not satisfied")
+}
+
+func deriveKeyID(publicKey jwk.Key) (string, error) {
+	thumb, err := publicKey.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return "", fmt.Errorf("thumbprint: %w", err)
+	}
+	return hex.EncodeToString(thumb)[:kidLength], nil
 }
 
 func (m *JWTManager) GetJWKSHandler() http.HandlerFunc {

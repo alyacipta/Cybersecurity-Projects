@@ -38,8 +38,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type Enricher interface {
@@ -111,7 +111,7 @@ func (c *Collector) tick(ctx context.Context) {
 
 	if n, err := c.tickOutages(ctx); err != nil {
 		c.logger.Warn("cfradar outages tick failed", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		emitted += n
@@ -119,14 +119,14 @@ func (c *Collector) tick(ctx context.Context) {
 
 	if n, err := c.tickHijacks(ctx); err != nil {
 		c.logger.Warn("cfradar hijacks tick failed", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		hadError = true
 	} else {
 		emitted += n
 	}
 
 	if !hadError {
-		_ = c.cfg.State.RecordSuccess(ctx, Name, emitted)
+		c.cfg.State.RecordSuccess(ctx, Name, emitted)
 	}
 }
 

@@ -6,18 +6,23 @@ import styles from './StaleIndicator.module.scss'
 export interface StaleIndicatorProps {
   stale?: boolean
   lastTickAt?: number
+  batch?: boolean
 }
 
 export function StaleIndicator({
   stale,
   lastTickAt,
+  batch,
 }: StaleIndicatorProps): React.ReactElement {
-  const className =
-    stale === undefined
-      ? `${styles.dot} ${styles.unknown}`
-      : stale
-        ? `${styles.dot} ${styles.stale}`
-        : `${styles.dot} ${styles.live}`
+  let state: 'live' | 'batch' | 'stale'
+  if (stale === undefined || stale === true) {
+    state = 'stale'
+  } else if (batch) {
+    state = 'batch'
+  } else {
+    state = 'live'
+  }
+  const className = `${styles.dot} ${styles[state]}`
 
   const title = lastTickAt
     ? `Last update ${new Date(lastTickAt).toISOString().slice(11, 19)} UTC`

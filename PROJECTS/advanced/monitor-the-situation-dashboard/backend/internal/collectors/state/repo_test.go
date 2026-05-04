@@ -59,20 +59,22 @@ func TestRepo_RecordSuccessThenError(t *testing.T) {
 	repo := state.NewRepo(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.RecordSuccess(ctx, "dshield", 12))
+	repo.RecordSuccess(ctx, "dshield", 12)
 
-	got, err := repo.Get(ctx, "dshield")
+	got, found, err := repo.Get(ctx, "dshield")
 	require.NoError(t, err)
+	require.True(t, found)
 	require.Equal(t, "dshield", got.Name)
 	require.Equal(t, state.StateHealthy, got.State)
 	require.EqualValues(t, 12, got.LastEventCount)
 	require.NotNil(t, got.LastSuccessAt)
 	require.WithinDuration(t, time.Now(), *got.LastSuccessAt, 5*time.Second)
 
-	require.NoError(t, repo.RecordError(ctx, "dshield", "upstream 503"))
+	repo.RecordError(ctx, "dshield", "upstream 503")
 
-	got, err = repo.Get(ctx, "dshield")
+	got, found, err = repo.Get(ctx, "dshield")
 	require.NoError(t, err)
+	require.True(t, found)
 	require.Equal(t, state.StateDegraded, got.State)
 	require.Equal(t, "upstream 503", got.LastError)
 	require.NotNil(t, got.LastErrorAt)
@@ -84,11 +86,12 @@ func TestRepo_SuccessAccumulatesCount(t *testing.T) {
 	repo := state.NewRepo(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.RecordSuccess(ctx, "kev", 3))
-	require.NoError(t, repo.RecordSuccess(ctx, "kev", 5))
+	repo.RecordSuccess(ctx, "kev", 3)
+	repo.RecordSuccess(ctx, "kev", 5)
 
-	got, err := repo.Get(ctx, "kev")
+	got, found, err := repo.Get(ctx, "kev")
 	require.NoError(t, err)
+	require.True(t, found)
 	require.EqualValues(t, 8, got.LastEventCount)
 }
 
@@ -97,9 +100,9 @@ func TestRepo_AllReturnsRowsSorted(t *testing.T) {
 	repo := state.NewRepo(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.RecordSuccess(ctx, "ransomware", 1))
-	require.NoError(t, repo.RecordSuccess(ctx, "cve", 1))
-	require.NoError(t, repo.RecordSuccess(ctx, "kev", 1))
+	repo.RecordSuccess(ctx, "ransomware", 1)
+	repo.RecordSuccess(ctx, "cve", 1)
+	repo.RecordSuccess(ctx, "kev", 1)
 
 	rows, err := repo.All(ctx)
 	require.NoError(t, err)

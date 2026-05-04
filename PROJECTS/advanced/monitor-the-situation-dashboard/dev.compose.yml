@@ -35,9 +35,13 @@ services:
     env_file:
       - .env
     environment:
-      - APP_ENVIRONMENT=development
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-development}
       - DATABASE_URL=postgres://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-monitor}?sslmode=disable
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-monitor}@redis:6379/0
+      # nginx adds one XFF hop in dev. Without this the WS per-IP cap
+      # buckets every connection under nginx's container IP and runs out
+      # at 5 → "CONNECTING" stuck on the dashboard.
+      - TRUSTED_PROXY_HOPS=1
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,13 +99,15 @@ services:
     container_name: ${APP_NAME:-monitor}-redis-dev
     ports:
       - "${REDIS_HOST_PORT:-6432}:6379"
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-monitor}
     volumes:
       - redisdata-dev:/data
     networks:
       - backend
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-monitor}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

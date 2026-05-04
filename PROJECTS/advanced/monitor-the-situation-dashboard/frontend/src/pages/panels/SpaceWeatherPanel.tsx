@@ -1,7 +1,7 @@
 // ©AngelaMos | 2026
 // SpaceWeatherPanel.tsx
 
-import { useSnapshot } from '@/api/snapshot'
+import { useSpaceWeather } from '@/api/hooks'
 import { Panel } from './Panel'
 import styles from './SpaceWeatherPanel.module.scss'
 
@@ -23,20 +23,8 @@ const DENSITY_DECIMALS = 2
 const XRAY_FLUX_DECIMALS = 1
 const XRAY_ELEVATED_PATTERN = /^[MX]/
 
-interface SpaceWeatherData {
-  kp?: number
-  bz_gsm?: number
-  speed_kms?: number
-  density?: number
-  xray_class?: string
-  xray_flux?: number
-  ts?: string
-  pushed?: number
-}
-
 export function SpaceWeatherPanel(): React.ReactElement {
-  const { data } = useSnapshot()
-  const sw = (data?.space_weather as SpaceWeatherData | undefined) ?? {}
+  const sw = useSpaceWeather()
 
   const lastTickAt = sw.ts ? new Date(sw.ts).getTime() : undefined
   const isStaleByTime =
@@ -44,16 +32,17 @@ export function SpaceWeatherPanel(): React.ReactElement {
   const kpElevated = sw.kp !== undefined && sw.kp >= KP_ELEVATED_THRESHOLD
   const xrayElevated =
     sw.xray_class !== undefined && XRAY_ELEVATED_PATTERN.test(sw.xray_class)
-  const inAlarm = kpElevated || xrayElevated
-
   return (
     <Panel
       title="SPACE WX"
       subtitle="SWPC"
+      source="noaa swpc"
+      accent="spacewx"
       rawHref="https://services.swpc.noaa.gov/"
       rawLabel="NOAA SWPC"
-      isStale={isStaleByTime || inAlarm}
+      isStale={lastTickAt === undefined ? undefined : isStaleByTime}
       lastTickAt={lastTickAt}
+      batch
     >
       <div className={styles.row}>
         <span className={styles.label}>Kp Index</span>

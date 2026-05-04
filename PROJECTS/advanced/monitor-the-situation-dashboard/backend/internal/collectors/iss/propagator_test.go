@@ -19,8 +19,19 @@ func loadTLE(t *testing.T) (string, string) {
 	body, err := os.ReadFile("testdata/tle.txt")
 	require.NoError(t, err)
 	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
-	require.GreaterOrEqual(t, len(lines), 3, "TLE file must have name + 2 element lines")
-	return strings.TrimRight(lines[1], " \r"), strings.TrimRight(lines[2], " \r")
+	require.GreaterOrEqual(
+		t,
+		len(lines),
+		3,
+		"TLE file must have name + 2 element lines",
+	)
+	return strings.TrimRight(
+			lines[1],
+			" \r",
+		), strings.TrimRight(
+			lines[2],
+			" \r",
+		)
 }
 
 func TestPropagator_PositionWithinReasonableBounds(t *testing.T) {
@@ -33,7 +44,12 @@ func TestPropagator_PositionWithinReasonableBounds(t *testing.T) {
 
 	require.True(t, lat >= -90 && lat <= 90, "lat=%f", lat)
 	require.True(t, lon >= -180 && lon <= 180, "lon=%f", lon)
-	require.True(t, alt >= 350 && alt <= 500, "ISS altitude is roughly 380-420 km, got %f", alt)
+	require.True(
+		t,
+		alt >= 350 && alt <= 500,
+		"ISS altitude is roughly 380-420 km, got %f",
+		alt,
+	)
 }
 
 func TestPropagator_LookAnglesInValidRange(t *testing.T) {

@@ -31,6 +31,8 @@ export const dshieldSourceSchema = z.object({
   reports: z.number(),
   targets: z.number(),
   country: z.string().optional(),
+  classification: z.string().optional(),
+  actor: z.string().optional(),
 })
 
 export type DShieldSource = z.infer<typeof dshieldSourceSchema>
@@ -58,12 +60,14 @@ export type DShieldData = z.infer<typeof dshieldDataSchema>
 export const isValidRansomwareVictim = (
   data: unknown
 ): data is RansomwareVictim => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return ransomwareVictimSchema.safeParse(data).success
 }
 
 export const isValidDShieldData = (data: unknown): data is DShieldData => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return dshieldDataSchema.safeParse(data).success
 }
 
@@ -89,6 +93,7 @@ export const bgpHijackSchema = z.object({
 export type BgpHijack = z.infer<typeof bgpHijackSchema>
 
 export const isValidBgpHijack = (data: unknown): data is BgpHijack => {
-  if (data === null || data === undefined || typeof data !== 'object') return false
+  if (data === null || data === undefined || typeof data !== 'object')
+    return false
   return bgpHijackSchema.safeParse(data).success
 }

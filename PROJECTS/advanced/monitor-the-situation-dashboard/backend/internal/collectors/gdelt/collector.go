@@ -28,7 +28,7 @@ type Fetcher interface {
 }
 
 type Repository interface {
-	Insert(ctx context.Context, row SpikeRow) error
+	Insert(ctx context.Context, row SpikeRow) (inserted bool, err error)
 }
 
 type Emitter interface {
@@ -36,8 +36,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -55,7 +55,6 @@ type Collector struct {
 	cfg       CollectorConfig
 	logger    *slog.Logger
 	baselines map[string]*ThemeState
-	emitted   map[string]bool
 }
 
 func NewCollector(cfg CollectorConfig) *Collector {
@@ -75,7 +74,6 @@ func NewCollector(cfg CollectorConfig) *Collector {
 		cfg:       cfg,
 		logger:    cfg.Logger,
 		baselines: make(map[string]*ThemeState, len(cfg.Themes)),
-		emitted:   make(map[string]bool),
 	}
 	for _, t := range cfg.Themes {
 		c.baselines[t] = NewThemeState(cfg.BaselineCap)
@@ -107,7 +105,7 @@ func (c *Collector) tick(ctx context.Context) {
 		buckets, err := c.cfg.Fetcher.FetchTheme(ctx, theme)
 		if err != nil {
 			c.logger.Warn("gdelt fetch", "theme", theme, "err", err)
-			_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+			c.cfg.State.RecordError(ctx, Name, err.Error())
 			hadError = true
 			continue
 		}
@@ -120,26 +118,41 @@ func (c *Collector) tick(ctx context.Context) {
 				continue
 			}
 			id := spikeID(theme, b.Time)
-			if c.emitted[id] {
-				continue
-			}
-			c.emitted[id] = true
 
-			payload, _ := json.Marshal(map[string]any{
+			payload, perr := json.Marshal(map[string]any{
 				"theme":  theme,
 				"time":   b.Time,
 				"count":  b.Count,
 				"zscore": z,
 			})
+			if perr != nil {
+				c.logger.Warn(
+					"gdelt marshal payload",
+					"theme",
+					theme,
+					"err",
+					perr,
+				)
+				continue
+			}
 			row := SpikeRow{
 				ID:         id,
 				Theme:      theme,
 				OccurredAt: b.Time,
-				Headline:   fmt.Sprintf("Theme spike: %s (z=%.2f, count=%d)", theme, z, b.Count),
-				Payload:    payload,
+				Headline: fmt.Sprintf(
+					"Theme spike: %s (z=%.2f, count=%d)",
+					theme,
+					z,
+					b.Count,
+				),
+				Payload: payload,
 			}
-			if err := c.cfg.Repo.Insert(ctx, row); err != nil {
-				c.logger.Warn("gdelt insert", "id", id, "err", err)
+			inserted, ierr := c.cfg.Repo.Insert(ctx, row)
+			if ierr != nil {
+				c.logger.Warn("gdelt insert", "id", id, "err", ierr)
+				continue
+			}
+			if !inserted {
 				continue
 			}
 			c.cfg.Emitter.Emit(events.Event{
@@ -153,7 +166,7 @@ func (c *Collector) tick(ctx context.Context) {
 	}
 
 	if !hadError {
-		_ = c.cfg.State.RecordSuccess(ctx, Name, emitted)
+		c.cfg.State.RecordSuccess(ctx, Name, emitted)
 	}
 }
 

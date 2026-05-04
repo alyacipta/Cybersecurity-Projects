@@ -204,7 +204,10 @@ func (c *Client) FetchAlerts(ctx context.Context) ([]AlertItem, error) {
 	return out, nil
 }
 
-func (c *Client) fetchRowArray(ctx context.Context, path string) ([]map[string]string, error) {
+func (c *Client) fetchRowArray(
+	ctx context.Context,
+	path string,
+) ([]map[string]string, error) {
 	var raw [][]any
 	if err := c.hx.GetJSON(ctx, path, nil, &raw); err != nil {
 		return nil, fmt.Errorf("fetch row-array %s: %w", path, err)

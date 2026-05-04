@@ -45,7 +45,10 @@ func TestCollector_EmitsAtInterval(t *testing.T) {
 		Emitter:  emitter,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		200*time.Millisecond,
+	)
 	defer cancel()
 
 	err := c.Run(ctx)
@@ -64,9 +67,17 @@ func TestCollector_EmitsImmediatelyOnStart(t *testing.T) {
 		Emitter:  emitter,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
 	defer cancel()
 
 	_ = c.Run(ctx)
-	require.Equal(t, 1, emitter.Count(), "should emit one tick immediately on start")
+	require.Equal(
+		t,
+		1,
+		emitter.Count(),
+		"should emit one tick immediately on start",
+	)
 }

@@ -55,7 +55,10 @@ func New[T any](cfg Config) *Limiter[T] {
 	}
 }
 
-func (l *Limiter[T]) Do(ctx context.Context, fn func(context.Context) (T, error)) (T, error) {
+func (l *Limiter[T]) Do(
+	ctx context.Context,
+	fn func(context.Context) (T, error),
+) (T, error) {
 	var zero T
 	if err := l.rl.Wait(ctx); err != nil {
 		return zero, err

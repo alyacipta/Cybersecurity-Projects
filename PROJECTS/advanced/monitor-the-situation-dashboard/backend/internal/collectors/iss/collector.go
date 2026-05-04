@@ -33,8 +33,8 @@ type Emitter interface {
 }
 
 type StateRecorder interface {
-	RecordSuccess(ctx context.Context, name string, eventCount int64) error
-	RecordError(ctx context.Context, name, errMsg string) error
+	RecordSuccess(ctx context.Context, name string, eventCount int64)
+	RecordError(ctx context.Context, name, errMsg string)
 }
 
 type CollectorConfig struct {
@@ -92,7 +92,7 @@ func (c *Collector) tickPosition(ctx context.Context) {
 	p, err := c.cfg.Fetcher.FetchPosition(ctx)
 	if err != nil {
 		c.logger.Warn("iss position fetch", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 	body, _ := json.Marshal(p)
@@ -102,18 +102,18 @@ func (c *Collector) tickPosition(ctx context.Context) {
 		Source:    Name,
 		Payload:   json.RawMessage(body),
 	})
-	_ = c.cfg.State.RecordSuccess(ctx, Name, 1)
+	c.cfg.State.RecordSuccess(ctx, Name, 1)
 }
 
 func (c *Collector) tickTLE(ctx context.Context) {
 	tle, err := c.cfg.Fetcher.FetchTLE(ctx)
 	if err != nil {
 		c.logger.Warn("iss tle fetch", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 		return
 	}
 	if err := c.cfg.TLEStore.Save(ctx, tle); err != nil {
 		c.logger.Warn("iss tle save", "err", err)
-		_ = c.cfg.State.RecordError(ctx, Name, err.Error())
+		c.cfg.State.RecordError(ctx, Name, err.Error())
 	}
 }
