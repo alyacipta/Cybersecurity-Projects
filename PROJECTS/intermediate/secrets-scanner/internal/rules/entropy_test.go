@@ -128,27 +128,27 @@ func TestDetectCharset(t *testing.T) {
 	}{
 		"hex string": {
 			input: "a1b2c3d4e5f6",
-			want:  "hex",
+			want:  CharsetNameHex,
 		},
 		"base64 with special chars": {
 			input: "kR9mPx2vBnQ8jL5w+/YzTf==",
-			want:  "base64",
+			want:  CharsetNameBase64,
 		},
 		"pure alphanumeric": {
 			input: "HelloWorld123XYZ",
-			want:  "base64",
+			want:  CharsetNameBase64,
 		},
 		"mixed with symbols": {
 			input: "hello@world#foo$bar",
-			want:  "alphanumeric",
+			want:  CharsetNameAlphanumeric,
 		},
 		"empty string": {
 			input: "",
-			want:  "alphanumeric",
+			want:  CharsetNameAlphanumeric,
 		},
 		"only hex digits": {
 			input: "deadbeef0123456789",
-			want:  "hex",
+			want:  CharsetNameHex,
 		},
 	}
 

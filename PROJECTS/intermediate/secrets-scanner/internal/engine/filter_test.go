@@ -84,8 +84,8 @@ func TestIsPlaceholder(t *testing.T) { //nolint:dupl
 			secret: "your-api-key",
 			want:   true,
 		},
-		"placeholder": {
-			secret: "placeholder",
+		stopwordPlaceholder: {
+			secret: stopwordPlaceholder,
 			want:   true,
 		},
 		"xxxx pattern": {

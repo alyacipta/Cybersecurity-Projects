@@ -78,9 +78,9 @@ func (d *Detector) Detect(chunk types.Chunk) []types.Finding { //nolint:gocognit
 					charset := rules.DetectCharset(secret)
 					var charsetStr string
 					switch charset {
-					case "hex":
+					case rules.CharsetNameHex:
 						charsetStr = rules.HexCharset
-					case "base64":
+					case rules.CharsetNameBase64:
 						charsetStr = rules.Base64Charset
 					default:
 						charsetStr = rules.AlphanumericCharset
