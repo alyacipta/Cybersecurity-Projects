@@ -9,6 +9,8 @@ import { Panel } from './Panel'
 
 const OUTAGE_ROW_LIMIT = 6
 const REGIME_CC = 'IR'
+const PERSIA_LABEL = 'Persia'
+const REGIME_LABEL = 'regime 👎'
 const FLASH_DURATION_MS = 600
 const STALE_AFTER_MS = 1_800_000
 const MS_PER_HOUR = 3_600_000
@@ -79,7 +81,7 @@ export function OutagePanel(): React.ReactElement {
                   title={o.reason ?? o.outageType ?? ''}
                 >
                   {isRegime(o.locations)
-                    ? 'Regime 👎'
+                    ? REGIME_LABEL
                     : fmtCause(o.reason, o.outageType)}
                 </td>
                 <td className={styles.state}>{fmtState(o.endDate)}</td>
@@ -101,7 +103,8 @@ function isRegime(locations: string[] | undefined): boolean {
 
 function fmtCC(locations: string[] | undefined): string {
   if (!locations || locations.length === 0) return '—'
-  const first = locations[0] ?? '—'
+  const raw = locations[0] ?? '—'
+  const first = raw === REGIME_CC ? PERSIA_LABEL : raw
   if (locations.length === 1) return first
   return `${first} +${locations.length - 1}`
 }
