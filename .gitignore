@@ -8,3 +8,13 @@
 DEMO-TRACKER.md
 
 PROJECTS/beginner/hash-cracker/docs/
+PROJECTS/advanced/monitor-the-situation-dashboard/docs/
+
+# Python virtualenvs and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

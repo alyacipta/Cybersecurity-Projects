@@ -1,7 +1,7 @@
 // ©AngelaMos | 2026
 // BottomTicker.tsx
 
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useTicker } from '@/stores/ticker'
 import { useUIStore } from '@/stores/ui'
 import styles from './BottomTicker.module.scss'
@@ -27,17 +27,21 @@ export function BottomTicker(): React.ReactElement | null {
   useLayoutEffect(() => {
     const el = trackRef.current
     if (!el) return
-    el.style.animationDuration = `${measureDuration(el)}s`
-  }, [])
 
-  useEffect(() => {
-    const onResize = (): void => {
-      const el = trackRef.current
-      if (!el) return
+    const update = (): void => {
       el.style.animationDuration = `${measureDuration(el)}s`
     }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+
+    update()
+
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener('resize', update)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', update)
+    }
   }, [])
 
   if (isPresentation) return null
