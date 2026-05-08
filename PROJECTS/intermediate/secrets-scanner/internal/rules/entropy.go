@@ -32,6 +32,10 @@ const (
 	Base64Charset       = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=-_"
 	HexCharset          = "0123456789abcdefABCDEF"
 	AlphanumericCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+	CharsetNameHex          = "hex"
+	CharsetNameBase64       = "base64"
+	CharsetNameAlphanumeric = "alphanumeric"
 )
 
 var (
@@ -98,19 +102,19 @@ func DetectCharset(s string) string {
 	}
 
 	if total == 0 {
-		return "alphanumeric"
+		return CharsetNameAlphanumeric
 	}
 
 	hexRatio := float64(hexCount) / float64(total)
 	b64Ratio := float64(b64Count) / float64(total)
 
 	if hexRatio == 1.0 && isAllHexChars(s) {
-		return "hex"
+		return CharsetNameHex
 	}
 	if b64Ratio >= 0.95 {
-		return "base64"
+		return CharsetNameBase64
 	}
-	return "alphanumeric"
+	return CharsetNameAlphanumeric
 }
 
 func ExtractHighEntropyTokens(

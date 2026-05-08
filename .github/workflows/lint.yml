@@ -123,13 +123,13 @@ jobs:
       if: matrix.type == 'biome'
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
 
     - name: Setup pnpm
       if: matrix.type == 'biome'
       uses: pnpm/action-setup@v4
       with:
-        version: latest
+        version: 10
 
     - name: Cache pnpm store
       if: matrix.type == 'biome'
