@@ -50,8 +50,6 @@ Tools, courses, certifications, communities, and frameworks for cybersecurity pr
 
 ## Beginner Projects
 
-## Beginner Projects
-
 | Project | Info | What You'll Learn |
 |---------|------|-------------------|
 | **[Simple Port Scanner](./PROJECTS/beginner/simple-port-scanner)**<br>Async TCP port scanner in C++ [@deniskhud](https://github.com/deniskhud) | ![2-4h](https://img.shields.io/badge/⏱️_4--5h-blue) ![C++](https://img.shields.io/badge/C%2B%2B-00599C?logo=cplusplus) ![Beginner](https://img.shields.io/badge/●_Beginner-green) | TCP socket programming • Async I/O patterns • Service detection<br>[Source Code](./PROJECTS/beginner/simple-port-scanner) \| [Docs](./PROJECTS/beginner/simple-port-scanner/learn) |
